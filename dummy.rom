@@ -1,0 +1,315 @@
+;
+; test program #1
+; address: $0200
+; load Acc with value 12
+; write Acc to address $c000 (49152)
+;
+; nop
+; nop
+; lda #$0c
+; sta $c000
+; brk
+;
+$EA $EA $A9 $0c $8D $00 $c0 $00 $00
+;
+; test program #2
+; address: $0400
+; copy 0-terminated string from
+; address $d000 to $0200
+; "Hello World!"
+;
+; ORG=$0400
+; hello:
+;    ldx #0
+; loop:
+;    lda $d000,x
+;    beq $06  ;branch to end (+6) if A=0
+;    sta $0200,x
+;    inx
+;    bne $f5  ; branch to loop (-11) if X<>0
+; end:
+;    brk
+ORG
+$0400
+$A2 $00
+$BD $00 $d0
+$F0 $06
+$9D $00 $02
+$E8
+$D0 $F5
+$00 $00
+; data
+; address: $d000
+ORG
+$D000
+;DEC: 53248
+; "Hello World!"
+72 101 108 108 111 32 87 111 114 108 100 33 0
+;
+; test program #3 - copy Hello World! string to $0300
+;                   using different assembly instructions
+; address: $0500
+;
+; ORG=$0500 ;dec: 1280
+; hello:
+;    lda #0
+;    sta $05
+;    ldx $05
+; loop:
+;    lda $d000,x
+;    sta $0300,x
+;    beq end ;(+6)
+;    inx
+;    beq end ;(+3)
+;    jmp loop
+; end:
+;    brk
+ORG
+$0500
+;DEC: 1280
+$A9 $00
+$85 $05
+$A6 $05
+$BD $00 $d0
+$9D $00 $03
+$F0 $06
+$E8
+$F0 $03
+$4C $06 $05
+$00 $00
+;
+; test program #4
+; left-shift memory location $05 at zero page,
+; then location $06 using zero page indexed addressing,
+; then memory location $c001 (outside zero page) using absolute addressing
+; then location $c002 using indexed absolute addressing
+; and finally left-shift Acc.
+; stop after each step for debugging
+; exit loop when Acc=0
+;
+; start:
+;    lda #$ff
+;    ldx #$01
+;    sta $05
+;    sta $05,x
+;    sta $c000,x
+;    inx
+;    sta $c000,x
+;    ldx #$01
+; loop2:
+;    brk
+;    asl $05
+;    asl $05,x
+;    asl $c001
+;    asl $c001,x
+;    asl
+;    bne loop2 ;(-15 or $f1)
+;    brk
+ORG
+$0600
+$A9 $FF
+$A2 $01
+$85 $05
+$95 $05
+$9D $00 $C0
+$E8
+$9D $00 $C0
+$A2 $01
+$00 $00
+$06 $05
+$16 $05
+$0E $01 $C0
+$1E $01 $C0
+$0A
+$D0 $F1
+$00 $00
+;
+; test program #5
+; Test ORA opcode with various arguments and addressing modes.
+; At each break, the contents of Acc should equal $AA.
+;
+; start:
+;    lda #$aa     ;%10101010
+;    sta $05
+;    sta $aa
+;    lda #$00
+;    tax
+;    ora ($05,x)
+;    brk
+;    lda #$00
+;    ora $05
+;    brk
+;    lda #$00
+;    ora #$aa
+;    brk
+;    lda #$00
+;    ora $0005
+;    brk
+;    lda #$05
+;    sta $06
+;    lda #$00
+;    sta $07
+;    tay
+;    ora ($06),y
+;    brk
+;    lda #$00
+;    tax
+;    ora $05,x
+;    brk
+;    lda #$00
+;    tay
+;    ora $0005,y
+;    brk
+;    lda #$00
+;    tax
+;    ora $0005,x
+;    brk
+ORG
+$0700
+$A9 $AA
+$85 $05
+$85 $AA
+$A9 $00
+$AA
+$01 $05
+$00 $00
+$A9 $00
+$05 $05
+$00 $00
+$A9 $00
+$09 $AA
+$00 $00
+$A9 $00
+$0D $05 $00
+$00 $00
+$A9 $05
+$85 $06
+$A9 $00
+$85 $07
+$A8
+$11 $06
+$00 $00
+$A9 $00
+$AA
+$15 $05
+$00 $00
+$A9 $00
+$A8
+$19 $05 $00
+$00 $00
+$A9 $00
+$AA
+$1D $05 $00
+$00 $00
+;
+; test program #6
+; Test JSR opcode.
+; After each break examine memory at $c000 and $c001.
+; After 1-st break, $c000 should equal $dd.
+; Return address-1 ($0802) should be on stack.
+; After 2-nd break, PC counter should be at $0805.
+; After 3-rd break, $c000 should equal $ee.
+; Return address-1 ($0807) should be on stack.
+; After 4-th break, PC counter should be at $080a.
+;
+; start:
+;    jsr sub1
+;    brk
+;    jsr sub2
+;    brk
+;    brk
+;    brk
+; sub1:
+;    lda #$dd
+;    sta $c000
+;    brk
+;    rts
+; sub2:
+;    lda #$ee
+;    sta $c000
+;    brk
+;    rts
+;
+ORG
+$0800
+$20 $0B $08
+$00 $00
+$20 $13 $08
+$00
+$00
+$00
+$A9 $DD
+$8D $00 $C0
+$00 $00
+$60
+$A9 $EE
+$8D $00 $C0
+$00 $00
+$60
+;
+; test program #7
+; Test ADC opcode.
+; Expected results:
+; First break: Acc=$01, Carry=1
+; 2-nd break: Acc=$02, Carry=1
+; 3-rd break: Acc=$22, Carry=0
+; 4-th break: Acc=$23, Carry=0
+;
+; start:
+;    clc
+;    lda #$ff
+;    adc #$02
+;    brk
+;    sec
+;    lda #$ff
+;    adc #$02
+;    brk
+;    clc
+;    lda #$20
+;    adc #$02
+;    brk
+;    sec
+;    lda #$20
+;    adc #$02
+;    brk
+;
+ORG
+$0900
+$18
+$A9 $FF
+$69 $02
+$00 $00
+$38
+$A9 $FF
+$69 $02
+$00 $00
+$18
+$A9 $20
+$69 $02
+$00 $00
+$38
+$A9 $20
+$69 $02
+$00 $00
+;
+; test program #8
+; Test ROR opcode.
+;
+; start:
+;    sec
+;    lda #$00
+; loop:
+;    ror
+;    brk
+;    bcc loop ;(-5 -> $FB)
+;    brk 
+;
+ORG
+$0920
+$38
+$A9 $00
+$6A
+$00 $00
+$90 $FB
+$00 $00
+;

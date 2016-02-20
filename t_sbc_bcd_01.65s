@@ -1,0 +1,85 @@
+; SBC, test decimal mode.
+;
+; NV-BDIZC
+; ??1110??
+;
+; Expected results (I got on Rockwell 6502 AP):
+; 00 - 00 and C=0 gives 99 and N=1 V=0 Z=0 C=0 (B8)
+; 00 - 00 and C=1 gives 00 and N=0 V=0 Z=1 C=1 (3B)
+; 00 - 01 and C=1 gives 99 and N=1 V=0 Z=0 C=0 (B8)
+; 0a - 00 and C=1 gives 0a and N=0 V=0 Z=0 C=1 (39)
+; 0b - 00 and C=0 gives 0a and N=0 V=0 Z=0 C=1 (39)
+; 9a - 00 and C=1 gives 9a and N=1 V=0 Z=0 C=1 (B9)
+; 9b - 00 and C=0 gives 9a and N=1 V=0 Z=0 C=1 (B9)
+;
+
+	*=$0200
+	
+	SED
+	CLC
+	LDA #$00
+	SBC #$00
+	STA SBT1A
+	PHP
+	PLA
+	STA SBT1F
+	SEC
+	LDA #$00
+	SBC #$00
+	STA SBT2A
+	PHP
+	PLA
+	STA SBT2F
+	SEC
+	LDA #$00
+	SBC #$01
+	STA SBT3A
+	PHP
+	PLA
+	STA SBT3F
+	SEC
+	LDA #$0A
+	SBC #$00
+	STA SBT4A
+	PHP
+	PLA
+	STA SBT4F
+	CLC
+	LDA #$0B
+	SBC #$00
+	STA SBT5A
+	PHP
+	PLA
+	STA SBT5F
+	SEC
+	LDA #$9A
+	SBC #$00
+	STA SBT6A
+	PHP
+	PLA
+	STA SBT6F
+	CLC
+	LDA #$9B
+	SBC #$00
+	STA SBT7A
+	PHP
+	PLA
+	STA SBT7F
+	BRK
+	
+	*=$0300
+	
+SBT1A:	.DB 0
+SBT1F:	.DB 0
+SBT2A:	.DB 0
+SBT2F:	.DB 0
+SBT3A:	.DB 0
+SBT3F:	.DB 0
+SBT4A:	.DB 0
+SBT4F:	.DB 0
+SBT5A:	.DB 0
+SBT5F:	.DB 0
+SBT6A:	.DB 0
+SBT6F:	.DB 0
+SBT7A:	.DB 0
+SBT7F:	.DB 0	

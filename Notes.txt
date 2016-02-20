@@ -1,0 +1,25 @@
+
+http://visual6502.org/wiki/index.php?title=6502DecimalMode
+
+
+NV-BDIZC
+
+Tests for ADC
+00 + 00 and C=0 gives 00 and N=0 V=0 Z=1 C=0 (simulate)
+79 + 00 and C=1 gives 80 and N=1 V=1 Z=0 C=0 (simulate)
+24 + 56 and C=0 gives 80 and N=1 V=1 Z=0 C=0 (simulate)
+93 + 82 and C=0 gives 75 and N=0 V=1 Z=0 C=1 (simulate)
+89 + 76 and C=0 gives 65 and N=0 V=0 Z=0 C=1 (simulate)
+89 + 76 and C=1 gives 66 and N=0 V=0 Z=1 C=1 (simulate)
+80 + f0 and C=0 gives d0 and N=0 V=1 Z=0 C=1 (simulate)
+80 + fa and C=0 gives e0 and N=1 V=0 Z=0 C=1 (simulate)
+2f + 4f and C=0 gives 74 and N=0 V=0 Z=0 C=0 (simulate)
+6f + 00 and C=1 gives 76 and N=0 V=0 Z=0 C=0 (simulate)
+Tests for SBC
+00 - 00 and C=0 gives 99 and N=1 V=0 Z=0 C=0 (simulate)
+00 - 00 and C=1 gives 00 and N=0 V=0 Z=1 C=1 (simulate)
+00 - 01 and C=1 gives 99 and N=1 V=0 Z=0 C=0 (simulate)
+0a - 00 and C=1 gives 0a and N=0 V=0 Z=0 C=1 (simulate)
+0b - 00 and C=0 gives 0a and N=0 V=0 Z=0 C=1 (simulate)
+9a - 00 and C=1 gives 9a and N=1 V=0 Z=0 C=1 (simulate)
+9b - 00 and C=0 gives 9a and N=1 V=0 Z=0 C=1 (simulate)

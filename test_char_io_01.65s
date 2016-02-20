@@ -1,0 +1,50 @@
+; Basic test of char I/O emulation
+
+	.ORG $0200
+	
+CHRGET	= $E000
+PUTCH 	= $E000
+TXTBUF	= $0400
+CR 	= $0D
+NL 	= $0A
+
+START:	LDX #$00
+PR1:	LDA PROMPT,X	;print prompt
+	BEQ L0
+	STA PUTCH
+	INX
+	BNE PR1
+L0:	LDX #$00
+GETTXT: LDA CHRGET	;get text from input
+	BEQ GETTXT
+	CMP #CR
+	BEQ L1
+	CMP #NL
+	BEQ L1
+	STA PUTCH	;echo char
+	STA TXTBUF,X	;store char
+	INX
+	BNE GETTXT
+L1:	LDA #NL		; add line break
+	STA TXTBUF,X
+	STA PUTCH
+	INX
+	LDA #CR
+	STA TXTBUF,X
+	STA PUTCH
+	INX
+	LDA #$00	; add null
+	STA TXTBUF,X
+	TAX
+PRINT:	LDA TXTBUF,X	; print to output
+	BEQ L2
+	STA PUTCH
+	INX
+	BNE PRINT
+L2:	BRK
+	NOP
+	JMP START
+PROMPT:	.DB "Enter text:",0
+	
+	
+	
