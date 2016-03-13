@@ -29,7 +29,7 @@ IncludeVersionInfo=0
 SupportXPThemes=0
 CompilerSet=3
 CompilerSettings=00000001c0111000001000000
-UnitCount=13
+UnitCount=14
 
 [VersionInfo]
 Major=1
@@ -172,6 +172,16 @@ BuildCmd=
 
 [Unit13]
 FileName=MKGenException.cpp
+CompileCpp=1
+Folder=
+Compile=1
+Link=1
+Priority=1000
+OverrideBuildCmd=0
+BuildCmd=
+
+[Unit14]
+FileName=system.h
 CompileCpp=1
 Folder=
 Compile=1

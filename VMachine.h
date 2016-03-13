@@ -2,15 +2,19 @@
 #define VMACHINE_H
 
 #include <string>
+#include <queue>
+#include "system.h"
 #include "MKCpu.h"
 #include "Memory.h"
 #include "Display.h"
 
-#define WINDOWS 1
+//#define WINDOWS 1
 #if defined (WINDOWS)
 #include <windows.h>
 #endif
+
 #define IOREFRESH 32
+#define OPINTERRUPT 25	// operator interrupt code (CTRL-Y)
 
 using namespace std;
 
@@ -32,6 +36,7 @@ class VMachine
 		Regs *Step(unsigned short addr);
 		void LoadROM(string romfname);
 		void LoadRAM(string ramfname);
+		void LoadRAMBin(string ramfname);
 		unsigned short MemPeek8bit(unsigned short addr);
 		void MemPoke8bit(unsigned short addr, unsigned char v);
 		Regs *GetRegs();
@@ -42,6 +47,18 @@ class VMachine
 		void ShowIO();
 		void ClearScreen();
 		void ScrHome();
+		bool IsAutoExec();
+		void EnableROM();
+		void DisableROM();
+		void SetROM(unsigned short start, unsigned short end);
+		void EnableROM(unsigned short start, unsigned short end);
+		unsigned short GetROMBegin();
+		unsigned short GetROMEnd();
+		bool IsROMEnabled();
+		unsigned short GetRunAddr();		
+		void SetOpInterrupt();
+		queue<string> GetExecHistory();
+		unsigned short Disassemble(unsigned short addr, char *buf);
 		
 	protected:
 		
@@ -55,6 +72,8 @@ class VMachine
 		unsigned short mCharIOAddr;
 		bool mCharIOActive;
 		bool mCharIO;
+		bool mOpInterrupt; // operator interrupt from console
+		bool mAutoExec;
 		
 		void LoadMEM(string memfname, Memory *pmem);
 		void ShowDisp();

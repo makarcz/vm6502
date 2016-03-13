@@ -1,0 +1,58 @@
+# Project: MKBasic
+# Makefile created by Dev-C++ 5.11
+# and modified for standalone MINGW compiler installation.
+
+CPP      = g++.exe -D__DEBUG__
+CC       = gcc.exe -D__DEBUG__
+WINDRES  = windres.exe
+OBJ      = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o MKGenException.o
+OBJ2     = bin2hex.o
+LINKOBJ  = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o MKGenException.o
+LINKOBJ2 = bin2hex.o
+LIBS     = -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
+INCS     = -I"C:\mingw-w64\x86_64-5.3.0\mingw64/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\lib\gcc\x86_64-w64-mingw32\5.3.0/include"
+CXXINCS  = -I"C:\mingw-w64\x86_64-5.3.0\mingw64/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\lib\gcc\x86_64-w64-mingw32\5.3.0/include"
+BIN       = mkbasic.exe
+BIN2      = bin2hex.exe
+CXXFLAGS  = $(CXXINCS) -std=c++11 -Wall -Wextra -pedantic -g3
+CFLAGS    = $(INCS) -std=c++11 -Wall -Wextra -pedantic -g3
+CXXFLAGS2 = $(CXXINCS) 
+CFLAGS2   = $(INCS) 
+RM        = del /f
+
+.PHONY: all all-before all-after clean clean-custom
+
+all: all-before $(BIN) $(BIN2) all-after
+
+clean: clean-custom
+	${RM} $(OBJ) $(OBJ2) $(BIN) $(BIN2)
+
+$(BIN): $(OBJ)
+	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS)
+
+main.o: main.cpp
+	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
+
+VMachine.o: VMachine.cpp
+	$(CPP) -c VMachine.cpp -o VMachine.o $(CXXFLAGS)
+
+MKBasic.o: MKBasic.cpp
+	$(CPP) -c MKBasic.cpp -o MKBasic.o $(CXXFLAGS)
+
+MKCpu.o: MKCpu.cpp
+	$(CPP) -c MKCpu.cpp -o MKCpu.o $(CXXFLAGS)
+
+Memory.o: Memory.cpp
+	$(CPP) -c Memory.cpp -o Memory.o $(CXXFLAGS)
+
+Display.o: Display.cpp
+	$(CPP) -c Display.cpp -o Display.o $(CXXFLAGS)
+
+MKGenException.o: MKGenException.cpp
+	$(CPP) -c MKGenException.cpp -o MKGenException.o $(CXXFLAGS)
+
+$(BIN2): $(OBJ2)
+	$(CC) $(LINKOBJ2) -o $(BIN2) $(LIBS)
+
+bin2hex.o: bin2hex.c
+	$(CC) -c bin2hex.c -o bin2hex.o $(CFLAGS2)	

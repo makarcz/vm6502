@@ -12,6 +12,7 @@ class MKGenException : public exception {
 	public:
 		MKGenException();
 		MKGenException(string cause);
+		~MKGenException() throw() {};
 		string GetCause();
 
 	private:

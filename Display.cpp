@@ -52,8 +52,74 @@ Display::~Display()
  */
 void Display::InitScr()
 {
+	mScrLines = SCREENDIM_ROW;
+	mScrColumns = SCREENDIM_COL;
+	mShellConsoleWidth = GetConsoleWidth();
+	if (mScrColumns > mShellConsoleWidth) {
+		mScrColumns = mShellConsoleWidth;
+	}
 	ClrScr();
 }
+
+#if defined(WINDOWS)
+
+#include <windows.h>
+#include <conio.h>
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetConsoleWidth()
+ * Purpose:		Obtain the width of shell console (the real one, not
+ *            the emulated one) on Windows.
+ * Arguments:	n/a
+ * Returns:		int - width of the shell console.
+ *--------------------------------------------------------------------
+ */
+int Display::GetConsoleWidth()
+{
+  HANDLE                     hStdOut;
+  CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+  hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
+  if (hStdOut == INVALID_HANDLE_VALUE) return -1;
+
+  if (!GetConsoleScreenBufferInfo( hStdOut, &csbi )) return -2;
+
+  return csbi.dwSize.X;
+}
+
+#endif
+
+#if defined(LINUX)
+
+#include <termcap.h>
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetConsoleWidth()
+ * Purpose:		Obtain the width of shell console (the real one, not
+ *            the emulated one) on Linux.
+ * Arguments:	n/a
+ * Returns:		int - width of the shell console.
+ *--------------------------------------------------------------------
+ */
+int Display::GetConsoleWidth()
+{
+	unsigned int conwidth = SCREENDIM_COL;
+  char *termtype = getenv("TERM");
+  static char termbuf[2048];
+
+  if (tgetent(termbuf, termtype) < 0) {
+  	cout << "WARNING: Could not access the termcap data base." << endl;
+  	cout << "         Unable to determine console width." << endl;
+  } else {
+  	conwidth = tgetnum("co");
+  }
+
+	return conwidth;
+}
+
+#endif
 
 /*
  *--------------------------------------------------------------------
@@ -65,13 +131,13 @@ void Display::InitScr()
  */
 void Display::ScrollUp()
 {
-	for (int row=0; row<SCREENDIM_ROW-1; row++) {	
-		for (int col=0; col<SCREENDIM_COL; col++) {
+	for (unsigned int row=0; row<mScrLines-1; row++) {	
+		for (unsigned int col=0; col<mScrColumns; col++) {
 			mScreen[col][row] = mScreen[col][row+1];
 		}
 	}
-	for (int col=0; col<SCREENDIM_COL; col++) {
-		mScreen[col][SCREENDIM_ROW-1] = ' ';
+	for (unsigned int col=0; col<mScrColumns; col++) {
+		mScreen[col][mScrLines-1] = ' ';
 	}
 }
 
@@ -85,7 +151,7 @@ void Display::ScrollUp()
  */
 void Display::GotoXY(unsigned int col, unsigned int row)
 {
-	if (col < SCREENDIM_COL && row < SCREENDIM_ROW) {
+	if (col < mScrColumns && row < mScrLines) {
 		mCursorCoord.col = col;
 		mCursorCoord.row = row;
 	}
@@ -135,16 +201,16 @@ void Display::PutChar(char c)
 		if (c == SCREENSPECCHARS_NL) {
 			//mCursorCoord.col = 0;
 			mCursorCoord.row++;			
-			if (mCursorCoord.row >= SCREENDIM_ROW) {
+			if (mCursorCoord.row >= mScrLines) {
 				ScrollUp();
-				mCursorCoord.row = SCREENDIM_ROW-1;
+				mCursorCoord.row = mScrLines-1;
 			}
 		} else if (c == SCREENSPECCHARS_CR) {
 			mCursorCoord.col = 0;
 		} else if (c == SCREENSPECCHARS_TB) {
 			mCursorCoord.col += TABSIZE;
-			if (mCursorCoord.col >= SCREENDIM_COL) {
-				mCursorCoord.col = SCREENDIM_COL-1; // must work on it some more
+			if (mCursorCoord.col >= mScrColumns) {
+				mCursorCoord.col = mScrColumns-1; // must work on it some more
 			}
 		} else if (c == SCREENSPECCHARS_BS) {
 			if (mCursorCoord.col > 0) mCursorCoord.col--;
@@ -154,12 +220,12 @@ void Display::PutChar(char c)
 		else {
 			mScreen[mCursorCoord.col][mCursorCoord.row] = c;
 			mCursorCoord.col++;
-			if (mCursorCoord.col >= SCREENDIM_COL) {
+			if (mCursorCoord.col >= mScrColumns) {
 				mCursorCoord.col = 0;
 				mCursorCoord.row++;
-				if (mCursorCoord.row >= SCREENDIM_ROW) {
+				if (mCursorCoord.row >= mScrLines) {
 					ScrollUp();
-					mCursorCoord.row = SCREENDIM_ROW-1;
+					mCursorCoord.row = mScrLines-1;
 				}
 			}
 		}
@@ -177,8 +243,8 @@ void Display::PutChar(char c)
  */
 void Display::ClrScr()
 {
-	for (int col=0; col<SCREENDIM_COL; col++) {
-		for (int row=0; row<SCREENDIM_ROW; row++) {
+	for (unsigned int col=0; col<mScrColumns; col++) {
+		for (unsigned int row=0; row<mScrLines; row++) {
 			mScreen[col][row] = ' ';
 		}
 	}	
@@ -197,7 +263,7 @@ char Display::GetCharAt(unsigned int col, unsigned int row)
 {
 	char c = -1;
 	
-	if (col < SCREENDIM_COL && row < SCREENDIM_ROW)
+	if (col < mScrColumns && row < mScrLines)
 		c = mScreen[col][row];
 	
 	return c;
@@ -206,7 +272,7 @@ char Display::GetCharAt(unsigned int col, unsigned int row)
 /*
  *--------------------------------------------------------------------
  * Method:		ShowScr()
- * Purpose:   Display contents of the emulated console on... well,
+ * Purpose:   Display contents of the emulated console on a... well,
  *            real console.
  * Arguments: n/a
  * Returns:   n/a
@@ -214,18 +280,19 @@ char Display::GetCharAt(unsigned int col, unsigned int row)
  */
 void Display::ShowScr()
 {
-	for (int row=0; row<SCREENDIM_ROW; row++) {
+	for (unsigned int row=0; row<mScrLines; row++) {
 		string line;
 		line.clear();
-		for (int col=0; col<SCREENDIM_COL; col++) {
+		for (unsigned int col=0; col<mScrColumns; col++) {
 			char c = mScreen[col][row];
 			if (mCursorCoord.col == col && mCursorCoord.row == row) {
 				c = '_';
 			}
 			line = line + c;
-			//putchar(mScreen[col][row]);
 		}
 		cout << line;
+		// add extra NL if the real console is wider than emulated one
+		if (mShellConsoleWidth > mScrColumns)	cout << endl;
 	}		
 }
 

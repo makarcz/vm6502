@@ -1,21 +1,34 @@
 #ifndef MKCPU_H
 #define MKCPU_H
 
+#include <string>
+#include <map>
+#include <queue>
+#include "system.h"
 #include "Memory.h"
 
+using namespace std;
+
 namespace MKBasic {
+	
+#define DISS_BUF_SIZE 60	// disassembled instruction buffer size	
 
 struct Regs {
-	unsigned char 	Acc;				// 8-bit accumulator
-	unsigned short 	Acc16;			// 16-bit accumulator
-	unsigned char 	IndX;				// 8-bit index register X
-	unsigned char 	IndY;				// 8-bit index register Y
-	unsigned short 	Ptr16;			// general purpose 16-bit register
-	unsigned short 	PtrAddr;		// cpu code counter - current read/write address
-	unsigned char 	PtrStack;		// 8-bit stack pointer (0-255).
-	unsigned char 	Flags;			// CPU flags
-	bool						SoftIrq;		// true when interrupted with BRK
-	bool            LastRTS;		// true if RTS encountered and stack empty.
+	unsigned char 	Acc;					// 8-bit accumulator
+	unsigned short 	Acc16;				// 16-bit accumulator
+	unsigned char 	IndX;					// 8-bit index register X
+	unsigned char 	IndY;					// 8-bit index register Y
+	unsigned short 	Ptr16;				// general purpose 16-bit register
+	unsigned short 	PtrAddr;			// cpu code counter (PC) - current read/write address
+	unsigned char 	PtrStack;			// 8-bit stack pointer (0-255).
+	unsigned char 	Flags;				// CPU flags
+	bool						SoftIrq;			// true when interrupted with BRK or trapped opcode
+	bool            LastRTS;			// true if RTS encountered and stack empty.
+	unsigned short	LastAddr;			// PC at the time of previous op-code
+	string					LastInstr;		// instruction and argument executed in previous step
+	int							LastOpCode;		// op-code of last instruction
+	unsigned short	LastArg;			// argument to the last instruction
+	int							LastAddrMode;	// addressing mode of last instruction
 };
 
 /*
@@ -69,7 +82,9 @@ enum eAddrModes {
 	ADDRMODE_IZX,
 	ADDRMODE_IZY,
 	ADDRMODE_REL,
-	ADDRMODE_ACC
+	ADDRMODE_ACC,
+	ADDRMODE_UND,		// undetermined (for some illegal codes)
+	ADDRMODE_LENGTH	// should be always last
 }; 
 // assumed little-endian order of bytes (start with least significant)
 // MEM - memory location from where the value is read/written, 
@@ -333,8 +348,17 @@ enum eOpCodes {
 	OPCODE_ILL_FC		= 0xFC,	// illegal opcode	
 	OPCODE_SBC_ABX	= 0xFD,	// SuBtract with Carry, Absolute Indexed, X ($FD addrlo addrhi : SBC addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_INC_ABX	= 0xFE,	// INCrement memory, Absolute Indexed, X ($FE addrlo addrhi : INC addr,X ;addr=0..$FFFF), MEM=addr+X
-	OPCODE_ILL_FF		= 0xFF,	// illegal opcode
+	OPCODE_ILL_FF		= 0xFF	// illegal opcode
 };
+
+struct OpCode {
+	int 		code;			// the byte value of the opcode
+	int 		addrmode;	// addressing mode (see eAddrModes)
+	int 		time;			// # of cycles
+	string	amf;			// assembler mnemonic
+};
+
+typedef map<eOpCodes,OpCode> OpCodesMap;
 
 /*
  *------------------------------------------------------------------------------
@@ -391,14 +415,22 @@ class MKCpu
 		
 		Regs *ExecOpcode(unsigned short memaddr);
 		Regs *GetRegs();
+		queue<string>	GetExecHistory();
+		unsigned short Disassemble(unsigned short addr,
+															 char *instrbuf);					// Disassemble instruction in memory, return next instruction addr.
 		
 	protected:
 		
 	private:
 		
 		struct Regs mReg;						// CPU registers
-		Memory *mpMem;							// pointer to memory object
-		bool mLocalMem;							// true - memory locally allocated
+		Memory 			*mpMem;					// pointer to memory object
+		bool 				mLocalMem;			// true - memory locally allocated
+		OpCodesMap	mOpCodesMap;		// hash table of all opcodes
+		int					mAddrModesLen[ADDRMODE_LENGTH];	// array of instructions lengths per addressing mode
+		string			mArgFmtTbl[ADDRMODE_LENGTH];		// array of instructions assembly formats per addressing mode
+		queue<string>	mExecHistory;	// history of last 20 op-codes with arguments and registers statuses
+		
 		
 		void	InitCpu();
 		void	SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on Acc, X or Y
@@ -410,6 +442,8 @@ class MKCpu
 		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory location and Acc.
 																												// Result in Acc. Set flags.
 		unsigned short ComputeRelJump(unsigned char offs);	// Compute new PC based on relative offset.
+		unsigned short ComputeRelJump(unsigned short addr,
+																	unsigned char offs);	// Compute new address after branch based on relative offset.
 		unsigned char Conv2Bcd(unsigned short v);						// Convert number to BCD representation.
 		unsigned short Bcd2Num(unsigned char v);						// Convert BCD code to number.
 		bool CheckFlag(unsigned char flag);									// Return true if given CPU status flag is set, false otherwise.
@@ -417,6 +451,10 @@ class MKCpu
 		unsigned char AddWithCarry(unsigned char mem8);			// Add With Carry, update flags and Acc.
 		unsigned char SubWithCarry(unsigned char mem8);			// Subtract With Carry, update flags and Acc.
 		unsigned short GetAddrWithMode(int mode);						// Get address of the byte argument with specified addr. mode
+		unsigned short GetArgWithMode(unsigned short opcaddr,
+																	int mode);						// Get argument from address with specified addr. mode
+		unsigned short Disassemble();												// Disassemble instruction and argument per addressing mode
+		void Add2History(string s);													// add entry to op-codes execute history
 };
 
 } // namespace MKBasic

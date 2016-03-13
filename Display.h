@@ -1,6 +1,8 @@
 #ifndef DISPLAY_H
 #define DISPLAY_H
 
+#include "system.h"
+
 #define TABSIZE 4
 
 namespace MKBasic {
@@ -19,8 +21,8 @@ enum eScreenSpecChars {
 };
 	
 struct CursorCoord {
-	int row;
-	int col;
+	unsigned int row;
+	unsigned int col;
 };	
 
 class Display
@@ -42,10 +44,14 @@ class Display
 		
 		char mScreen[SCREENDIM_COL][SCREENDIM_ROW];
 		CursorCoord mCursorCoord;
+		unsigned int mShellConsoleWidth;
+		unsigned int mScrLines;
+		unsigned int mScrColumns;
 		
 		void InitScr();
 		void ScrollUp();
 		bool IsSpecChar(char c);
+		int  GetConsoleWidth();
 
 };
 

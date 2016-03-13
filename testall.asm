@@ -1,9 +1,20 @@
-	.ORG $4000
-start:
+; Testing 6502 opcodes.
+; Copied and adapted from AllSuiteA.asm from project hmc-6502:
+; https://code.google.com/archive/p/hmc-6502/
 ; EXPECTED FINAL RESULTS: $0210 = FF
-; (any other number will be the 
-;  test that failed)
+; (any other number will be the test that failed)
+; To build with cl65:
+; cl65 -C testall_cl65.cfg -l --start-addr 16384 -t none -o tall.bin testall.asm
+; then load to simulator from debug console with 'L B TALL.BIN'
+; and execute with 'X 4000'.
 
+	.segment "CODE1"
+
+	.segment "CODE2"
+
+	.ORG $4000
+
+start:
 ; initialize:
 	LDA #$00
 	STA $0210
@@ -922,4 +933,22 @@ suiteafinal:
 	INC $0210
 theend:
 	BRK
+	BRK
 	;JMP theend
+	LDX #$FF
+	TXS
+	RTS
+
+	.segment "KERN"
+
+	.ORG $FF00
+
+	RTI
+
+	.segment "VECT"
+
+	.ORG $FFFA
+
+	.BYTE $00,$FF,$00,$FF,$00,$FF	
+
+;-------------------------- END	

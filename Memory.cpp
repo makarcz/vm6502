@@ -1,6 +1,11 @@
+
 #include "Memory.h"
+
 #include <stdio.h>
+#include <ctype.h>
+#if defined(WINDOWS)
 #include <conio.h>
+#endif
 
 //#define DBG 1
 #if defined (DBG)
@@ -68,6 +73,85 @@ void Memory::Initialize()
 	mROMActive = false;
 }
 
+#if defined(LINUX)
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+
+struct termios orig_termios;
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void reset_terminal_mode()
+{
+    tcsetattr(0, TCSANOW, &orig_termios);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void Memory::set_conio_terminal_mode()
+{
+    struct termios new_termios;
+
+    /* take two copies - one for now, one for later */
+    tcgetattr(0, &orig_termios);
+    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
+
+    /* register cleanup handler, and set the new terminal mode */
+    atexit(reset_terminal_mode);
+    cfmakeraw(&new_termios);
+    tcsetattr(0, TCSANOW, &new_termios);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+int Memory::kbhit()
+{
+    struct timeval tv = { 0L, 0L };
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(0, &fds);
+    return select(1, &fds, NULL, NULL, &tv);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+int Memory::getch()
+{
+    int r;
+    unsigned char c;
+    if ((r = read(0, &c, sizeof(c))) < 0) {
+        return r;
+    } else {
+        return c;
+    }
+}
+#endif
+
 /*
  *--------------------------------------------------------------------
  * Method:
@@ -80,6 +164,35 @@ void Memory::EnableROM()
 {
 	mROMActive = true;
 }
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void Memory::DisableROM()
+{
+	mROMActive = false;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */		
+void Memory::SetROM(unsigned short start, unsigned short end)
+{
+	if (mROMEnd > mROMBegin) {
+		mROMBegin = start;
+		mROMEnd = end;
+	}
+}
 		
 /*
  *--------------------------------------------------------------------
@@ -91,10 +204,7 @@ void Memory::EnableROM()
  */		
 void Memory::EnableROM(unsigned short start, unsigned short end)
 {
-	if (mROMEnd > mROMBegin) {
-		mROMBegin = start;
-		mROMEnd = end;
-	}
+	SetROM(start,end);
 	EnableROM();
 }
 
@@ -103,23 +213,41 @@ void Memory::EnableROM(unsigned short start, unsigned short end)
  * Method:		ReadCharKb()
  * Purpose:		If char I/O active, read character from console
  *            (non-blocking) and put in an input  FIFO buffer.
- * Arguments: n/a
+ * Arguments: nonblock - if true, works in non-blocking mode
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-unsigned char Memory::ReadCharKb()
+unsigned char Memory::ReadCharKb(bool nonblock)
 {
 	unsigned char ret = 0;
 	if (mCharIOActive) {
-		int c;
-		putchar('?');
-		while(!kbhit());
+#if defined(LINUX)
+    set_conio_terminal_mode();
+#endif
+		static int c = ' ';
+		putchar('\n');
+		if (mIOEcho && isprint(c)) putchar(c);
+		else putchar(' ');
+		fputs("<-Character Input (CTRL-Y to BREAK) ?\r",stdout);
+		fflush(stdout);
+		if (!nonblock) while(!kbhit());
+		else c = 0;
 		c = getch();
-		if (mIOEcho) putchar(c);
+#if defined(LINUX)
+		if (c == 3) { // capture CTRL-C in CONIO mode
+			reset_terminal_mode();
+			kill(getpid(),SIGINT);
+		}
+#endif
+    fputs("                                      \r",stdout);
+		fflush(stdout);
 		mCharIOBufIn[mInBufDataEnd] = c;
 		mInBufDataEnd++;
 		if (mInBufDataEnd >= CHARIO_BUF_SIZE) mInBufDataEnd = 0;
 		ret = c;
+#if defined(LINUX)
+    reset_terminal_mode();
+#endif
 	}	
 	return ret;
 }
@@ -197,22 +325,9 @@ void Memory::PutCharIO(char c)
 unsigned char Memory::Peek8bit(unsigned short addr)
 {
 	if (mCharIOActive && addr == mCharIOAddr) {
-#if defined (DBG)		
-		cout << "DBG: Peek8bit($" << hex << addr << ") BEFORE ReadCharKb()" << endl;
-		cout << "DBG: m8bitMem[$" << hex << addr << "] = $" << hex << (unsigned short)m8bitMem[addr] << endl;
-		for (unsigned int a  = 0xFFF0; a < 0x10000; a++) {
-			cout << "DBG: m8bitMem[$" << hex << a << "] = $" << hex << (unsigned short)m8bitMem[a] << endl;
-		}
-#endif						
-		m8bitMem[addr] = ReadCharKb();
-#if defined (DBG)		
-    cout << "************************" << endl;
-		cout << "DBG: Peek8bit($" << hex << addr << ") AFTER ReadCharKb()" << endl;
-		cout << "DBG: m8bitMem[$" << hex << addr << "] = $" << hex << (unsigned short)m8bitMem[addr] << endl;
-		for (unsigned int a  = 0xFFF0; a < 0x10000; a++) {
-			cout << "DBG: m8bitMem[$" << hex << a << "] = $" << hex << (unsigned short)m8bitMem[a] << endl;
-		}
-#endif				
+		m8bitMem[addr] = ReadCharKb(false); // blocking mode input
+	} else if (mCharIOActive && addr == mCharIOAddr+1) {
+		m8bitMem[addr] = ReadCharKb(true);	// non-blocking mode input
 	}
 		
 	return m8bitMem[addr];
@@ -231,10 +346,9 @@ unsigned short Memory::Peek16bit(unsigned short addr)
 	unsigned short ret = 0;
 
 	if (mCharIOActive && addr == mCharIOAddr) {
-#if defined (DBG)		
-		cout << "DBG: Peek16bit(" << addr << ")" << endl;
-#endif		
-		m8bitMem[addr] = ReadCharKb();
+		m8bitMem[addr] = ReadCharKb(false);	// blocking mode input
+	} else if (mCharIOActive && addr == mCharIOAddr+1) {
+		m8bitMem[addr] = ReadCharKb(true);	// non-blocking mode input
 	}
 			
 	ret = m8bitMem[addr++];
@@ -260,7 +374,7 @@ void Memory::Poke8bit(unsigned short addr, unsigned char val)
 {
 	if (mCharIOActive && addr == mCharIOAddr)
 		PutCharIO(val);
-	if (!mROMActive || (addr < ROM_BEGIN || addr > ROM_END)) {
+	if (!mROMActive || (addr < mROMBegin || addr > mROMEnd)) {
 		m8bitMem[addr] = val;
 	}
 }
@@ -305,6 +419,45 @@ void Memory::DisableCharIO()
 unsigned short Memory::GetCharIOAddr()
 {
 	return mCharIOAddr;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+unsigned short Memory::GetROMBegin()
+{
+	return mROMBegin;
+}
+		
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */		
+unsigned short Memory::GetROMEnd()
+{
+	return mROMEnd;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */		
+bool Memory::IsROMEnabled()
+{
+	return mROMActive;
 }
 
 } // namespace MKBasic

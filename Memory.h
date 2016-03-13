@@ -1,11 +1,20 @@
 #ifndef MEMORY_H
 #define MEMORY_H
 
+#include "system.h"
+
+#if defined(LINUX)
+#include <unistd.h>
+#include <sys/select.h>
+#include <termios.h>
+#endif
+
 #define MAX_8BIT_ADDR 	0xFFFF
 #define CHARIO_ADDR			0xE000
 #define CHARIO_BUF_SIZE	256
 #define ROM_BEGIN				0xD000
 #define ROM_END					0xDFFF
+#define MIN_ROM_BEGIN		0x0200
 
 namespace MKBasic {
 
@@ -26,7 +35,12 @@ class Memory
 		char GetCharIn();
 		char GetCharOut();
 		void EnableROM();
+		void DisableROM();
+		void SetROM(unsigned short start, unsigned short end);
 		void EnableROM(unsigned short start, unsigned short end);
+		unsigned short GetROMBegin();
+		unsigned short GetROMEnd();
+		bool IsROMEnabled();
 		
 	protected:
 		
@@ -46,8 +60,16 @@ class Memory
 		unsigned short mROMEnd;
 		bool mROMActive;
 		
-		unsigned char ReadCharKb();
+		unsigned char ReadCharKb(bool nonblock);
 		void PutCharIO(char c);
+
+#if defined(LINUX)
+
+		void set_conio_terminal_mode();
+		int kbhit();
+		int getch();
+
+#endif
 };
 
 } // namespace MKBasic
