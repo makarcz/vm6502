@@ -63,7 +63,7 @@
 ; 1/14/2012
 ; 	Modified Daryl Rictor's port to run on MKHBC-8-R1 homebrew
 ;       computer under MKHBCOS (derivative of M.O.S. by Scott 
-        Chidester).
+;       Chidester).
 ;
 ; 3/11/2016
 ;       Adapted to run in MKBASIC (V65) emulator.
