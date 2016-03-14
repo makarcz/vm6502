@@ -43,7 +43,7 @@ void trap_signal(int signum)
 {
    cout << "Signal caught: " << dec << signum << endl;
    if (NULL != pvm && NULL != preg) {
-  		pvm->SetOpInterrupt();
+  		pvm->SetOpInterrupt(true);
   		opbrk = true;
 	 }
    //exit(signum);
@@ -73,7 +73,7 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
     case CTRL_C_EVENT: 
       //Beep( 750, 300 ); 
     	if (NULL != pvm && NULL != preg) {
-    		pvm->SetOpInterrupt();
+    		pvm->SetOpInterrupt(true);
     		opbrk = true;
 	  	}      
       return TRUE;
@@ -87,7 +87,7 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
     case CTRL_BREAK_EVENT: 
       //Beep( 900, 200 ); 
     	if (NULL != pvm && NULL != preg) {
-				pvm->SetOpInterrupt();
+				pvm->SetOpInterrupt(true);
 				opbrk = true;
 	  	}       
       return TRUE; 
@@ -271,7 +271,7 @@ void ShowMenu()
 	bool cls = false;                                                         \
 	brk = preg->SoftIrq;                                                      \
 	lrts = preg->LastRTS;                                                     \
-	while(step && nsteps > 1 && !brk && !lrts) {                              \
+	while(step && nsteps > 1 && !brk && !lrts && !opbrk) {                    \
 		cout << "addr: $" << hex << preg->PtrAddr << ", step: " << dec << stct; \
 		cout  << "    \r";                                                      \
 		preg = pvm->Step();                                                     \
@@ -283,6 +283,7 @@ void ShowMenu()
 			this_thread::sleep_for(chrono::milliseconds(delay));                  \
 		}                                                                       \
 		brk = preg->SoftIrq;                                                    \
+		lrts = preg->LastRTS;                                                   \
 		nsteps--;                                                               \
 		stct++;                                                                 \
 	}                                                                         \
@@ -348,17 +349,15 @@ int main(int argc, char** argv) {
 				cout << endl;
 				if (opbrk) {
 					cout << "Interrupted at " << hex << preg->PtrAddr << endl;
-					opbrk = brk = stop = lrts = false;					
 				} else if (brk) {
 					cout << "BRK at " << hex << preg->PtrAddr << endl;
-					opbrk = brk = stop = lrts = false;
 				} else if (lrts) {
 					cout << "FINISHED at " << hex << ((newaddr > 0xFFFF) ? preg->PtrAddr : newaddr) << endl;
-					opbrk = brk = stop = lrts = false;					
 				}	else if (stop) {
 					cout << "STOPPED at " << hex << ((newaddr > 0xFFFF) ? preg->PtrAddr : newaddr) << endl;
-					opbrk = brk = stop = lrts = false;
 				}
+				opbrk = brk = stop = lrts = false;
+				pvm->SetOpInterrupt(false);
 				ShowRegs(preg,pvm,ioecho,true);
 			}
 			ShowMenu();

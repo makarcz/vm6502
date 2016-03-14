@@ -56,7 +56,8 @@ class VMachine
 		unsigned short GetROMEnd();
 		bool IsROMEnabled();
 		unsigned short GetRunAddr();		
-		void SetOpInterrupt();
+		void SetOpInterrupt(bool opint);
+		bool IsOpInterrupt();
 		queue<string> GetExecHistory();
 		unsigned short Disassemble(unsigned short addr, char *buf);
 		

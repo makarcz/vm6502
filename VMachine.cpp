@@ -325,7 +325,7 @@ Regs *VMachine::Step()
 		char c = -1;
 		mCharIO = false;
 		while ((c = mpRAM->GetCharOut()) != -1) {
-			mOpInterrupt = (c == OPINTERRUPT);
+			mOpInterrupt = mOpInterrupt || (c == OPINTERRUPT);
 			if (!mOpInterrupt) {
 				mpDisp->PutChar(c);
 				mCharIO = true;				
@@ -903,13 +903,26 @@ unsigned short VMachine::GetRunAddr()
  *--------------------------------------------------------------------
  * Method:		SetOpInterrupt()
  * Purpose:		Set the flag indicating operator interrupt.
- * Arguments:	n/a
+ * Arguments:	bool - new value of the flag
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void VMachine::SetOpInterrupt()
+void VMachine::SetOpInterrupt(bool opint)
 {
-	mOpInterrupt = true;
+	mOpInterrupt = opint;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		IsOpInterrupt()
+ * Purpose:		Return the flag indicating operator interrupt status.
+ * Arguments:	n/a
+ * Returns:		bool - true if operator interrupt flag was set
+ *--------------------------------------------------------------------
+ */
+bool VMachine::IsOpInterrupt()
+{
+	return mOpInterrupt;
 }
 
 /*
