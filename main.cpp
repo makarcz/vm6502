@@ -346,6 +346,8 @@ int main(int argc, char** argv) {
 				newaddr = 0x10000;
 			}
 			if (brk || opbrk || stop || lrts) {
+				pvm->ClearScreen();
+				pvm->ShowIO();
 				cout << endl;
 				if (opbrk) {
 					cout << "Interrupted at " << hex << preg->PtrAddr << endl;

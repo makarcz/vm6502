@@ -37,12 +37,14 @@ class Display
 		char GetCharAt(unsigned int col, unsigned int row);
 		void ShowScr();
 		CursorCoord *GetCursorCoord();		
+		char GetLastChar();
 				
 	protected:
 		
 	private:
 		
-		char mScreen[SCREENDIM_COL][SCREENDIM_ROW];
+		char mScreen[SCREENDIM_ROW][SCREENDIM_COL];
+		char mLastChar;
 		CursorCoord mCursorCoord;
 		unsigned int mShellConsoleWidth;
 		unsigned int mScrLines;

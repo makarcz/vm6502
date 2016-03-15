@@ -225,10 +225,10 @@ unsigned char Memory::ReadCharKb(bool nonblock)
     set_conio_terminal_mode();
 #endif
 		static int c = ' ';
-		putchar('\n');
+		//putchar('\n');
 		if (mIOEcho && isprint(c)) putchar(c);
-		else putchar(' ');
-		fputs("<-Character Input (CTRL-Y to BREAK) ?\r",stdout);
+		//else putchar(' ');
+		//fputs("<-Character Input (CTRL-Y to BREAK) ?\r",stdout);
 		fflush(stdout);
 		if (!nonblock) while(!kbhit());
 		else c = 0;
@@ -239,8 +239,8 @@ unsigned char Memory::ReadCharKb(bool nonblock)
 			kill(getpid(),SIGINT);
 		}
 #endif
-    fputs("                                      \r",stdout);
-		fflush(stdout);
+    //fputs("                                      \r",stdout);
+		//fflush(stdout);
 		mCharIOBufIn[mInBufDataEnd] = c;
 		mInBufDataEnd++;
 		if (mInBufDataEnd >= CHARIO_BUF_SIZE) mInBufDataEnd = 0;

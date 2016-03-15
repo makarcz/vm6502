@@ -52,6 +52,7 @@ Display::~Display()
  */
 void Display::InitScr()
 {
+	mLastChar = 0;
 	mScrLines = SCREENDIM_ROW;
 	mScrColumns = SCREENDIM_COL;
 	mShellConsoleWidth = GetConsoleWidth();
@@ -133,11 +134,11 @@ void Display::ScrollUp()
 {
 	for (unsigned int row=0; row<mScrLines-1; row++) {	
 		for (unsigned int col=0; col<mScrColumns; col++) {
-			mScreen[col][row] = mScreen[col][row+1];
+			mScreen[row][col] = mScreen[row+1][col];
 		}
 	}
 	for (unsigned int col=0; col<mScrColumns; col++) {
-		mScreen[col][mScrLines-1] = ' ';
+		mScreen[mScrLines-1][col] = ' ';
 	}
 }
 
@@ -199,6 +200,7 @@ void Display::PutChar(char c)
 	if (isalnum(c) || ispunct(c) || isspace(c) || IsSpecChar(c)) 
 	{
 		if (c == SCREENSPECCHARS_NL) {
+			mLastChar = SCREENSPECCHARS_NL;
 			//mCursorCoord.col = 0;
 			mCursorCoord.row++;			
 			if (mCursorCoord.row >= mScrLines) {
@@ -206,19 +208,24 @@ void Display::PutChar(char c)
 				mCursorCoord.row = mScrLines-1;
 			}
 		} else if (c == SCREENSPECCHARS_CR) {
+			mLastChar = SCREENSPECCHARS_CR;
 			mCursorCoord.col = 0;
 		} else if (c == SCREENSPECCHARS_TB) {
+			mLastChar = SCREENSPECCHARS_TB;
 			mCursorCoord.col += TABSIZE;
 			if (mCursorCoord.col >= mScrColumns) {
 				mCursorCoord.col = mScrColumns-1; // must work on it some more
 			}
 		} else if (c == SCREENSPECCHARS_BS) {
+			mLastChar = SCREENSPECCHARS_BS;
 			if (mCursorCoord.col > 0) mCursorCoord.col--;
 		} else if (c == SCREENSPECCHARS_BE) {
+			mLastChar = SCREENSPECCHARS_BE;
 			// no action
 		}
 		else {
-			mScreen[mCursorCoord.col][mCursorCoord.row] = c;
+			mScreen[mCursorCoord.row][mCursorCoord.col] = c;
+			mLastChar = c;
 			mCursorCoord.col++;
 			if (mCursorCoord.col >= mScrColumns) {
 				mCursorCoord.col = 0;
@@ -245,7 +252,7 @@ void Display::ClrScr()
 {
 	for (unsigned int col=0; col<mScrColumns; col++) {
 		for (unsigned int row=0; row<mScrLines; row++) {
-			mScreen[col][row] = ' ';
+			mScreen[row][col] = ' ';
 		}
 	}	
 	mCursorCoord.col = mCursorCoord.row = 0;	
@@ -264,7 +271,7 @@ char Display::GetCharAt(unsigned int col, unsigned int row)
 	char c = -1;
 	
 	if (col < mScrColumns && row < mScrLines)
-		c = mScreen[col][row];
+		c = mScreen[row][col];
 	
 	return c;
 }
@@ -280,20 +287,23 @@ char Display::GetCharAt(unsigned int col, unsigned int row)
  */
 void Display::ShowScr()
 {
+	char buf[SCREENDIM_COL] = {0};
+	string scr;
+	scr.clear();
 	for (unsigned int row=0; row<mScrLines; row++) {
-		string line;
-		line.clear();
-		for (unsigned int col=0; col<mScrColumns; col++) {
-			char c = mScreen[col][row];
-			if (mCursorCoord.col == col && mCursorCoord.row == row) {
-				c = '_';
-			}
-			line = line + c;
+		char *linebuf = &(mScreen[row][0]);
+		memset(buf, 0, mScrColumns);
+		strncpy(buf, linebuf, mScrColumns);
+		buf[mScrColumns] = 0;
+		if (mCursorCoord.row == row) {
+			buf[mCursorCoord.col] = '_';
 		}
-		cout << line;
+		string line(buf);
 		// add extra NL if the real console is wider than emulated one
-		if (mShellConsoleWidth > mScrColumns)	cout << endl;
-	}		
+		if (mShellConsoleWidth > mScrColumns)	line = line + "\n";
+		scr = scr + line;
+	}
+	cout << scr;		
 }
 
 /*
@@ -308,5 +318,18 @@ CursorCoord *Display::GetCursorCoord()
 {
 	return &mCursorCoord;
 }
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+ char Display::GetLastChar()
+ {
+ 	return mLastChar;
+ }
 
 } // namespace MKBasic

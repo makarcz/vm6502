@@ -280,7 +280,8 @@ Regs *VMachine::Exec()
 	while (true) {
 		cpureg = Step();
 		if (mCharIO) {
-			ShowDisp();
+			cout << mpDisp->GetLastChar();
+			cout << flush;
 		}
 		if (cpureg->LastRTS || mOpInterrupt) break;
 	}
