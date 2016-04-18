@@ -3,6 +3,7 @@
 #include <bitset>
 #include <chrono>
 #include <thread>
+#include <string.h>
 #include "system.h"
 #include "MKCpu.h"
 #include "Memory.h"
@@ -24,6 +25,109 @@ int g_stackdisp_lines = 1;
 
 bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat);
 void ShowHelp();
+void CmdArgHelp(string prgname);
+void CopyrightBanner();
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		RunSingleInstr()
+ * Purpose:		Execute single instruction of the CPU (all cycles).
+ * Arguments:	addr - unsigned short, instruction address
+ * Returns:		pointer to CPU registers
+ *--------------------------------------------------------------------
+ */
+ Regs *RunSingleInstr(unsigned short addr)
+ {
+ 		Regs *ret = NULL;
+
+ 		do {
+    	ret = pvm->Step(addr);
+  	} while (ret->CyclesLeft > 0);
+
+  	return ret;
+ }
+
+ /*
+ *--------------------------------------------------------------------
+ * Method:		RunSingleCurrInstr()
+ * Purpose:		Execute single instruction of the CPU (all cycles)
+ *            at current address.
+ * Arguments:	n/a
+ * Returns:		pointer to CPU registers
+ *--------------------------------------------------------------------
+ */
+ Regs *RunSingleCurrInstr()
+ {
+ 		Regs *ret = NULL;
+
+ 		do {
+    	ret = pvm->Step();
+  	} while (ret->CyclesLeft > 0);
+
+  	return ret;
+ }
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		PrintLoadBinImgErr()
+ * Purpose:		Print the warning/error message after loading binary
+ *            image.
+ * Arguments:	err - integer, error code
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void PrintLoadBinImgErr(int err)
+{
+	bool pressenter = true;
+	switch (err) {
+		case 1: cout << "WARNING: Unexpected EOF (image shorter than 64kB)." << endl;
+						break;
+		case 2: cout << "WARNING: Unable to open memory image file." << endl;
+						break;
+		case 3: cout << "WARNING: Problem with binary image header." << endl;
+						break;
+		case 4: cout << "WARNING: No header found in binary image." << endl;
+						break;
+		case 5: cout << "WARNING: Problem with binary image header." << endl;
+						cout << "WARNING: Unexpected EOF (image shorter than 64kB)." << endl;
+						break;
+		case 6: cout << "WARNING: No header found in binary image." << endl;
+						cout << "WARNING: Unexpected EOF (image shorter than 64kB)." << endl;
+						break;
+		default: pressenter = false; break;
+	}	
+	if (pressenter) {
+		cout << "Press [ENTER]...";
+		getchar();
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		PrintLoadHexImgErr()
+ * Purpose:		Print the warning/error message after loading Intel HEX
+ *            image.
+ * Arguments:	err - integer, error code
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void PrintLoadHexImgErr(int err)
+{
+	bool pressenter = true;
+	switch (err) {
+		case 1: cout << "WARNING: Unable to open file." << endl;
+						break;
+		case 2: cout << "ERROR: Syntax error." << endl;
+						break;
+		case 3: cout << "ERROR: Intel HEX format error." << endl;
+						break;
+		default: pressenter = false; break;
+	}	
+	if (pressenter) {
+		cout << "Press [ENTER]...";
+		getchar();
+	}
+}
 
 #if defined(LINUX)
 
@@ -233,14 +337,14 @@ void ShowMenu()
 {
 	cout << "------------------------------------+----------------------------------------" << endl;
 	cout << "   C - continue,  S - step          |    A - set address for next step" << endl;
-	cout << "   G - go/cont. from new address    |    N - go number of steps" << endl;
+	cout << "   G - go/cont. from new address    |    N - go number of steps, P - IRQ" << endl;
 	cout << "   I - toggle char I/O emulation    |    X - execute from new address" << endl;
 	cout << "   T - show I/O console             |    B - blank (clear) screen" << endl;
 	cout << "   E - toggle I/O local echo        |    F - toggle registers animation" << endl;
 	cout << "   J - set animation delay          |    M - dump memory, W - write memory" << endl;	
-	cout << "   K - toggle ROM emulation         |    R - show registers" << endl;
+	cout << "   K - toggle ROM emulation         |    R - show registers, Y - snapshot" << endl;
 	cout << "   L - load memory image            |    O - display op-codes history" << endl;
-	cout << "   D - disassemble code in memory   |    Q - quit, H - help" << endl;
+	cout << "   D - disassemble code in memory   |    Q - quit, 0 - reset, H - help" << endl;
 	cout << "------------------------------------+----------------------------------------" << endl;
 } 
 
@@ -274,7 +378,7 @@ void ShowMenu()
 	while(step && nsteps > 1 && !brk && !lrts && !opbrk) {                    \
 		cout << "addr: $" << hex << preg->PtrAddr << ", step: " << dec << stct; \
 		cout  << "    \r";                                                      \
-		preg = pvm->Step();                                                     \
+		preg = RunSingleCurrInstr();                                            \
 		if (anim) {                                                             \
 			if (cls & ClsIfDirty) { pvm->ClearScreen(); cls = false; }            \
 			pvm->ScrHome();                                                       \
@@ -292,6 +396,7 @@ void ShowMenu()
 /* run this program using the console pauser or add your own getch, system("pause") or input loop */
 
 int main(int argc, char** argv) {
+	bool loadbin = false, loadhex = false, reset = false, execvm = false;
 #if defined(LINUX)
 	signal(SIGINT, trap_signal);
   signal(SIGTERM, trap_signal);
@@ -301,17 +406,48 @@ int main(int argc, char** argv) {
 #endif
 	string romfile("dummy.rom"), ramfile("dummy.ram");
 	if (argc > 1) {
-		ramfile = argv[1];
+		if (argc > 2) {
+			reset = execvm 	= loadbin = (0 == strcmp(argv[1], "-r")); 	// load binary image and reset
+			if (!loadbin)			loadbin = (0 == strcmp(argv[1], "-b"));		// just load binary image
+			if (!loadbin)			loadhex = (0 == strcmp(argv[1], "-x"));		// just load Intel HEX image
+			if (loadbin && loadhex) {
+				cout << "ERROR: Can't load both formats at the same time." << endl;
+				exit(-1);
+			}
+			ramfile = argv[2];
+		} else {
+			if (0 == strcmp(argv[1], "-h")) {
+				CmdArgHelp(argv[0]);
+				exit(0);
+			}
+			ramfile = argv[1];
+		}
 	}
 	try {
 		cout << endl;
-		pvm = new VMachine(romfile, ramfile);
+		if (loadbin) {
+			pvm = new VMachine(romfile, "dummy.ram");
+			if (NULL != pvm) {
+				PrintLoadBinImgErr (pvm->LoadRAMBin(ramfile));
+				if (!reset && !execvm)
+					reset = execvm = pvm->IsAutoReset();
+			}
+		} else if (loadhex) {
+			pvm = new VMachine(romfile, "dummy.ram");
+			if (NULL != pvm) PrintLoadHexImgErr (pvm->LoadRAMHex(ramfile));
+		}
+		else {
+			pvm = new VMachine(romfile, ramfile);
+			reset = execvm = pvm->IsAutoReset();
+		}
+		if (NULL == pvm) {
+			throw MKGenException("Out of memory");
+		}
 		pvm->ClearScreen();
-		cout << "Virtual Machine/CPU Emulator (MOS 6502) and Debugger." << endl;
-		cout << "Copyright (C) by Marek Karcz 2016. All rights reserved." << endl;		
+		CopyrightBanner();
 		string cmd;
 		bool runvm = false, step = false, brk = false, execaddr = false, stop = true;
-		bool lrts = false, execvm = false, anim = false, enrom = pvm->IsROMEnabled();
+		bool lrts = false, anim = false, enrom = pvm->IsROMEnabled();
 		unsigned int newaddr = pvm->GetRunAddr(), ioaddr = pvm->GetCharIOAddr(), tmpaddr = 0x0000;
 		unsigned int rombegin = pvm->GetROMBegin(), romend = pvm->GetROMEnd(), delay = ANIM_DELAY;
 		int nsteps = 0;
@@ -325,11 +461,11 @@ int main(int argc, char** argv) {
 				if (anim) pvm->ClearScreen();
 				int stct = 1;
 				if (execaddr) {
-					preg = ((step) ? pvm->Step(newaddr) : pvm->Run(newaddr));
+					preg = ((step) ? RunSingleInstr(newaddr) : pvm->Run(newaddr));
 					RUNSTEPS(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
 					execaddr = false;
 				} else {
-					preg = ((step) ? pvm->Step() : pvm->Run());
+					preg = ((step) ? RunSingleCurrInstr() : pvm->Run());
 					RUNSTEPS(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
 				}
 				if (step)
@@ -338,7 +474,13 @@ int main(int argc, char** argv) {
 				runvm = step = false;
 				newaddr = 0x10000;				
 			} else if (execvm) {
-				preg = (execaddr ? pvm->Exec(newaddr) : pvm->Exec());
+				if (reset) {
+					pvm->Reset();
+					preg = pvm->GetRegs();
+					reset = false;
+				} else {
+					preg = (execaddr ? pvm->Exec(newaddr) : pvm->Exec());
+				}
 				execvm = false;
 				execaddr = false;
 				brk = preg->SoftIrq;
@@ -368,6 +510,24 @@ int main(int argc, char** argv) {
 			char c = tolower(cmd.c_str()[0]);
 			if (c == 'h') {	// display help
 				ShowHelp();
+			} else if (c == 'p') {	// Interrupt ReQuest
+				pvm->Interrupt();
+				cout << "OK" << endl;
+			} else if (c == 'y') {	// save snapshot of current CPU and memory in binary image
+				string name;
+				cout << "Enter file name: ";
+				cin >> name;
+				cout << " [" << name << "]" << endl;
+				if (0 == pvm->SaveSnapshot(name)) {
+					cout << "OK" << endl;
+				} else {
+					cout << "ERROR!" << endl;
+					cout << "errno=" << errno << endl;
+				}
+			} else if (c == '0') {	// reset CPU
+				reset = true;
+				execvm = true;
+				runvm = false;
 			} else if (c == 'o') {
 				queue<string> exechist(pvm->GetExecHistory());
 				cout << "PC   : INSTR                    ACC |  X  |  Y  | PS  | SP" << endl;
@@ -378,8 +538,8 @@ int main(int argc, char** argv) {
 				}
 			} else if (c == 'l') {	// load memory image
 				char typ = 0;
-				while (tolower(typ) != 'b' && tolower(typ) != 'd') {
-					cout << "Type (B - binary/D - definition): ";
+				while (tolower(typ) != 'b' && tolower(typ) != 'd' && tolower(typ) != 'h') {
+					cout << "Type (B - binary/H - Intel HEX/D - definition): ";
 					cin >> typ;
 				}
 				cout << " [" << ((tolower(typ) == 'b') ? "binary" : "definition") << "]" << endl;
@@ -387,7 +547,8 @@ int main(int argc, char** argv) {
 				cout << "Memory Image File Name: ";
 				cin >> name;
 				cout << " [" << name << "]" << endl;
-				if (typ == 'b') pvm->LoadRAMBin(name);
+				if (typ == 'b') PrintLoadBinImgErr (pvm->LoadRAMBin(name));
+				else if (typ == 'h') PrintLoadHexImgErr (pvm->LoadRAMHex(name));
 				else {
 					pvm->LoadRAM(name);
 					if (pvm->IsAutoExec()) execvm = true;
@@ -542,8 +703,63 @@ int main(int argc, char** argv) {
 
 /*
  *--------------------------------------------------------------------
- * Method:    ShowHel2p()
- * Purpose:   Display commands help.
+ * Method:    CopyrightBanner()
+ * Purpose:   Display copyright information.
+ * Arguments: n/a
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+void CopyrightBanner()
+{
+	cout << "Virtual Machine/CPU Emulator (MOS 6502) and Debugger." << endl;
+	cout << "Copyright (C) by Marek Karcz 2016. All rights reserved." << endl;			
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    CmdArgHelp()
+ * Purpose:   Display command line arguments help/Usage.
+ * Arguments: prgname - string, program name
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+void CmdArgHelp(string prgname)
+{
+	CopyrightBanner();
+
+	cout << endl << endl;
+	cout << "Usage:" << endl << endl;
+	cout << "\t" << prgname;
+	cout << " [-h] | [ramdeffile] | [-b ramimage] | [-r ramimage]" << endl;
+	cout << "\tOR" << endl;
+	cout << "\t" << prgname << " [-x intelheximage]";
+	cout << endl << endl;
+	cout << "Where:" << endl << endl;
+	cout << "\tramdeffile    - RAM definition file name" << endl;
+	cout << "\tintelheximage - Intel HEX format file" << endl;
+	cout << "\tramimage      - RAM binary image file name" << endl;
+	cout << R"(
+
+When ran with no arguments, program will load default memory
+definition files: default.rom, default.ram and will enter the debug
+console menu.
+When ramdeffile argument is provided, program will load the memory
+definition from the file, set the flags and parameters depending on the
+contents of the memory definition file and enter the corresponding mode
+of operation as defined in that file.
+If used with flag -b or -x, program will load memory from the provided image
+file and enter the debug console menu.
+If used with flag -r, program will load memory from the provided image
+file and execute CPU reset sequence.		
+
+)";
+	cout << endl;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    ShowHelp()
+ * Purpose:   Display Debugger Console Command Reference help.
  * Arguments: n/a
  * Returns:   n/a
  *--------------------------------------------------------------------
@@ -579,6 +795,8 @@ N - go number of steps
     Where: steps - number of steps in decimal format
     Execute number of opcodes provided in steps argument starting
     from current address.
+P - IRQ
+    Send maskable interrupt request to CPU (set the IRQ line LOW).    
 W - write to memory
     Usage: W [address] [hexval] [hexval] ... 100
     Where: address - memory addr. in hexadecimal format [0000.FFFF],
@@ -593,6 +811,10 @@ I - toggle char I/O emulation
     are interpreted as console character input.
 R - show registers
     Displays CPU registers, flags and stack.
+Y - snapshot
+    Usage: Y [file_name]
+    Where: file_name - the name of the output file.
+    Save snapshot of current CPU and memory in a binary file.
 T - show I/O console
     Displays/prints the contents of the virtual console screen.
     Note that in run mode (commands X, G or C), virtual screen is
@@ -623,13 +845,13 @@ K - toggle ROM emulation
 L - load memory image
     Usage: L [image_type] [image_name]
     Where: 
-       image_type - B (binary) OR D (definition),
+       image_type - B (binary), H (Intel HEX) OR D (definition),
        image_name - name of the image file.
     This function allows to load new memory image from either binary
-    image file or the ASCII definition file. The binary image is always
-    loaded from address 0x0000 and can be up to 64kB long. The definition
-    file format is a plain text file that can contain following keywords
-    and data:
+    image file, Intel HEX format file or the ASCII definition file.
+    The binary image is always loaded from address 0x0000 and can be up to
+    64kB long. The definition file format is a plain text file that can
+    contain following keywords and data:
       
       ADDR      This keyword defines the run address of the executable code.
                 It is optional, but if exists, it must be the 1-st keyword
@@ -673,6 +895,9 @@ L - load memory image
                 executed after the memory image is loaded.
                 The next line that follows this keyword sets the address
                 in decimal or hexadecimal format.
+
+      RESET     Enables auto-reset of the CPU. After loading the memory
+                definition file, the CPU reset sequence will be initiated.                      
                 
 O - display op-codes history
     Show the history of last executed op-codes/instructions, full with
@@ -682,6 +907,16 @@ D - diassemble code in memory
     Where: startaddr,endaddr - hexadecimal address [0000..FFFF].
     Attempt to disassemble code in specified address range and display
     the results (print) on the screen in symbolic form.
+0 - reset
+    Run the processor initialization sequence, just like the real CPU
+    when its RTS signal is set to LOW and HIGH again. CPU will disable
+    interrupts, copy address from vector $FFFC to processors PC and will
+    start executing code. Programmer must put initialization routine
+    under address pointed by $FFFC vector, which will set the arithmetic
+    mode, initialize stack, I/O devices and enable IRQ if needed before
+    jumping to main loop. The reset routine disables trapping last RTS
+    opcode if stack is empty, so the VM will never return from opcodes
+    execution loop unless user interrupts with CTRL-C or CTRL-Break.
                     
 NOTE:
     1. If no arguments provided, each command will prompt user to enter
@@ -690,7 +925,7 @@ NOTE:
        by pressing CTRL-C or CTRL-Pause/Break, which will generate
        a "Operator Interrupt". However in the character input mode
        use CTRL-Y combination or CTRL-Break (DOS), CTRL-C (Linux).
-       You may need to press ENTER after that in input mode (DOS)
+       You may need to press ENTER after that in input mode (DOS).
 )";
   cout << endl; 
 }

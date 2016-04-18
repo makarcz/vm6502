@@ -10,13 +10,15 @@ $FFE0
 ROMBEGIN
 $FFC0
 ROMEND
-$FFDF
+$FFFF
+;$FFDF
 ; Enable char IO and ROM
 ENIO
 ENROM
 ; Auto-execute
-EXEC
-$C000
+;EXEC
+;$C000
+RESET
 ; Data/Code
 $D8, $A0, $08, $B9, $FB, $E0, $99, $00
 $02, $88, $10, $F7, $A2, $FF, $8E, $21
@@ -2062,3 +2064,6 @@ $AD, $E1, $FF, $F0, $0C, $C9, $61, $90
 $06, $C9, $7B, $B0, $02, $29, $5F, $38
 $60, $18, $60, $8D, $E0, $FF, $29, $FF
 $60, $00, $00, $00, $00, $00, $00, $00
+ORG
+$FFFC
+$00 $C0

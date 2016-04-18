@@ -29,6 +29,9 @@ struct Regs {
 	int							LastOpCode;		// op-code of last instruction
 	unsigned short	LastArg;			// argument to the last instruction
 	int							LastAddrMode;	// addressing mode of last instruction
+	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
+	int  						CyclesLeft;		// # of cycles left to complete current opcode
+	bool						PageBoundary;	// true if page boundary was crossed
 };
 
 /*
@@ -351,11 +354,16 @@ enum eOpCodes {
 	OPCODE_ILL_FF		= 0xFF	// illegal opcode
 };
 
+class MKCpu;
+
+typedef void (MKCpu::*OpCodeHdlrFn)();
+
 struct OpCode {
-	int 		code;			// the byte value of the opcode
-	int 		addrmode;	// addressing mode (see eAddrModes)
-	int 		time;			// # of cycles
-	string	amf;			// assembler mnemonic
+	int 					code;			// the byte value of the opcode
+	int 					addrmode;	// addressing mode (see eAddrModes)
+	int 					time;			// # of cycles
+	string				amf;			// assembler mnemonic
+	OpCodeHdlrFn	pfun;			// opcoce handler function
 };
 
 typedef map<eOpCodes,OpCode> OpCodesMap;
@@ -408,6 +416,8 @@ enum eLogicOps {
 class MKCpu
 {
 	public:
+
+		bool mExitAtLastRTS;
 		
 		MKCpu();
 		MKCpu(Memory *pmem);
@@ -415,9 +425,12 @@ class MKCpu
 		
 		Regs *ExecOpcode(unsigned short memaddr);
 		Regs *GetRegs();
+		void	SetRegs(Regs r);
 		queue<string>	GetExecHistory();
 		unsigned short Disassemble(unsigned short addr,
 															 char *instrbuf);					// Disassemble instruction in memory, return next instruction addr.
+		void Reset();																				// reset CPU		
+		void Interrupt();																		// Interrupt ReQuest (IRQ)
 		
 	protected:
 		
@@ -455,6 +468,163 @@ class MKCpu
 																	int mode);						// Get argument from address with specified addr. mode
 		unsigned short Disassemble();												// Disassemble instruction and argument per addressing mode
 		void Add2History(string s);													// add entry to op-codes execute history
+		bool PageBoundary(unsigned short startaddr,
+											unsigned short endaddr);					// detect if page boundary was crossed
+
+		// opcode execute methods
+		void OpCodeBrk();
+		void OpCodeNop();
+		void OpCodeLdaIzx();
+		void OpCodeLdaZp();
+		void OpCodeLdaImm();
+		void OpCodeLdaAbs();
+		void OpCodeLdaIzy();
+		void OpCodeLdaZpx();
+		void OpCodeLdaAby();
+		void OpCodeLdaAbx();
+		void OpCodeLdxImm();
+		void OpCodeLdxZp();
+		void OpCodeLdxAbs();
+		void OpCodeLdxZpy();
+		void OpCodeLdxAby();
+		void OpCodeLdyImm();
+		void OpCodeLdyZp();
+		void OpCodeLdyAbs();
+		void OpCodeLdyZpx();
+		void OpCodeLdyAbx();
+		void OpCodeTax();
+		void OpCodeTay();
+		void OpCodeTxa();
+		void OpCodeTya();
+		void OpCodeTsx();
+		void OpCodeTxs();
+		void OpCodeStaIzx();
+		void OpCodeStaZp();
+		void OpCodeStaAbs();
+		void OpCodeStaIzy();
+		void OpCodeStaZpx();
+		void OpCodeStaAby();
+		void OpCodeStaAbx();
+		void OpCodeStxZp();
+		void OpCodeStxAbs();
+		void OpCodeStxZpy();
+		void OpCodeStyZp();
+		void OpCodeStyAbs();
+		void OpCodeStyZpx();
+		void OpCodeBneRel();
+		void OpCodeBeqRel();
+		void OpCodeBplRel();
+		void OpCodeBmiRel();
+		void OpCodeBvcRel();
+		void OpCodeBvsRel();
+		void OpCodeBccRel();
+		void OpCodeBcsRel();
+		void OpCodeIncZp();
+		void OpCodeIncAbs();
+		void OpCodeIncZpx();
+		void OpCodeIncAbx();
+		void OpCodeInx();
+		void OpCodeDex();
+		void OpCodeIny();
+		void OpCodeDey();
+		void OpCodeJmpAbs();
+		void OpCodeJmpInd();
+		void OpCodeOraIzx();
+		void OpCodeOraZp();
+		void OpCodeOraImm();
+		void OpCodeOraAbs();
+		void OpCodeOraIzy();
+		void OpCodeOraZpx();
+		void OpCodeOraAby();
+		void OpCodeOraAbx();
+		void OpCodeAslZp();
+		void OpCodeAslAcc();
+		void OpCodeAslAbs();
+		void OpCodeAslZpx();
+		void OpCodeAslAbx();
+		void OpCodeJsrAbs();
+		void OpCodeAndIzx();
+		void OpCodeAndZp();
+		void OpCodeAndImm();
+		void OpCodeAndAbs();
+		void OpCodeAndIzy();
+		void OpCodeAndZpx();
+		void OpCodeAndAby();
+		void OpCodeAndAbx();
+		void OpCodeBitZp();
+		void OpCodeBitAbs();
+		void OpCodeRolZp();
+		void OpCodeRolAcc();
+		void OpCodeRolAbs();
+		void OpCodeRolZpx();
+		void OpCodeRolAbx();
+		void OpCodePhp();
+		void OpCodePha();
+		void OpCodePlp();
+		void OpCodePla();
+		void OpCodeClc();
+		void OpCodeSec();
+		void OpCodeCli();
+		void OpCodeClv();
+		void OpCodeCld();
+		void OpCodeSed();
+		void OpCodeSei();
+		void OpCodeRti();
+		void OpCodeRts();
+		void OpCodeEorIzx();
+		void OpCodeEorZp();
+		void OpCodeEorImm();
+		void OpCodeEorAbs();
+		void OpCodeEorIzy();
+		void OpCodeEorZpx();
+		void OpCodeEorAby();
+		void OpCodeEorAbx();
+		void OpCodeLsrZp();
+		void OpCodeLsrAcc();
+		void OpCodeLsrAbs();
+		void OpCodeLsrZpx();
+		void OpCodeLsrAbx();
+		void OpCodeAdcIzx();
+		void OpCodeAdcZp();
+		void OpCodeAdcImm();
+		void OpCodeAdcAbs();
+		void OpCodeAdcIzy();
+		void OpCodeAdcZpx();
+		void OpCodeAdcAby();
+		void OpCodeAdcAbx();
+		void OpCodeRorZp();
+		void OpCodeRorAcc();
+		void OpCodeRorAbs();
+		void OpCodeRorZpx();
+		void OpCodeRorAbx();
+		void OpCodeCpyImm();
+		void OpCodeCpyZp();
+		void OpCodeCpyAbs();
+		void OpCodeCmpIzx();
+		void OpCodeCmpZp();
+		void OpCodeCmpImm();
+		void OpCodeCmpAbs();
+		void OpCodeCmpIzy();
+		void OpCodeCmpZpx();
+		void OpCodeCmpAby();
+		void OpCodeCmpAbx();
+		void OpCodeDecZp();
+		void OpCodeDecAbs();
+		void OpCodeDecZpx();
+		void OpCodeDecAbx();
+		void OpCodeCpxImm();
+		void OpCodeCpxZp();
+		void OpCodeCpxAbs();
+		void OpCodeSbcZp();
+		void OpCodeSbcAbs();
+		void OpCodeSbcIzx();
+		void OpCodeSbcIzy();
+		void OpCodeSbcZpx();
+		void OpCodeSbcAby();
+		void OpCodeSbcAbx();
+		void OpCodeSbcImm();
+		void OpCodeDud();
+
 };
 
 } // namespace MKBasic

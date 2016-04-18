@@ -15,6 +15,9 @@
 
 #define IOREFRESH 32
 #define OPINTERRUPT 25	// operator interrupt code (CTRL-Y)
+#define HDRMAGICKEY "SNAPSHOT"
+#define HDRDATALEN	15
+#define HEXEOF	":00000001FF"
 
 using namespace std;
 
@@ -36,7 +39,8 @@ class VMachine
 		Regs *Step(unsigned short addr);
 		void LoadROM(string romfname);
 		void LoadRAM(string ramfname);
-		void LoadRAMBin(string ramfname);
+		int  LoadRAMBin(string ramfname);
+		int  LoadRAMHex(string hexfname);
 		unsigned short MemPeek8bit(unsigned short addr);
 		void MemPoke8bit(unsigned short addr, unsigned char v);
 		Regs *GetRegs();
@@ -48,6 +52,7 @@ class VMachine
 		void ClearScreen();
 		void ScrHome();
 		bool IsAutoExec();
+		bool IsAutoReset();
 		void EnableROM();
 		void DisableROM();
 		void SetROM(unsigned short start, unsigned short end);
@@ -60,6 +65,9 @@ class VMachine
 		bool IsOpInterrupt();
 		queue<string> GetExecHistory();
 		unsigned short Disassemble(unsigned short addr, char *buf);
+		void Reset();
+		void Interrupt();
+		int SaveSnapshot(string fname);
 		
 	protected:
 		
@@ -75,9 +83,13 @@ class VMachine
 		bool mCharIO;
 		bool mOpInterrupt; // operator interrupt from console
 		bool mAutoExec;
+		bool mAutoReset;
 		
 		void LoadMEM(string memfname, Memory *pmem);
 		void ShowDisp();
+		bool HasHdrData(FILE *fp);
+		bool LoadHdrData(FILE *fp);
+		void SaveHdrData(FILE *fp);
 };
 
 } // namespace MKBasic

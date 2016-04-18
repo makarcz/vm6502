@@ -74,7 +74,7 @@ VMachine::~VMachine()
  * Purpose:		Initialize class.
  * Arguments:	n/a
  * Returns:		n/a
- *--------------------------------------------------------------------
+f *--------------------------------------------------------------------
  */
 void VMachine::InitVM()
 {
@@ -82,6 +82,7 @@ void VMachine::InitVM()
 	mpRAM = new Memory();
 
 	mAutoExec = false;	
+	mAutoReset = false;
 	mCharIOAddr = CHARIO_ADDR;
 	mCharIOActive = mCharIO = false;
 	if (NULL == mpRAM) {
@@ -106,10 +107,11 @@ void VMachine::InitVM()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		ClearScreen()
+ * Purpose:		Clear the working are of the VM - DOS. 
+ *            This is not a part of virtual display emulation.
+ * Arguments:	n/a
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void VMachine::ClearScreen()
@@ -151,10 +153,11 @@ void VMachine::ClearScreen()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		ScrHome()
+ * Purpose:		Bring the console cursor to home position - DOS.
+ *            This is not a part of virtual display emulation.
+ * Arguments:	n/a
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void VMachine::ScrHome()
@@ -175,10 +178,11 @@ void VMachine::ScrHome()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		ClearScreen()
+ * Purpose:		Clear the working are of the VM - Linux. 
+ *            This is not a part of virtual display emulation.
+ * Arguments:	n/a
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void VMachine::ClearScreen()
@@ -188,10 +192,11 @@ void VMachine::ClearScreen()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		ScrHome()
+ * Purpose:		Bring the console cursor to home position - Linux.
+ *            This is not a part of virtual display emulation.
+ * Arguments:	n/a
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void VMachine::ScrHome()
@@ -203,10 +208,10 @@ void VMachine::ScrHome()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		ShowDisp()
+ * Purpose:		Show the emulated virtual text display device contents.
+ * Arguments:	n/a
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void VMachine::ShowDisp()
@@ -234,7 +239,7 @@ Regs *VMachine::Run()
 	ShowDisp();
 	while (true) {
 		cpureg = Step();
-		if (mCharIO) {
+		if (cpureg->CyclesLeft == 0 && mCharIO) {
 			ShowDisp();
 		}
 		if (cpureg->SoftIrq || mOpInterrupt)
@@ -264,8 +269,8 @@ Regs *VMachine::Run(unsigned short addr)
 /*
  *--------------------------------------------------------------------
  * Method:		Exec()
- * Purpose:		Run VM from current address until last RTS.
- *            NOTE: Stack must be empty!
+ * Purpose:		Run VM from current address until last RTS (if enabled).
+ *            NOTE: Stack must be empty for last RTS to be trapped.
  * Arguments:	n/a
  * Returns:		Pointer to CPU registers and flags.
  *--------------------------------------------------------------------
@@ -279,7 +284,7 @@ Regs *VMachine::Exec()
 	ShowDisp();
 	while (true) {
 		cpureg = Step();
-		if (mCharIO) {
+		if (cpureg->CyclesLeft == 0 && mCharIO) {
 			cout << mpDisp->GetLastChar();
 			cout << flush;
 		}
@@ -322,7 +327,7 @@ Regs *VMachine::Step()
 	addr = cpureg->PtrAddr;
 	mRunAddr = addr;
 	
-	if (mCharIOActive && !mOpInterrupt) {
+	if (cpureg->CyclesLeft == 0 && mCharIOActive && !mOpInterrupt) {
 		char c = -1;
 		mCharIO = false;
 		while ((c = mpRAM->GetCharOut()) != -1) {
@@ -380,35 +385,340 @@ void VMachine::LoadRAM(string ramfname)
 
 /*
  *--------------------------------------------------------------------
- * Method:		LoadRAMBin()
- * Purpose:		Load data from binary image file to the memory.
- * Arguments:	ramfname - name of the RAM file definition
+ * Method:		HasHdrData()
+ * Purpose:		Check for header in the binary memory image.
+ * Arguments:	File pointer.
+ * Returns:		true if magic keyword found at the beginning of the
+ *						memory image file, false otherwise
+ *--------------------------------------------------------------------
+ */
+bool VMachine::HasHdrData(FILE *fp)
+{
+	bool ret = false;
+	int n = 0, l = strlen(HDRMAGICKEY);
+	char buf[20];
+
+	memset(buf, 0, 20);
+	
+	while (0 == feof(fp) && 0 == ferror(fp)) {
+		unsigned char val = fgetc(fp);
+		buf[n] = val;
+		n++;
+		if (n >= l) break;
+	}
+	ret = (0 == strncmp(buf, HDRMAGICKEY, l));
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		LoadHdrData()
+ * Purpose:		Load data from binary image header.
+ * Arguments:	File pointer.
+ * Returns:		bool, true if success, false if error
+ *
+ * Details:
+ *    Header of the binary memory image consists of magic keyword
+ * string followed by the data (unsigned char values). 
+ * It has following format:
+ *
+ * MAGIC_KEYWORD
+ * aabbccddefghijk
+ *
+ * Where:
+ *    MAGIC_KEYWORD - text string indicating header, may vary between
+ *                    versions thus rendering headers from previous
+ *                    versions incompatible - currently: "SNAPSHOT"
+ *    aa - low and hi bytes of execute address (PC)
+ *    bb - low and hi bytes of char IO address
+ *    cc - low and hi bytes of ROM begin address
+ *    dd - low and hi bytes of ROM end address
+ *    e - 0 if char IO is disabled, 1 if enabled
+ *    f - 0 if ROM is disabled, 1 if enabled
+ *    g - value in CPU Acc (accumulator) register
+ *    h - value in CPU X (X index) register
+ *    i - value in CPU Y (Y index) register
+ *    j - value in CPU PS (processor status/flags)
+ *    k - value in CPU SP (stack pointer) register
+ *
+ * NOTE:
+ *   If magic keyword was detected, this part is already read and file
+ *   pointer position is at the 1-st byte of data. Therefore this
+ *   method does not have to read and skip the magic keyword.
+ *--------------------------------------------------------------------
+ */
+bool VMachine::LoadHdrData(FILE *fp)
+{
+	int n = 0, l = 0;
+	unsigned short rb = 0, re = 0;
+	Regs r;
+	bool ret = false;
+
+	while (0 == feof(fp) && 0 == ferror(fp) && n < HDRDATALEN) {
+		unsigned char val = fgetc(fp);
+		switch (n)
+		{
+			case 1:		mRunAddr = l + 256 * val;
+								break;
+			case 3:		mCharIOAddr = l + 256 * val;
+								break;
+			case 5:		rb = l + 256 * val;
+								break;
+			case 7: 	re = l + 256 * val;
+								break;
+			case 8: 	mCharIOActive = (val != 0);
+								break;
+			case 9: 	if (val != 0) {
+									mpRAM->EnableROM(rb, re);
+								} else {
+									mpRAM->SetROM(rb, re);
+								}
+								break;
+			case 10:	r.Acc = val;
+								break;
+			case 11:	r.IndX = val;
+								break;
+			case 12:	r.IndY = val;
+								break;
+			case 13:	r.Flags = val;
+								break;
+			case 14:	r.PtrStack = val;
+								ret = true;
+								break;
+			default: 	break;
+		}
+		l = val;
+		n++;
+	}
+	if (ret) {
+		r.PtrAddr = mRunAddr;
+		mpCPU->SetRegs(r);
+	}
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		SaveHdrData()
+ * Purpose:		Save header data to binary file (memory snapshot).
+ * Arguments:	File pointer, must be opened for writing in binary mode.
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void VMachine::LoadRAMBin(string ramfname)
+void VMachine::SaveHdrData(FILE *fp)
+{
+	char buf[20] = {0};
+	strcpy(buf, HDRMAGICKEY);
+	for (unsigned int i = 0; i < strlen(HDRMAGICKEY); i++) {
+		fputc(buf[i], fp);
+	}
+	Regs *reg = mpCPU->GetRegs();
+	unsigned char lo = 0, hi = 0;
+	lo = (unsigned char) (reg->PtrAddr & 0x00FF);
+	hi = (unsigned char) ((reg->PtrAddr & 0xFF00) >> 8);
+	fputc(lo, fp);
+	fputc(hi, fp);
+	lo = (unsigned char) (mCharIOAddr & 0x00FF);
+	hi = (unsigned char) ((mCharIOAddr & 0xFF00) >> 8);
+	fputc(lo, fp);
+	fputc(hi, fp);
+	lo = (unsigned char) (GetROMBegin() & 0x00FF);
+	hi = (unsigned char) ((GetROMBegin() & 0xFF00) >> 8);
+	fputc(lo, fp);
+	fputc(hi, fp);	
+	lo = (unsigned char) (GetROMEnd() & 0x00FF);
+	hi = (unsigned char) ((GetROMEnd() & 0xFF00) >> 8);
+	fputc(lo, fp);
+	fputc(hi, fp);
+	lo = (mCharIOActive ? 1 : 0);
+	fputc(lo, fp);
+	lo = (IsROMEnabled() ? 1 : 0);
+	fputc(lo, fp);
+	Regs *pregs = mpCPU->GetRegs();
+	if (pregs != NULL) {
+		fputc(pregs->Acc, 			fp);
+		fputc(pregs->IndX, 			fp);
+		fputc(pregs->IndY, 			fp);
+		fputc(pregs->Flags, 		fp);
+		fputc(pregs->PtrStack,	fp);
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		SaveSnapshot()
+ * Purpose:		Save current state of the VM and memory image.
+ * Arguments: String - file name.
+ * Returns:		int, 0 if successful, greater then 0 if not (# of bytes
+ *            not written).
+ *--------------------------------------------------------------------
+ */
+int VMachine::SaveSnapshot(string fname)
+{
+	FILE *fp = NULL;
+	int ret = MAX_8BIT_ADDR+1;
+
+	if ((fp = fopen(fname.c_str(), "wb")) != NULL) {
+		SaveHdrData(fp);
+		for (int addr = 0; addr < MAX_8BIT_ADDR+1; addr++) {
+			if (addr != mCharIOAddr && addr != mCharIOAddr+1) {
+				unsigned char b = mpRAM->Peek8bit((unsigned short)addr);
+				if (EOF != fputc(b, fp)) ret--;
+				else break;
+			} else {
+				if (EOF != fputc(0, fp)) ret--;
+				else break;
+			}
+		}
+		fclose(fp);
+	}
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		LoadRAMBin()
+ * Purpose:		Load data from binary image file to the memory.
+ * Arguments:	ramfname - name of the RAM file definition
+ * Returns:		int - error code
+ *            0 - OK
+ *            1 - WARNING: Unexpected EOF (image shorter than 64kB).
+ *            2 - WARNING: Unable to open memory image file.
+ *            3 - WARNING: Problem with binary image header.
+ *            4 - WARNING: No header found in binary image.
+ *            5 - WARNING: Problem with binary image header and
+ *                         Unexpected EOF (image shorter than 64kB).
+ *            6 - WARNING: No header found in binary image and
+ *                         Unexpected EOF (image shorter than 64kB).
+ * TO DO:
+ *  - Add fixed size header to binary image with emulator
+ *    configuration data. Presence of the header will be detected
+ *    by magic key at the beginning. Header should also include
+ *    snapshot info, so the program can continue from the place
+ *    where it was frozen/saved.
+ *--------------------------------------------------------------------
+ */
+int VMachine::LoadRAMBin(string ramfname)
 {
 	FILE *fp = NULL;
 	unsigned short addr = 0x0000;
 	int n = 0;
 	Memory *pm = mpRAM;
+	int ret = 2;
 	
 	if ((fp = fopen(ramfname.c_str(), "rb")) != NULL) {
+		if (HasHdrData(fp)) {
+			ret = (LoadHdrData(fp) ? 0 : 3);
+		} else {
+			ret = 4;
+			rewind(fp);
+		}
+		// temporarily disable emulation facilities to allow
+		// proper memory image initialization
+		bool tmp1 = mCharIOActive, tmp2 = mpRAM->IsROMEnabled();
+		DisableCharIO();
+		DisableROM();
 		while (0 == feof(fp) && 0 == ferror(fp)) {
 			unsigned char val = fgetc(fp);
 			pm->Poke8bit(addr, val);
 			addr++; n++;
 		}
 		fclose(fp);
+		// restore emulation facilities status
+		if (tmp1) SetCharIO(mCharIOAddr, false);
+		if (tmp2) EnableROM();
 		if (n <= 0xFFFF) {
-			cout << "WARNING: Unexpected EOF." << endl;
+			switch (ret) {
+				case 0: ret = 1; break;
+				case 3: ret = 5; break;
+				case 4: ret = 6; break;
+				default: break;
+			}
 		}
 	}
-	else {
-		cout << "WARNING: Unable to open memory image file: " << ramfname << endl;
-		cout << "Press [ENTER]...";
-		getchar();
-	}		
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		LoadRAMHex()
+ * Purpose:		Load data from Intel HEX file format to memory.
+ * Arguments:	hexfname - name of the HEX file
+ * Returns:		int, 0 if OK, >0 - error code:
+ *               1 - unable to open file
+ *							 2 - syntax error
+ *							 3 - hex format error
+ *--------------------------------------------------------------------
+ */
+int VMachine::LoadRAMHex(string hexfname)
+{
+		char line[256] = {0};
+		FILE *fp = NULL;
+		int ret = 0;
+		unsigned int addr = 0;
+
+		bool tmp1 = mCharIOActive, tmp2 = mpRAM->IsROMEnabled();
+		DisableCharIO();
+		DisableROM();
+		if ((fp = fopen(hexfname.c_str(), "r")) != NULL) {
+			while (0 == feof(fp) && 0 == ferror(fp)) {
+				line[0] = '\0';
+				fgets(line, 256, fp);
+				if (line[0] == ':') {
+					if (0 == strcmp(line, HEXEOF)) {
+						break;	// EOF, we are done here.
+					}
+					char blen[3] = {0,0,0};
+					char baddr[5] = {0,0,0,0,0};
+					char brectype[3] = {0,0,0};
+					blen[0] = line[1];
+					blen[1] = line[2];
+					blen[2] = 0;
+					baddr[0] = line[3];
+					baddr[1] = line[4];
+					baddr[2] = line[5];
+					baddr[3] = line[6];
+					baddr[4] = 0;
+					brectype[0] = line[7];
+					brectype[1] = line[8];
+					brectype[2] = 0;
+					unsigned int reclen = 0, rectype = 0;
+					sscanf(blen, "%02x", &reclen);
+					sscanf(baddr, "%04x", &addr);
+					sscanf(brectype, "%02x", &rectype);
+					if (reclen == 0 && rectype == 1) break;	// EOF, we are done here.
+					if (rectype != 0) continue;	// not a data record, next!
+					for (unsigned int i=9; i<reclen*2+9; i+=2,addr++) {
+						if (i>=strlen(line)-3) {
+							ret = 3;	// hex format error
+							break;
+						}
+						char dbuf[3] = {0,0,0};
+						unsigned int byteval = 0;
+						Memory *pm = mpRAM;
+						dbuf[0] = line[i];
+						dbuf[1] = line[i+1];
+						dbuf[2] = 0;
+						sscanf(dbuf, "%02x", &byteval);
+						pm->Poke8bit(addr, (unsigned char)byteval&0x00FF);
+					}
+				} else {
+					ret = 2;	// syntax error
+					break;
+				}
+			}
+			fclose(fp);
+		} else {
+			ret = 1;	// unable to open file
+		}
+		if (tmp1) SetCharIO(mCharIOAddr, false);
+		if (tmp2) EnableROM();					
+
+		return ret;
 }
 
 /*
@@ -506,6 +816,10 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 	Memory *pm = pmem;
 	
 	if ((fp = fopen(memfname.c_str(), "r")) != NULL) {
+		// to ensure proper memory initialization, disable emulation
+		// of char I/O and ROM
+		DisableROM();
+		DisableCharIO();
 		while (0 == feof(fp) && 0 == ferror(fp))
 		{
 			line[0] = '\0';			
@@ -593,6 +907,11 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 				}
 				continue;
 			}
+			// auto reset
+			if (0 == strncmp(line, "RESET", 5)) {
+				mAutoReset = true;
+				continue;
+			}			
 			// define ROM begin address
 			if (0 == strncmp(line, "ROMBEGIN", 8)) {
 				line[0] = '\0';
@@ -651,7 +970,7 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 			else
 				pm->SetROM(rombegin, romend);
 		} else {
-			if (enrom) pm->EnableROM();
+			if (enrom) EnableROM();
 		}
 		if (enio) {
 			SetCharIO(mCharIOAddr, false);
@@ -794,6 +1113,19 @@ void VMachine::ShowIO()
 bool VMachine::IsAutoExec()
 {
 	return mAutoExec;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		IsAutoReset()
+ * Purpose:		Return status of auto-reset flag.
+ * Arguments:	n/a
+ * Returns:		bool - true if auto-exec flag is enabled.
+ *--------------------------------------------------------------------
+ */
+bool VMachine::IsAutoReset()
+{
+	return mAutoReset;
 }
 
 /*
@@ -952,6 +1284,35 @@ queue<string> VMachine::GetExecHistory()
 unsigned short VMachine::Disassemble(unsigned short addr, char *buf)
 {
 	return mpCPU->Disassemble(addr, buf);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		Reset()
+ * Purpose:		Reset VM and CPU (should never return except operator
+ *            induced interrupt).
+ * Arguments: n/a
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+void VMachine::Reset()
+{
+	mpCPU->Reset();
+	Exec(mpCPU->GetRegs()->PtrAddr);
+	mpCPU->mExitAtLastRTS = true;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		Interrupt()
+ * Purpose:		Send Interrupt ReQuest to CPU (set the IRQ line LOW).
+ * Arguments: n/a
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+void VMachine::Interrupt()
+{
+	mpCPU->Interrupt();
 }
 
 } // namespace MKBasic

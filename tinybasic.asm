@@ -54,20 +54,27 @@
 ;
 ; 2/15/2016
 ;    Ported to my own 6502 emulator.
+; 
+; 3/30/2016
+;
+;    Changed char input address from blocking to non-blocking.
 ;
 ;
 ;--------------------------------------------------------------------------------------
 
-;.segment "BASIC"
+.segment "BEGN"
+
+   .ORG  $0000
+
+.segment "BASIC"
 
 ;
 ; Tiny Basic starts here
 ;
-    .org      $0400                 ; Start of Basic.  First 1K of ROM is shaded by I/O on the OMS-02
+    .ORG      $4400                 ; Start of Basic.  First 1K of ROM is shaded by I/O on the OMS-02
 
 SOBAS:
 
-;CLRSC	=	ClearScreen
 C_00BC   =     $00BC             	; These are needed because my assembler
 C_20     =     $20               	; does not hanle standard 6502 notation
 C_22     =     $22               	; properly
@@ -86,8 +93,8 @@ SR_V_H   =     SOBAS + $1F         	; Base address for subroutine vector hi byte
 
 CV:       jmp      COLD_S            ; Cold start vector
 WV:       jmp      WARM_S            ; Warm start vector
-IN_V:     jmp      RCCHR             ; Input routine address. 
-OUT_V:    jmp      SNDCHR            ; Output routine address.
+IN_V:     jmp      GetCh             ; Input routine address. 
+OUT_V:    jmp      PutCh             ; Output routine address.
 BREAK:    nop                        ; Begin dummy break routine
           clc                        ; Clear the carry flag
           rts                        ; End break routine
@@ -247,7 +254,7 @@ LBL003:  .byte >ILTBL	;$1B                  ; $1B - hi byte of IL address
 COLD_S:  lda #$00                   ; Load accumulator with lo byte of lower and upper prg memory limits
          sta $20                    ; Store in $20
          sta $22                    ; Store in $22
-         lda #$1C                   ; Load accumulator with hi byte of lower and upper prg memory limits
+         lda #$50                   ; Load accumulator with hi byte of lower and upper prg memory limits
          sta $21                    ; Store in $21
          sta $23                    ; Store in $23
 		 ; NOTE: $22,$23 vector will be updated by routine below to be the upper RAM limit for TB.
@@ -1288,9 +1295,9 @@ ILTBL:   .byte $24, $3A, $91, $27, $10, $E1, $59, $C5, $2A, $56, $10, $11, $2C, 
 ; End of Tiny Basic
 
 
-;.segment "MAIN"
+.segment "MAIN"
 
-         .org $0CF0    ; Address of main program
+         .org $4CF0    ; Address of main program
 
 ; Code needs work below here, BIOS must be changed for MKHBC-8-R1
 
@@ -1316,57 +1323,45 @@ ILTBL:   .byte $24, $3A, $91, $27, $10, $E1, $59, $C5, $2A, $56, $10, $11, $2C, 
 ;         sta ACIACN                 ;        2400, 8 bits, 1 stop bit, external Rx clock
 ;--------------------
 
-main:		 
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
-		 nop
+main:    cli 
+         cld
          jsr CLRSC                  ; Go clear the screen
          ldy #$00                   ; Offset for welcome message and prompt
          jsr SNDMSG                 ; Go print it
-ST_LP:   JSR RCCHR                  ; Go get a character from the console
+ST_LP:   JSR GetCh                  ; Go get a character from the console
          cmp #$43                   ; Check for 'C'
          BNE IS_WRM                 ; If not branch to next check
          jmp COLD_S                 ; Otherwise cold-start Tiny Basic
 IS_WRM:  cmp #$57                   ; Check for 'W'
          BNE PRMPT                  ; If not, branch to re-prompt them
          jmp WARM_S                 ; Otherwise warm-start Tiny Basic
-PRMPT:   ldx #$2F                   ; Offset of prompt
+PRMPT:   ldy #$00                   ; Offset of prompt
          jsr SNDMSG                 ; Go print the prompt	 
          jmp ST_LP                  ; Go get the response
 
-;.segment "MESG"
+.segment "MESG"
 
-         .org $0E00    ; Address of message area
+         .org $4E00    ; Address of message area
 MBLK:
 
 ;
-; The message block begins at $1E00 and is at most 256 bytes long.
+; The message block begins at $4E00 and is at most 256 bytes long.
 ; Messages terminate with an FF.
 ;
-         .byte "OMEGA MICRO SYSTEMS"
+         .byte "MKHBC-8-R2 TINY BASIC 6502 PORT"
          .byte  $0D, $0A ;, $0A
-         .byte "MKHBC-8-R1 TINY BASIC 6502 PORT"
+         .byte "Adapted from OMEGA MICRO SYSTEMS."
          .byte  $0D, $0A ;, $0A
-         .byte "Version: 1.0.2, 1/11/2012"
+         .byte "Version: 1.0.3, 3/31/2016"
          .byte  $0D, $0A ;, $0A
-         .byte  "(NOTE: Use caps for Basic)"
+         .byte  "(NOTE: Use upper case letters.)"
          .byte  $0D, $0A ;, $0A
          .byte "Boot ([C]old/[W]arm)? "
          .byte  $07, $FF
 	
-;.segment "SUBR"
+.segment "SUBR"
 
-     .org $0F00    ;address of subroutine area
+     .org $4F00    ;address of subroutine area
 	 
 SBLK:
 ;
@@ -1376,14 +1371,6 @@ SBLK:
 ; M.O.S. API defines.
 
 StrPtr	=	$E0
-
-; Kernel jump table
-
-GetCh	=	$FFED
-PutCh	=	$FFF0
-Gets	=	$FFF3
-Puts	=	$FFF6
-
 
 ;SNDCHR	=	PutCh
 ;RCCHR	=	GetCh
@@ -1426,9 +1413,9 @@ TwoBytePeek:
 
 CLRSC:   ldx #$19                   ; Load X - we're going tp print 25 lines
          lda #$0D                   ; CR
-         jsr SNDCHR                 ; Send a carriage retuen
+         jsr PutCh                  ; Send a carriage retuen
          lda #$0A                   ; LF
-CSLP:    jsr SNDCHR                 ; Send the line feed
+CSLP:    jsr PutCh                  ; Send the line feed
          dex                        ; One less to do
          bne CSLP                   ; Go send another untill we're done
          rts                        ; Return
@@ -1440,57 +1427,73 @@ CSLP:    jsr SNDCHR                 ; Send the line feed
 SNDMSG:  lda MBLK,y                 ; Get a character from teh message block
          cmp #$FF                   ; Look for end of message marker
          beq EXSM                   ; Finish up if it is
-         jsr SNDCHR                 ; Otherwise send the character
+         jsr PutCh                  ; Otherwise send the character
          iny                        ; Increment the pointer
          jmp SNDMSG                 ; Go get next character
 EXSM:    rts                        ; Return
 
 ;
-; Get a character from the ACIA
+; Get a character from the character input device
 ; Runs into SNDCHR to provide echo
 ;
-RCCHR:   ;lda ACIAST                ; Read the ACAI status to (for OMS-02)
-         ;and #$08                  ; Check if there is character in the receiver (for OMS-02)
-         ;beq RCCHR                 ; Loop util we get one (for OMS-02)
-         ;lda ACIARW                ; Load it into the accumulator (for OMS-02)
-         LDA $E000                  ; Check if a character typed (for emulator)
-         BEQ RCCHR                  ; Loop until we get one (for emulator)
-
-;RCCHR:	 jsr GetCh
-;		 jsr SNDCHR					; echo character to the console
-;		 rts
-
+RCCHR:   lda $E001                  ; Check if a character typed (for emulator, non-blocking)
+         beq RCCHR                  ; Loop until we get one (for emulator)
+         cmp #'a'                   ; < 'a'?
+         bcc SNDCHR                 ; yes, done
+         cmp #'{'                   ; >= '{'?
+         bcs SNDCHR                 ; yes, done         
+         and #$5f                   ; convert to upper case
 ;
-;Send a character to the ACIA
+; Send a character to the character output device
 ;
 SNDCHR:  sta $FE                    ; Save the character to be printed
          cmp #$FF                   ; Check for a bunch of characters
-         BEQ EXSC                   ; that we don't want to print to
+         beq EXSC                   ; that we don't want to print to
          cmp #$00	                  ; the terminal and discard them to
-         BEQ EXSC	                  ; clean up the output
+         beq EXSC	                  ; clean up the output
          cmp #$91	                  ;
-         BEQ EXSC	                  ;
+         beq EXSC	                  ;
          cmp #$93	                  ;
-         BEQ EXSC	                  ;
+         beq EXSC	                  ;
          cmp #$80	                  ;
-         BEQ EXSC	                  ;
-         jmp SCLP
-		 jsr PutCh					; MKHBC-8-R1
-		 lda $fe
-		 rts
-SCLP:    ;lda ACIAST                ; Check ACIA Status  (don't need for emulator)
-         ;and #$10                  ; See if transmiter it busy (don't need for emulator)
-         ;beq SCLP                  ; Wait for it (don't need for emulator)
-         lda $FE                    ; Restore the character
-         ;sta ACIARW                ; Transmit it (for OMS-02)
-         STA $E000                  ; Transmit it (for emulator)
+         beq EXSC	                  ;
+SCLP:    lda $FE                    ; Restore the character
+         sta $E000                  ; Transmit it (for emulator)
 EXSC:    rts                        ; Return
 
-;         .org $1FFC                 ; Address of reset vector (for 6507 not required for emulator)
-;RSVEC
-;         .byte $F0, $1C               ; Reset vector
+; Kernel jump table
 
-;        .org $3000                  ; Address of last byte of EPROM
-;EOROM:
+;GetCh =  $FFED
+;PutCh =  $FFF0
+;Gets  =  $FFF3
+;Puts  =  $FFF6
+
+; String I/O not used at this time.
+
+STRIN:   rts
+STROUT:  rts
+
+; Vector jumps handlers
+
+NmiHandle: rti
+RstHandle: jmp main
+IrqHandle: rti
+
+.segment "KERN"
+
+   .ORG  $FFED
+
+GetCh:   jmp RCCHR
+PutCh:   jmp SNDCHR
+Gets:    jmp STRIN
+Puts:    jmp STROUT   
+
+.segment "VECT"
+
+   .ORG  $FFFA
+
+.byte    <NmiHandle, >NmiHandle, <RstHandle, >RstHandle, <IrqHandle, >IrqHandle
+
+
 
 ;--------------------------- END ----------------------------------------------------------------------

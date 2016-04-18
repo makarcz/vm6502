@@ -9,7 +9,7 @@ LIBS     = -static-libgcc -m32 -g3 -ltermcap
 CLIBS    = -static-libgcc -m32 -g3
 INCS     =
 CXXINCS  = 
-CXXFLAGS = $(CXXINCS) -m32 -std=c++0x -Wall -pedantic -g3
+CXXFLAGS = $(CXXINCS) -m32 -std=c++0x -Wall -pedantic -g3 -fpermissive
 #CFLAGS   = $(INCS) -m32 -std=c++0x -Wall -pedantic -g3
 CFLAGS   = $(INCS) -m32 -Wall -pedantic -g3
 RM       = rm -f
