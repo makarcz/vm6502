@@ -9,6 +9,8 @@
 #include "Memory.h"
 #include "Display.h"
 #include "VMachine.h"
+#include "GraphDisp.h"
+#include "MemMapDev.h"
 #include "MKGenException.h"
 
 using namespace std;
@@ -20,8 +22,10 @@ const bool ClsIfDirty = true;
 
 VMachine *pvm = NULL;
 Regs *preg = NULL;
-bool ioecho = false, opbrk = false;
+bool ioecho = false, opbrk = false, needhelp = false;
+bool loadbin = false, loadhex = false, reset = false, execvm = false;
 int g_stackdisp_lines = 1;
+string ramfile = "dummy.ram";
 
 bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat);
 void ShowHelp();
@@ -69,58 +73,60 @@ void CopyrightBanner();
 
 /*
  *--------------------------------------------------------------------
- * Method:		PrintLoadBinImgErr()
- * Purpose:		Print the warning/error message after loading binary
- *            image.
+ * Method:		PrintVMErr()
+ * Purpose:		Print the warning/error message.
  * Arguments:	err - integer, error code
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void PrintLoadBinImgErr(int err)
+void PrintVMErr(int err)
 {
 	bool pressenter = true;
 	switch (err) {
-		case 1: cout << "WARNING: Unexpected EOF (image shorter than 64kB)." << endl;
-						break;
-		case 2: cout << "WARNING: Unable to open memory image file." << endl;
-						break;
-		case 3: cout << "WARNING: Problem with binary image header." << endl;
-						break;
-		case 4: cout << "WARNING: No header found in binary image." << endl;
-						break;
-		case 5: cout << "WARNING: Problem with binary image header." << endl;
-						cout << "WARNING: Unexpected EOF (image shorter than 64kB)." << endl;
-						break;
-		case 6: cout << "WARNING: No header found in binary image." << endl;
-						cout << "WARNING: Unexpected EOF (image shorter than 64kB)." << endl;
-						break;
-		default: pressenter = false; break;
-	}	
-	if (pressenter) {
-		cout << "Press [ENTER]...";
-		getchar();
-	}
-}
-
-/*
- *--------------------------------------------------------------------
- * Method:		PrintLoadHexImgErr()
- * Purpose:		Print the warning/error message after loading Intel HEX
- *            image.
- * Arguments:	err - integer, error code
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
-void PrintLoadHexImgErr(int err)
-{
-	bool pressenter = true;
-	switch (err) {
-		case 1: cout << "WARNING: Unable to open file." << endl;
-						break;
-		case 2: cout << "ERROR: Syntax error." << endl;
-						break;
-		case 3: cout << "ERROR: Intel HEX format error." << endl;
-						break;
+		case MEMIMGERR_RAMBIN_EOF: 
+			cout << "WARNING: Unexpected EOF (image shorter than 64kB).";
+			cout << endl;
+			break;
+		case MEMIMGERR_RAMBIN_OPEN: 
+			cout << "WARNING: Unable to open memory image file." << endl;
+			break;
+		case MEMIMGERR_RAMBIN_HDR: 
+			cout << "WARNING: Problem with binary image header." << endl;
+			break;
+		case MEMIMGERR_RAMBIN_NOHDR: 
+			cout << "WARNING: No header found in binary image." << endl;
+			break;
+		case MEMIMGERR_RAMBIN_HDRANDEOF: 
+			cout << "WARNING: Problem with binary image header." << endl;
+			cout << "WARNING: Unexpected EOF (image shorter than 64kB).";
+			cout << endl;
+			break;
+		case MEMIMGERR_RAMBIN_NOHDRANDEOF: 
+			cout << "WARNING: No header found in binary image." << endl;
+			cout << "WARNING: Unexpected EOF (image shorter than 64kB).";
+			cout << endl;
+			break;
+		case MEMIMGERR_INTELH_OPEN: 
+			cout << "WARNING: Unable to open Intel HEX file." << endl;
+			break;
+		case MEMIMGERR_INTELH_SYNTAX: 
+			cout << "ERROR: Syntax error." << endl;
+			break;
+		case MEMIMGERR_INTELH_FMT: 
+			cout << "ERROR: Intel HEX format error." << endl;
+			break;			
+		case MEMIMGERR_VM65_OPEN:
+			cout << "ERROR: Unable to open memory definition file.";
+			cout << endl;
+			break;
+		case MEMIMGERR_VM65_IGNPROCWRN:
+			cout << "WARNING: There were problems while processing";
+			cout << " memory definition file." << endl;
+			break;	
+		case VMERR_SAVE_SNAPSHOT:
+			cout << "WARNING: There was a problem saving memory snapshot.";
+			cout << endl;
+			break;
 		default: pressenter = false; break;
 	}	
 	if (pressenter) {
@@ -278,17 +284,7 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 	cout << "|  " << bitset<8>((int)preg->Flags) << "   |";
 	cout << " Last instr.: " << preg->LastInstr << "          " << endl;
 	cout << "*-------------*" << endl;
-	//cout << "Last instr.: " << preg->LastInstr << "          " << endl;
 	cout << endl;
-	/*
-	cout << "Registers:" << endl;
-	cout << "   Acc: $" << hex << (unsigned short)preg->Acc << "\t(%" << bitset<8>((int)preg->Acc) << ")" << endl;
-	cout << "     X: $" << hex << (unsigned short)preg->IndX << "   " << endl;
-	cout << "     Y: $" << hex << (unsigned short)preg->IndY << "   " << endl;
-	cout << "    PC: $" << hex << preg->PtrAddr << "   " << endl;
-	//cout << " Acc16: $" << hex << preg->Acc16 << "   " << endl;
-	//cout << " Ptr16: $" << hex << preg->Ptr16 << "   " << endl;
-	*/
 	cout << "Stack: $" << hex << (unsigned short)preg->PtrStack << "   " << endl;
 	cout << "                                                                               \r";
 	// display stack contents
@@ -317,11 +313,13 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 		cout << endl << "I/O status: " << (pvm->GetCharIOActive() ? "enabled" : "disabled") << ", ";
 		cout << " at: $" << hex << pvm->GetCharIOAddr() << ", ";
 		cout << " local echo: " << (ioecho ? "ON" : "OFF") << "." << endl;
+		cout << "Graphics status: " << (pvm->GetGraphDispActive() ? "enabled" : "disabled") << ", ";
+		cout << " at: $" << hex << pvm->GetGraphDispAddr() << endl;
 		cout << "ROM: " << ((pvm->IsROMEnabled()) ? "enabled." : "disabled.") << " ";
 		cout << "Range: $" << hex << pvm->GetROMBegin() << " - $" << hex << pvm->GetROMEnd() << "." << endl;
 	}
 	cout << "                                                                               \r";
-	// cout << "-------------------------------------------------------------------------------" << endl;	
+
 	return ret;
 }
 
@@ -345,6 +343,7 @@ void ShowMenu()
 	cout << "   K - toggle ROM emulation         |    R - show registers, Y - snapshot" << endl;
 	cout << "   L - load memory image            |    O - display op-codes history" << endl;
 	cout << "   D - disassemble code in memory   |    Q - quit, 0 - reset, H - help" << endl;
+	cout << "   V - toggle graphics emulation    |" << endl;
 	cout << "------------------------------------+----------------------------------------" << endl;
 } 
 
@@ -393,10 +392,54 @@ void ShowMenu()
 	}                                                                         \
 }
 
-/* run this program using the console pauser or add your own getch, system("pause") or input loop */
+/*
+ *--------------------------------------------------------------------
+ * Method:		LoadArgs()
+ * Purpose:		Parse command line arguments.
+ * Arguments:	int argc, char *argv[], standard C command line args.
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+ void LoadArgs(int argc, char *argv[])
+ {
+ 		for (int i=1; i<argc; i++) {
+ 			if (!strcmp(argv[i], "-r")) {
+ 				reset = true;
+ 				execvm = true;
+ 			} else if (!strcmp(argv[i], "-b")) {
+ 				loadbin = true;
+ 			} else if (!strcmp(argv[i], "-x")) {
+ 				loadhex = true;
+ 			} else if (!strcmp(argv[i], "-h")) {
+ 				needhelp = true;
+ 			} else {
+ 				ramfile = argv[i];
+ 			}
+ 		}
+ }
 
-int main(int argc, char** argv) {
-	bool loadbin = false, loadhex = false, reset = false, execvm = false;
+
+/************ corrected in makefile
+
+// Quick and dirty SDL2 workaround to 'undefined reference to WinMain'
+
+#ifdef main
+#undef main
+#endif
+
+*****************/
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		main()
+ * Purpose:		Application entry point/main loop.
+ * Arguments:	int argc, char *argv[], standard C command line args.
+ * Returns:		int - general principle is to return 0 if OK, non-zero
+ *                  otherwise
+ *--------------------------------------------------------------------
+ */
+
+int main(int argc, char *argv[]) {
 #if defined(LINUX)
 	signal(SIGINT, trap_signal);
   signal(SIGTERM, trap_signal);
@@ -404,41 +447,29 @@ int main(int argc, char** argv) {
 #if defined(WINDOWS)
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) CtrlHandler, TRUE );
 #endif
-	string romfile("dummy.rom"), ramfile("dummy.ram");
-	if (argc > 1) {
-		if (argc > 2) {
-			reset = execvm 	= loadbin = (0 == strcmp(argv[1], "-r")); 	// load binary image and reset
-			if (!loadbin)			loadbin = (0 == strcmp(argv[1], "-b"));		// just load binary image
-			if (!loadbin)			loadhex = (0 == strcmp(argv[1], "-x"));		// just load Intel HEX image
-			if (loadbin && loadhex) {
-				cout << "ERROR: Can't load both formats at the same time." << endl;
-				exit(-1);
-			}
-			ramfile = argv[2];
-		} else {
-			if (0 == strcmp(argv[1], "-h")) {
-				CmdArgHelp(argv[0]);
-				exit(0);
-			}
-			ramfile = argv[1];
-		}
-	}
+	string romfile("dummy.rom");
+	LoadArgs(argc, argv);
+	if (needhelp) { CmdArgHelp(argv[0]); exit(0); }
+	if (loadbin && loadhex) {
+		cout << "ERROR: Can't load both formats at the same time." << endl;
+		exit(-1);
+	}	
 	try {
 		cout << endl;
 		if (loadbin) {
 			pvm = new VMachine(romfile, "dummy.ram");
 			if (NULL != pvm) {
-				PrintLoadBinImgErr (pvm->LoadRAMBin(ramfile));
-				if (!reset && !execvm)
-					reset = execvm = pvm->IsAutoReset();
+				PrintVMErr (pvm->LoadRAMBin(ramfile));
+				if (!reset) { reset = execvm = pvm->IsAutoReset(); }
 			}
 		} else if (loadhex) {
 			pvm = new VMachine(romfile, "dummy.ram");
-			if (NULL != pvm) PrintLoadHexImgErr (pvm->LoadRAMHex(ramfile));
+			if (NULL != pvm) PrintVMErr (pvm->LoadRAMHex(ramfile));
 		}
 		else {
 			pvm = new VMachine(romfile, ramfile);
-			reset = execvm = pvm->IsAutoReset();
+			if (NULL != pvm) PrintVMErr(pvm->GetLastError());
+			if (NULL != pvm && !reset) { reset = execvm = pvm->IsAutoReset(); }
 		}
 		if (NULL == pvm) {
 			throw MKGenException("Out of memory");
@@ -449,6 +480,7 @@ int main(int argc, char** argv) {
 		bool runvm = false, step = false, brk = false, execaddr = false, stop = true;
 		bool lrts = false, anim = false, enrom = pvm->IsROMEnabled();
 		unsigned int newaddr = pvm->GetRunAddr(), ioaddr = pvm->GetCharIOAddr(), tmpaddr = 0x0000;
+		unsigned int graddr = pvm->GetGraphDispAddr();
 		unsigned int rombegin = pvm->GetROMBegin(), romend = pvm->GetROMEnd(), delay = ANIM_DELAY;
 		int nsteps = 0;
 		if (pvm->IsAutoExec()) {
@@ -538,18 +570,33 @@ int main(int argc, char** argv) {
 				}
 			} else if (c == 'l') {	// load memory image
 				char typ = 0;
-				while (tolower(typ) != 'b' && tolower(typ) != 'd' && tolower(typ) != 'h') {
-					cout << "Type (B - binary/H - Intel HEX/D - definition): ";
+				for (char c = tolower(typ); 
+						 c != 'a' && c != 'b' && c != 'h' && c != 'd';
+						 c = tolower(typ)) {
+					cout << "Type (A - auto/B - binary/H - Intel HEX/D - definition): ";
 					cin >> typ;
 				}
-				cout << " [" << ((tolower(typ) == 'b') ? "binary" : "definition") << "]" << endl;
+				cout << " [";
+				switch (tolower(typ)) {
+					case 'a': cout << "auto"; break;
+					case 'b': cout << "binary"; break;
+					case 'h': cout << "Intel HEX"; break;
+					case 'd': cout << "definition"; break;
+					default: break;	// should never happen
+				}
+				cout << "]" << endl;
 				string name;
 				cout << "Memory Image File Name: ";
 				cin >> name;
 				cout << " [" << name << "]" << endl;
-				if (typ == 'b') PrintLoadBinImgErr (pvm->LoadRAMBin(name));
-				else if (typ == 'h') PrintLoadHexImgErr (pvm->LoadRAMHex(name));
-				else {
+				if (typ == 'b') PrintVMErr (pvm->LoadRAMBin(name));
+				else if (typ == 'h') PrintVMErr (pvm->LoadRAMHex(name));
+				else if (typ == 'd') {
+					PrintVMErr (pvm->LoadRAMDef(name));
+					if (pvm->IsAutoExec()) execvm = true;
+					if (newaddr == 0) newaddr = 0x10000;					
+				}
+				else {	// automatic file format detection
 					pvm->LoadRAM(name);
 					if (pvm->IsAutoExec()) execvm = true;
 					if (newaddr == 0) newaddr = 0x10000;
@@ -603,9 +650,19 @@ int main(int argc, char** argv) {
 					cout << "I/O deactivated." << endl;
 				} else {
 					ioaddr = PromptNewAddress("Address (0..FFFF): ");
-					cout << " [" << hex << ioaddr << "]" << endl;					
+					cout << " [" << hex << ioaddr << "]" << endl;
 					pvm->SetCharIO(ioaddr, ioecho);
 					cout << "I/O activated." << endl;
+				}
+			} else if (c == 'v') { // toggle graphics display
+				if (pvm->GetGraphDispActive()) {
+					pvm->DisableGraphDisp();
+					cout << "Graphics display deactivated." << endl;
+				} else {
+					graddr = PromptNewAddress("Address (0..FFFF): ");
+					cout << " [" << hex << graddr << "]" << endl;
+					pvm->SetGraphDisp(graddr);
+					cout << "Graphics display activated." << endl;
 				}
 			} else if (c == 'w') {	// write to memory
 				tmpaddr = PromptNewAddress("Address (0..FFFF): ");
@@ -730,27 +787,26 @@ void CmdArgHelp(string prgname)
 	cout << endl << endl;
 	cout << "Usage:" << endl << endl;
 	cout << "\t" << prgname;
-	cout << " [-h] | [ramdeffile] | [-b ramimage] | [-r ramimage]" << endl;
-	cout << "\tOR" << endl;
-	cout << "\t" << prgname << " [-x intelheximage]";
+	cout << " [-h] | [ramdeffile] [-b | -x] [-r]" << endl;
 	cout << endl << endl;
 	cout << "Where:" << endl << endl;
 	cout << "\tramdeffile    - RAM definition file name" << endl;
-	cout << "\tintelheximage - Intel HEX format file" << endl;
-	cout << "\tramimage      - RAM binary image file name" << endl;
+	cout << "\t-b            - specify input format as binary" << endl;
+	cout << "\t-x            - specify input format as Intel HEX" << endl;
+	cout << "\t-r            - after loading, perform CPU RESET" << endl;
+	cout << "\t-h            - print this help screen" << endl;
 	cout << R"(
 
 When ran with no arguments, program will load default memory
 definition files: default.rom, default.ram and will enter the debug
 console menu.
-When ramdeffile argument is provided, program will load the memory
-definition from the file, set the flags and parameters depending on the
-contents of the memory definition file and enter the corresponding mode
-of operation as defined in that file.
-If used with flag -b or -x, program will load memory from the provided image
-file and enter the debug console menu.
-If used with flag -r, program will load memory from the provided image
-file and execute CPU reset sequence.		
+When ramdeffile argument is provided with no input format specified,
+program will attempt to automatically detect input format and load the
+memory definition from the file, set the flags and parameters depending
+on the contents of the memory definition file and enter the corresponding
+mode of operation as defined in that file.
+If input format is specified (-b|-x), program will load memory from the
+provided image file and enter the debug console menu.
 
 )";
 	cout << endl;
@@ -809,6 +865,14 @@ I - toggle char I/O emulation
     to the specified memory address also writes a character code to
     to a virtual console. All reads from specified memory address
     are interpreted as console character input.
+V - toggle graphics display (video) emulation
+    Usage: V [address]
+    Where: address - memory addr. in hexadecimal format [0000.FFFF],
+    Toggles basic raster (pixel) based RGB graphics display emulation.
+    When enabled, window with graphics screen will open and several
+    registers are available to control the device starting at provided
+    base address. Read programmers reference for detailed documentation
+    regarding the available registers and their functions.
 R - show registers
     Displays CPU registers, flags and stack.
 Y - snapshot
@@ -845,10 +909,12 @@ K - toggle ROM emulation
 L - load memory image
     Usage: L [image_type] [image_name]
     Where: 
-       image_type - B (binary), H (Intel HEX) OR D (definition),
+       image_type - A - (auto), B (binary), H (Intel HEX) OR D (definition),
        image_name - name of the image file.
     This function allows to load new memory image from either binary
     image file, Intel HEX format file or the ASCII definition file.
+    With option 'A' selected, automatic input format detection will be
+    attempted.
     The binary image is always loaded from address 0x0000 and can be up to
     64kB long. The definition file format is a plain text file that can
     contain following keywords and data:

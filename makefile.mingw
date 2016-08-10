@@ -2,19 +2,23 @@
 # Makefile created by Dev-C++ 5.11
 # and modified for standalone MINGW compiler installation.
 
+#SDLBASE  = "C:\src\SDL"
+SDLBASE  = $(SDLDIR)
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o MKGenException.o
+OBJ      = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o
 OBJ2     = bin2hex.o
-LINKOBJ  = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o MKGenException.o
+LINKOBJ  = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o
 LINKOBJ2 = bin2hex.o
-LIBS     = -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic
+LIBS     = -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32
+SDLLIBS  = -L"$(SDLBASE)\x86_64-w64-mingw32/lib" -lSDL2main -lSDL2
 INCS     = -I"C:\mingw-w64\x86_64-5.3.0\mingw64/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\lib\gcc\x86_64-w64-mingw32\5.3.0/include"
 CXXINCS  = -I"C:\mingw-w64\x86_64-5.3.0\mingw64/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/include" -I"C:\mingw-w64\x86_64-5.3.0\mingw64\lib\gcc\x86_64-w64-mingw32\5.3.0/include"
-BIN       = mkbasic.exe
+BIN       = vm65.exe
 BIN2      = bin2hex.exe
 CXXFLAGS  = $(CXXINCS) -std=c++11 -Wall -Wextra -pedantic -g3
+SDLINCS   = -I"$(SDLBASE)/include"
 CFLAGS    = $(INCS) -std=c++11 -Wall -Wextra -pedantic -g3
 CXXFLAGS2 = $(CXXINCS) 
 CFLAGS2   = $(INCS) 
@@ -28,27 +32,33 @@ clean: clean-custom
 	${RM} $(OBJ) $(OBJ2) $(BIN) $(BIN2)
 
 $(BIN): $(OBJ)
-	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS)
+	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(SDLLIBS)
 
 main.o: main.cpp
-	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
+	$(CPP) -c main.cpp -o main.o $(CXXFLAGS) $(SDLINCS)
 
-VMachine.o: VMachine.cpp
-	$(CPP) -c VMachine.cpp -o VMachine.o $(CXXFLAGS)
+VMachine.o: VMachine.cpp VMachine.h
+	$(CPP) -c VMachine.cpp -o VMachine.o $(CXXFLAGS) $(SDLINCS)
 
-MKBasic.o: MKBasic.cpp
-	$(CPP) -c MKBasic.cpp -o MKBasic.o $(CXXFLAGS)
+MKBasic.o: MKBasic.cpp MKBasic.h
+	$(CPP) -c MKBasic.cpp -o MKBasic.o $(CXXFLAGS) $(SDLINCS)
 
-MKCpu.o: MKCpu.cpp
-	$(CPP) -c MKCpu.cpp -o MKCpu.o $(CXXFLAGS)
+MKCpu.o: MKCpu.cpp MKCpu.h
+	$(CPP) -c MKCpu.cpp -o MKCpu.o $(CXXFLAGS) $(SDLINCS)
 
-Memory.o: Memory.cpp
-	$(CPP) -c Memory.cpp -o Memory.o $(CXXFLAGS)
+Memory.o: Memory.cpp Memory.h
+	$(CPP) -c Memory.cpp -o Memory.o $(CXXFLAGS) $(SDLINCS)
 
-Display.o: Display.cpp
+Display.o: Display.cpp Display.h
 	$(CPP) -c Display.cpp -o Display.o $(CXXFLAGS)
 
-MKGenException.o: MKGenException.cpp
+GraphDisp.o: GraphDisp.cpp GraphDisp.h
+	$(CPP) -c GraphDisp.cpp -o GraphDisp.o $(CXXFLAGS) $(SDLINCS)
+
+MemMapDev.o: MemMapDev.cpp MemMapDev.h
+	$(CPP) -c MemMapDev.cpp -o MemMapDev.o $(CXXFLAGS) $(SDLINCS)
+
+MKGenException.o: MKGenException.cpp MKGenException.h
 	$(CPP) -c MKGenException.cpp -o MKGenException.o $(CXXFLAGS)
 
 $(BIN2): $(OBJ2)

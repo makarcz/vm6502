@@ -1,3 +1,5 @@
+ORG
+$0200
 ;
 ; test program #1
 ; address: $0200

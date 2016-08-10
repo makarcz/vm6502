@@ -15,6 +15,11 @@ $FFFF
 ; Enable char IO and ROM
 ENIO
 ENROM
+; Enable generic graphics display
+; and set its base address.
+ENGRAPH
+GRAPHADDR
+$FFE2
 ; Auto-execute
 ;EXEC
 ;$C000

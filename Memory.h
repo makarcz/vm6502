@@ -2,19 +2,14 @@
 #define MEMORY_H
 
 #include "system.h"
-
-#if defined(LINUX)
-#include <unistd.h>
-#include <sys/select.h>
-#include <termios.h>
-#endif
+#include "MemMapDev.h"
 
 #define MAX_8BIT_ADDR 	0xFFFF
-#define CHARIO_ADDR			0xE000
-#define CHARIO_BUF_SIZE	256
 #define ROM_BEGIN				0xD000
 #define ROM_END					0xDFFF
 #define MIN_ROM_BEGIN		0x0200
+
+using namespace std;
 
 namespace MKBasic {
 
@@ -27,8 +22,10 @@ class Memory
 		
 		void	Initialize();
 		unsigned char Peek8bit(unsigned short addr);
+		unsigned char Peek8bitImg(unsigned short addr);
 		unsigned short Peek16bit(unsigned short addr);
-		void Poke8bit(unsigned short addr, unsigned char val);
+		void Poke8bit(unsigned short addr, unsigned char val);		// write to memory and call memory mapped device handle
+		void Poke8bitImg(unsigned short addr, unsigned char val);	// write to memory image only
 		void SetCharIO(unsigned short addr, bool echo);
 		void DisableCharIO();
 		unsigned short GetCharIOAddr();		
@@ -41,35 +38,35 @@ class Memory
 		unsigned short GetROMBegin();
 		unsigned short GetROMEnd();
 		bool IsROMEnabled();
+		int AddDevice(int devnum);
+		int DeleteDevice(int devnum);
+		void SetupDevice(int devnum, MemAddrRanges memranges, DevParams params);
+
+		void SetGraphDisp(unsigned short addr);
+		void DisableGraphDisp();
+		unsigned short GetGraphDispAddr();
+		void GraphDisp_ReadEvents();
+		void GraphDisp_Update();
+		bool GraphDispOp();
 		
 	protected:
 		
 	private:
 		
 		unsigned char m8bitMem[MAX_8BIT_ADDR+1];
-		char mCharIOBufIn[CHARIO_BUF_SIZE];
-		char mCharIOBufOut[CHARIO_BUF_SIZE];
-		unsigned int mInBufDataBegin;
-		unsigned int mInBufDataEnd;
-		unsigned int mOutBufDataBegin;
-		unsigned int mOutBufDataEnd;		
 		unsigned short mCharIOAddr;
 		bool mCharIOActive;
 		bool mIOEcho;
 		unsigned short mROMBegin;
 		unsigned short mROMEnd;
 		bool mROMActive;
+		vector<int> mActiveDevNumVec;	// active devices numbers
+		MemMapDev *mpMemMapDev;				// pointer to MemMapDev object
+		bool mGraphDispActive;
+		bool mDispOp;
 		
 		unsigned char ReadCharKb(bool nonblock);
 		void PutCharIO(char c);
-
-#if defined(LINUX)
-
-		void set_conio_terminal_mode();
-		int kbhit();
-		int getch();
-
-#endif
 };
 
 } // namespace MKBasic

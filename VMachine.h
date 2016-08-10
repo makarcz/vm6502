@@ -15,13 +15,53 @@
 
 #define IOREFRESH 32
 #define OPINTERRUPT 25	// operator interrupt code (CTRL-Y)
-#define HDRMAGICKEY "SNAPSHOT"
-#define HDRDATALEN	15
+#define HDRMAGICKEY "SNAPSHOT2"
+#define HDRMAGICKEY_OLD "SNAPSHOT"
+#define HDRDATALEN	128
+#define HDRDATALEN_OLD	15
 #define HEXEOF	":00000001FF"
 
 using namespace std;
 
 namespace MKBasic {
+
+// Types of memory image definition file.
+enum eMemoryImageTypes {
+	MEMIMG_UNKNOWN = 0,
+	MEMIMG_VM65DEF,
+	MEMIMG_INTELHEX,
+	MEMIMG_BIN
+};
+
+// Types of memory image load errors
+enum eMemImgLoadErrors {
+	MEMIMGERR_OK = 0,							// all is good
+	// binary format
+	MEMIMGERR_RAMBIN_OPEN,				// unable to open file
+	MEMIMGERR_RAMBIN_EOF,					// unexpected EOF (image shorter then 64 kB)
+	MEMIMGERR_RAMBIN_HDR,					// header problem
+	MEMIMGERR_RAMBIN_NOHDR,				// no header found
+	MEMIMGERR_RAMBIN_HDRANDEOF,		// header problem and unexpected EOF
+	MEMIMGERR_RAMBIN_NOHDRANDEOF,	// header not found and unexoected EOF
+	// Intel HEX format
+	MEMIMGERR_INTELH_OPEN, 				// unable to open file
+	MEMIMGERR_INTELH_SYNTAX,			// syntax error
+	MEMIMGERR_INTELH_FMT,					// format error
+	// VM65 memory definition
+	MEMIMGERR_VM65_OPEN,					// unable to open file
+	MEMIMGERR_VM65_IGNPROCWRN,		// processing warnings (ignored, not critical)
+	//-------------------------------------------------------------------------
+	MEMIMGERR_UNKNOWN
+};
+
+// Types of other errors
+enum eVMErrors {
+	VMERR_OK = 0,																// all is good
+	VMERR_SAVE_SNAPSHOT = MEMIMGERR_UNKNOWN+1,	// problem saving memory image
+																							// snapshot
+	//-------------------------------------------------------------------------
+	VMERR_UNKNOWN																// unknown error
+};
 
 class VMachine
 {
@@ -38,9 +78,10 @@ class VMachine
 		Regs *Step();
 		Regs *Step(unsigned short addr);
 		void LoadROM(string romfname);
-		void LoadRAM(string ramfname);
+		int  LoadRAM(string ramfname);
 		int  LoadRAMBin(string ramfname);
 		int  LoadRAMHex(string hexfname);
+		int  LoadRAMDef(string memfname);
 		unsigned short MemPeek8bit(unsigned short addr);
 		void MemPoke8bit(unsigned short addr, unsigned char v);
 		Regs *GetRegs();
@@ -48,6 +89,7 @@ class VMachine
 		void DisableCharIO();
 		unsigned short GetCharIOAddr();
 		bool GetCharIOActive();
+		bool GetGraphDispActive();
 		void ShowIO();
 		void ClearScreen();
 		void ScrHome();
@@ -68,6 +110,10 @@ class VMachine
 		void Reset();
 		void Interrupt();
 		int SaveSnapshot(string fname);
+		int GetLastError();
+		void SetGraphDisp(unsigned short addr);
+		void DisableGraphDisp();
+		unsigned short GetGraphDispAddr();		
 		
 	protected:
 		
@@ -84,12 +130,17 @@ class VMachine
 		bool mOpInterrupt; // operator interrupt from console
 		bool mAutoExec;
 		bool mAutoReset;
+		int  mError;			 // last error code
+		bool mGraphDispActive;
+		bool mOldStyleHeader;
 		
-		void LoadMEM(string memfname, Memory *pmem);
+		int  LoadMEM(string memfname, Memory *pmem);
 		void ShowDisp();
 		bool HasHdrData(FILE *fp);
+		bool HasOldHdrData(FILE *fp);
 		bool LoadHdrData(FILE *fp);
 		void SaveHdrData(FILE *fp);
+		eMemoryImageTypes GetMemoryImageType(string ramfname);
 };
 
 } // namespace MKBasic

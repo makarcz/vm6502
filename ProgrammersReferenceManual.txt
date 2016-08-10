@@ -1,0 +1,567 @@
+
+
+User Manual and Programmers Reference Manual for VM65.
+
+                        by
+
+               Marek Karcz (C) 2016.          
+
+
+
+1. Introduction.
+
+	VM65 is a simulator which can be expanded to become an emulator of more
+	complex computer system either a real one or completely abstract virtual
+	machine.
+	VM65 acronym stands for Virtual Machine 65 and is designed for MOS-6502
+	simulation. In current form it allows to simulate a MOS-6502 CPU in
+	MS Windows environment using MS-DOS command line UI.
+	Software emulates all original MOS-6502 legal opcodes. The illegal opcodes
+	are not emulated and are opened for expansion. It is up to programmer to
+	implement illegal opcodes accurate emulation or replace them with extensions
+	or traps. In current version they do nothing except to consume CPU cycles.
+	The 6502 emulation is not purely abstract. The basic components of a real
+	hardware CPU system are emulated: microprocessor, memory and memory mapped
+	devices abstract layer  - about which more in section 4.
+	Using this software user will be able to load plain text memory definition
+	file, Intel HEX format file, raw binary image file or binary snapshot image
+	created with this software and execute or debug code within it in
+	a continuous or in step-by-step mode. 
+	The file will be loaded and translated to the	emulated memory space and
+	optional emulation parameters included in the	image will be interpreted and
+	adequately translated into values of the corresponding internal flags. 
+	It is possible to automatically run program starting at specified address,
+	perform automatic reset	of the CPU after memory image upload or perform
+	these actions from command line prompt of the debug console.
+
+2. Command Line Interface and Debug Console.
+
+	Usage:
+
+        vm65 [-h] | [ramdeffile] [-b | -x] [-r]
+
+
+	Where:
+
+        ramdeffile    - RAM definition file name
+        -b            - specify input format as binary
+        -x            - specify input format as Intel HEX
+        -r            - after loading, perform CPU RESET
+        -h            - print this help screen
+
+
+When ran with no arguments, program will load default memory
+definition files: default.rom, default.ram and will enter the debug
+console menu.
+When ramdeffile argument is provided with no input format specified,
+program will attempt to automatically detect input format and load the
+memory definition from the file, set the flags and parameters depending
+on the contents of the memory definition file and enter the corresponding
+mode of operation as defined in that file.
+If input format is specified (-b|-x), program will load memory from the
+provided image file and enter the debug console menu.
+
+	To start program, navigate to the program directory in MS-DOS prompt console
+	and type:
+
+	vm65
+
+	Above will run the emulator. Since no memory image is specified, program
+	will attempt to load dummy.rom and dummy.ram files, which supposed to be
+	plain text memory image definition files. The simplest you can create can
+	look like this:
+
+	ORG
+	$0000
+	$00
+
+	NOTE: To see the full usage help for vm65, use flag -h: 
+				vm65 -h
+
+	Program loaded with no arguments will present user with following UI
+	which will be referred to as Debug Console:
+
+STOPPED at 0
+*-------------*-----------------------*----------*----------*
+|  PC: $0000  |  Acc: $00 (00000000)  |  X: $00  |  Y: $00  |
+*-------------*-----------------------*----------*----------*
+|  NV-BDIZC   |
+|  00100000   | Last instr.:
+*-------------*
+
+Stack: $ff
+       []
+
+I/O status: disabled,  at: $e000,  local echo: OFF.
+Graphics status: disabled,  at: $e002
+ROM: disabled. Range: $d000 - $dfff.
+------------------------------------+----------------------------------------
+   C - continue,  S - step          |    A - set address for next step
+   G - go/cont. from new address    |    N - go number of steps, P - IRQ
+   I - toggle char I/O emulation    |    X - execute from new address
+   T - show I/O console             |    B - blank (clear) screen
+   E - toggle I/O local echo        |    F - toggle registers animation
+   J - set animation delay          |    M - dump memory, W - write memory
+   K - toggle ROM emulation         |    R - show registers, Y - snapshot
+   L - load memory image            |    O - display op-codes history
+   D - disassemble code in memory   |    Q - quit, 0 - reset, H - help
+   V - toggle graphics emulation    |
+------------------------------------+----------------------------------------
+> _
+
+	Each of the commands in Debug Console is interactive and can be used in two
+	ways - user can issue command in the prompt, press enter and follow the
+	instructions/prompts to enter remaining parameters OR if user already knows
+	the format of the command, all parameters can be entered in a single line.
+	To see full help for above commands, issue command H in the prompt and press
+	ENTER.
+
+	A quick overview of the some commands available in Debug Console:
+
+	* Code execution and debugging commands.
+
+	C - Continue
+
+			Execute code from current address after it was interrupted.
+
+	S - Step
+
+			Executes single opcode at current address.
+
+	A - Set address for next step
+
+			Sets current address to one provided is argument (or prompts for one).
+
+	G - Execute (continue) from address.
+
+			Asks for (if not provided as argument) address and then executes code.
+
+	N - Execute # of steps.
+
+	X - Execute from address.
+
+	F - Toggle registers animation.
+
+	    When in multi-step debug mode (command: N), displaying registers
+    	can be suppressed or, when animation mode is enabled - they will
+    	be continuously displayed after each executed step.
+
+	J - Set registers animation delay.
+
+	    Sets the time added at the end of each execution step in multi
+    	step mode (command: N). The default value is 250 ms. The change
+    	of this parameter will basically set the speed of multi-step code
+    	execution. Greater delay will slow down the execution but improve
+    	readability of the registers in Debug Console as they will not change
+    	as often as if this delay was smaller.
+
+  R - Show registers.
+
+  		Displays current status of CPU registers, flags and stack.
+
+  O - Display op-codes history.
+
+      Show the history of last executed op-codes/instructions, full with
+    	disassembled mnemonic and argument.
+
+  D - Disassemble code in memory.
+
+      Attempt to disassemble code in specified address range and display
+    	the results (print) on the screen in symbolic form.
+
+  0 - Reset.
+
+	    Run the processor initialization sequence, just like the real CPU
+	    when its RTS signal is set to LOW and HIGH again. CPU will disable
+	    interrupts, copy address from vector $FFFC to processors PC and will
+	    start executing code. Programmer must put initialization routine
+	    under address pointed by $FFFC vector, which will set the arithmetic
+	    mode, initialize stack, I/O devices and enable IRQ if needed before
+	    jumping to main loop. The reset routine disables trapping last RTS
+	    opcode if stack is empty, so the VM will never return from opcodes
+	    execution loop unless user interrupts with CTRL-C or CTRL-Break.
+
+	* Memory access commands.
+
+	M - Dump memory.
+
+			Dumps contents of memory, hexadecimal and ASCII formats.
+
+	W - Write memory.
+
+			Writes provided values to memory starting at specified address.
+
+	* I/O devices commands.
+
+	I - Toggle char I/O emulation.
+
+			Enables/disables basic character I/O emulation. When enabled, all writes
+    	to the specified memory address also writes a character code to
+    	to a virtual console. All reads from specified memory address
+    	are interpreted as console character input.
+    	The base address corresponds to blocking mode character I/O device,
+    	while base address + 1 corresponds to non-blocking character I/O device.
+    	The blocking device waits for the input character - code execution
+    	stops until user enters the keystroke, while in non-blocking mode
+    	the emulator takes the recently entered keystroke from the system
+    	keyboard buffer. That means that implementing the character input
+    	in 6502 assembly/machine code requires a loop reading from non-blocking
+    	address until the character code is different than 0, while in blocking
+    	mode it is enough to just read from I/O address. The emulator will only
+    	proceed when the key was pressed by user.
+
+    	Examples of 6502 code:
+
+    	- a 'waiting' character input implemented using non-blocking char I/O
+
+    		readchar: LDA $E001
+    							BEQ readchar ; A = NULL, keep reading char I/O
+    							RTS ; A = char code
+
+			- a 'waiting' character inpute implemented using blocking char I/O
+
+				readchar: LDA $E000
+									RTS ; A = char code    							
+
+  T - Show I/O console.
+
+  		Displays/prints the contents of the virtual console screen.
+    	Note that in run mode (commands X, G or C), virtual screen is
+    	displayed automatically in real-time if I/O emulation is enabled.
+
+  V - Toggle graphics emulation.
+
+  		Enables/disables basic raster (pixel) based RGB graphics display
+  		emulation.
+    	When enabled, window with graphics screen will open and several
+    	registers are available to control the device starting at provided
+    	base address. Detailed description of the device registers os provided
+    	later in this document.
+
+	The difference between 'G' and 'X' is that code executed with command 'G'
+	will return to Debug Console when BRK or last RTS (empty stack) opcode is
+	encountered, while code executed with 'X' goes to full CPU emulation mode
+	where BRK will invoke proper interrupt routine as setup by IRQ vector in
+	memory. The last RTS opcode (empty stack) will return to Debug
+	Console in both cases unless such behavior is disabled (and this is only
+	true in case of Reset function, see command '0'). 
+	Entering keyboard interrupt codes (CTRL-C, CTRL-BREAK) will return to Debug
+	Console.
+
+	NOTE: All addresses and memory values are to be entered in hexadecimal
+				format.
+
+3. Implementing the Virtual Machine.
+
+	 The Virtual Machine (or Emulator) is implemented by the means of multiple
+	 layers of abstraction. The higher the layer, the less code it contains
+	 that is virtual hardware dependent.
+
+	 On the highest level we have main.cpp which implements the UI and Debug
+	 Console. Programmer can replace this code with custom designed UI or GUI.
+
+	 The definition of the emulated system layer begins in VMachine class
+	 (VMachine.h and VMachine.cpp) which provides the implementation of the
+	 entire emulated system. It is a template upon which programmer can expand.
+	 Several important methods are defined here that allow to execute the 6502
+	 code in many different modes:
+
+		Regs *Run();
+		Regs *Run(unsigned short addr);
+		Regs *Exec();
+		Regs *Exec(unsigned short addr);		
+		Regs *Step();
+		Regs *Step(unsigned short addr);	 
+		void Reset();
+
+	 Programmer should use this class to implement all the pieces of the
+	 emulated virtual computer system on the highest abstraction level.
+	 In current version the VMachine class initializes the basic system with CPU
+	 and memory at its core and character and raster graphics display devices.
+
+	 Going one step down the abstraction layer are MKCPu and Memory classes.
+
+	 The MKCpu class is the most important part of the emulator. It defines
+	 the whole system's architecture. Based on the type of the CPU device we
+	 know how to implement the rest of the core components by knowing the
+	 maximum addressable memory space, size of the data bus (8-bit, 16-bit) etc.
+	 The MKCpu class defines all the internal registers of the virtual CPU,
+	 the op-codes interpreter and its interface to outside components.
+	 The most important API methods are:
+
+		Regs *ExecOpcode(unsigned short memaddr);
+		Regs *GetRegs();
+		void	SetRegs(Regs r);
+		void Reset();																	// reset CPU		
+		void Interrupt();															// Interrupt ReQuest (IRQ)
+
+	 The Memory class (Memory.h and Memory.cpp) implements essential concept
+	 in any microprocessor based system, which is the memory. The assumption is
+	 that such a system requires some sort of program storage to be able to
+	 execute code. This is not entirely true in the real world, where we can
+	 make the CPU 'think' that it executes the real code with a tricky circuit
+	 and get away without any memory to make the CPU run. This however has
+	 limited usefulness (diagnostics, testing the basic operation of CPU) and
+	 has no use in the emulation domain where we have no need to test the CPU
+	 chip for basic operation on electrical level. The Memory class is also an
+	 important entry level for another concept of microprocessor based system:
+	 a memory mapped device. This brings us to the lower level of abstraction
+	 which is the memory mapped device class: MemMapDev.
+
+	 Class MemMapDev is a core or hub for implementing all the devices that are
+	 connected to the virtual CPU via its memory address space. This is
+	 explained in more detail in chapter 4.
+
+	 All remaining classes are the implementation of the actual devices on the
+	 lowest level of abstraction (from the emulator point of view) and other
+	 helper classes and methods.
+	 Examples of virtual devices emulation implementation are: Display and
+	 GraphDisp.
+
+	 Programmer can add more code and more classes and integrate them into the
+	 emulator using this architecture. This is the starting point of the
+	 emulator of a real microprocessor based system or completely abstract
+	 virtual machine that has no hardware counterpart.
+
+4. Memory Mapped Device Abstraction Layer/API.
+
+	In microprocessor based systems in majority of cases communication with
+	peripheral devices is done via registers which in turn are located under
+	specific memory addresses.
+	Programming API responsible for modeling this functionality is implemented
+	in Memory and MemMapDev classes. The Memory class implements access to
+	specific memory locations and maintains the memory image.
+	The MemMapDev class implements specific device address spaces and handling
+	methods that are triggered when addresses of the device are accessed by the
+	microprocessor.
+	Programmers can expand the functionality of this emulator by adding
+	necessary	code emulating specific devices in MemMapDev and Memory classes
+	implementation and header files. In current version, two basic devices are
+	implemented:
+	- character I/O and 
+	- raster (pixel based) graphics display. 
+	Character I/O device uses 2 memory locations, one for non-blocking I/O
+	and one for blocking I/O. Writing to location causes character output, while
+	reading from location waits for character input (blocking mode) or reads the
+	character from keyboard buffer if available (non-blocking mode).
+	The graphics display can be accessed by writing to multiple memory locations.
+
+	If we assume that GRDEVBASE is the base address of the Graphics Device, there
+	are following registers:
+
+	Offset   Register               Description
+	----------------------------------------------------------------------------
+	 0       GRAPHDEVREG_X_LO       Least significant part of pixel's X (column)
+	                                coordinate or begin of line coord. (0-255)
+	 1       GRAPHDEVREG_X_HI       Most significant part of pixel's X (column)
+	                                coordinate or begin of line coord. (0-1)                                      
+	 2       GRAPHDEVREG_Y          Pixel's Y (row) coordinate (0-199)
+	 3       GRAPHDEVREG_PXCOL_R    Pixel's RGB color component - Red (0-255)
+	 4       GRAPHDEVREG_PXCOL_G    Pixel's RGB color component - Green (0-255)
+	 5       GRAPHDEVREG_PXCOL_B    Pixel's RGB color component - Blue (0-255)
+	 6       GRAPHDEVREG_BGCOL_R    Backgr. RGB color component - Red (0-255)
+	 7       GRAPHDEVREG_BGCOL_G    Backgr. RGB color component - Green (0-255)
+	 8       GRAPHDEVREG_BGCOL_B    Backgr. RGB color component - Blue (0-255)
+	 9       GRAPHDEVREG_CMD        Command code
+	10       GRAPHDEVREG_X2_LO      Least significant part of end of line's X
+	                                coordinate
+	11       GRAPHDEVREG_X2_HI      Most significant part of end of line's X
+	                                coordinate                                
+	12       GRAPHDEVREG_Y2         End of line's Y (row) coordinate (0-199)
+
+	Writing values to above memory locations when Graphics Device is enabled
+	allows to set the corresponding parameters of the device, while writing to
+	command register executes corresponding command (performs action) per codes
+	listed below:
+
+	Command code                    Command description
+	----------------------------------------------------------------------------
+	GRAPHDEVCMD_CLRSCR = 0          Clear screen
+	GRAPHDEVCMD_SETPXL = 1          Set the pixel location to pixel color
+	GRAPHDEVCMD_CLRPXL = 2          Clear the pixel location (set to bg color)
+	GRAPHDEVCMD_SETBGC = 3          Set the background color
+	GRAPHDEVCMD_SETFGC = 4          Set the foreground (pixel) color
+	GRAPHDEVCMD_DRAWLN = 5          Draw line
+	GRAPHDEVCMD_ERASLN = 6          Erase line
+
+	Reading from registers has no effect (returns 0).
+
+	Above method of interfacing GD requires no dedicated graphics memory space
+	in VM's RAM. It is also simple to implement.
+	The downside - slow performance (multiple memory writes to select/unselect 
+	a pixel or set color).
+	I plan to add graphics frame buffer in the VM's RAM address space in future
+	release.
+
+	Simple demo program written in EhBasic that shows how to drive the graphics
+	screen:
+
+	1 REM GRAPHICS DISPLAY DEVICE DEMO
+	2 REM BASE ADDRESS $FFE2
+	3 REM DRAW HORIZONTAL AND VERTICAL LINES
+	4 REM DRAW SINUSOID
+	10 GB=65506:REM SET BASE ADDRESS
+	12 REM INITIALIZE, SET COLORS
+	15 POKE GB+1,0:POKE GB+11,0
+	16 POKE GB+3,0:POKE GB+4,255:POKE GB+5,0
+	17 POKE GB+6,0:POKE GB+7,0:POKE GB+8,0
+	18 POKE GB+9,3:POKE GB+9,4:POKE GB+9,0
+	19 GOSUB 1120:REM DRAW SINUSOID
+	20 Y=100:REM X-AXIS
+	30 GOSUB 1000
+	50 X=100:REM Y-AXIS
+	60 GOSUB 1060
+	70 REM SOME EXTRA DOTTED LINES
+	80 Y=50:GOSUB 1200
+	90 Y=150:GOSUB 1200
+	100 X=50:GOSUB 1260
+	110 X=150:GOSUB 1260
+	990 PRINT "DONE"
+	998 END
+	999 REM ------- SUBROUTINES SECTION -------
+	1000 REM DRAW HORIZONTAL LINE AT Y
+	1005 POKE GB+2,Y
+	1006 POKE GB+12,Y
+	1020 POKE GB,0
+	1025 POKE GB+10,199:POKE GB+9,5
+	1050 RETURN
+	1060 REM DRAW VERTICAL LINE AT X
+	1070 POKE GB,X
+	1075 POKE GB+10,X
+	1090 POKE GB+2,0
+	1095 POKE GB+12,199:POKE GB+9,5
+	1110 RETURN
+	1120 REM SINUSOID
+	1130 FOR X=0 TO 199-4 STEP 5
+	1140 XX=X*(6.28/200)
+	1145 XE=(X+5)*(6.28/200)
+	1150 YY=SIN(XX):YE=SIN(XE)
+	1160 Y=199-INT((YY+1)*100)
+	1165 Y2=199-INT((YE+1)*100)
+	1170 POKE GB,X:POKE GB+2,Y
+	1175 POKE GB+10,X+5:POKE GB+12,Y2:POKE GB+9,5
+	1180 NEXT X
+	1190 RETURN
+	1200 REM DRAW DOTTED HORIZONTAL LINE AT Y
+	1205 POKE GB+2,Y
+	1210 FOR X=0 TO 199 STEP 4
+	1220 POKE GB,X
+	1230 POKE GB+9,1
+	1240 NEXT X
+	1250 RETURN
+	1260 REM DRAW DOTTED VERTICAL LINE AT X
+	1270 POKE GB,X
+	1280 FOR Y=0 TO 199 STEP 4
+	1290 POKE GB+2,Y
+	1300 POKE GB+9,1
+	1310 NEXT Y
+	1320 RETURN
+
+4.1. Adding new device implementation.
+
+	MemMapDev.h and MemMapDev.cpp define the higher abstraction layer for memory
+	mapped devices. Memory address range class: AddrRange and device class: 
+	Device are implemented to provide core facilities and class: MemMapDev for
+	future expansion of the emulated system.
+
+	To add a new device to the memory mapped devices, programmer must:
+
+	* Implement the device behavior in a separate class.
+	
+		See GraphDisp.h, GraphDisp.cpp as example.
+		This is the actual device driver, code that defines how the device works.
+		
+		Device driver class may define the raster graphics display functions,
+		a real time clock	chip functions, sound chip functions, Disk Drive
+		functions etc.
+		This code does not contain definitions related to how the device is mapped
+		to the memory space of emulated computer system. That would be the
+		responsibility of MemMapDev class, providing the middle layer of
+		abstraction	for connecting the device to the memory space of the CPU.
+
+	* Add necessary definitions, enumerators and methods to the MemMapDev.h
+		and MemMapDev.cpp.
+	
+		The minimal set should include methods to initialize the device and
+		methods executed when memory mapped device registers are read from and
+		written to.
+		Other methods may be needed to perform device implementation specific
+		functions.
+		See example set of methods for simple raster graphics device:
+
+			unsigned short GetGraphDispAddrBase();
+			void ActivateGraphDisp();
+			void DeactivateGraphDisp();
+
+			int GraphDispDevice_Read(int addr);
+			void GraphDispDevice_Write(int addr, int val);
+
+			void GraphDisp_ReadEvents();
+			void GraphDisp_Update();
+
+		Important concept at the core of the memory mapped device is the method
+		handling the action to be performed when certain memory register is being
+		read from or written to. These are defined as function pointers in Device
+		class: read_fun_ptr and write_fun_ptr.
+
+		struct Device {
+			int             num;						// device number
+			string          name;						// device name
+			MemAddrRanges 	addr_ranges;		// vector of memory address ranges for
+																			// this device
+			ReadFunPtr			read_fun_ptr;		// pointer to memory register read
+																			// function
+			WriteFunPtr			write_fun_ptr;	// pointer to memory register write
+																			// function
+			DevParams				params;					// list of device parameters	
+
+			[...]
+
+		Programmer implements these handler methods inside MemMapDev class.
+
+		Programmer should not forget to add the new device to the pool in the
+		MemMapDev::Initialize() method which adds all implemented devices to the
+		devices list with their corresponding default memory bases/ranges and
+		parameters. These devices can be later re-defined with
+		MemMapDev::SetupDevice() method.
+
+		typedef vector<Device> MemMappedDevices;
+
+		[...]
+
+		MemMappedDevices mDevices;
+
+		[...]
+
+		void MemMapDev::Initialize()
+		{
+
+			[...]
+
+			Device dev_grdisp(DEVNUM_GRDISP, 
+										  "Graphics Display", 
+										  addr_ranges_grdisp, 
+										  &MemMapDev::GraphDispDevice_Read,
+										  &MemMapDev::GraphDispDevice_Write,
+										  dev_params_grdisp);
+			mDevices.push_back(dev_grdisp);	
+
+		[...]
+
+	* Add necessary ports in Memory.h and Memory.cpp.
+
+		Memory class already implements the code handling memory mapped devices
+		in all read/write memory methods. Some local methods and flags specific
+		to the devices may be needed for implementation convenience.
+
+			Important relevant methods in Memory class:
+
+			int AddDevice(int devnum);
+			int DeleteDevice(int devnum);
+			void SetupDevice(int devnum, MemAddrRanges memranges, DevParams params);
+
+		are the API to be called from higher level abstraction layer. Some proxy
+		methods can be implemented in Memory class for this purpose.
+		See Memory::SetGraphDisp() and VMachine::SetGraphDisp() methods for
+		an example. The SetGraphDisp() method in Memory class defines the memory
+		mapped device on a lower level and calls SetupDevice().

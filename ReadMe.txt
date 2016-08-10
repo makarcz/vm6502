@@ -1,5 +1,6 @@
 
-Project: MKBasic (VM6502).
+Project: MKBasic (a.k.a. VM6502, a.k.a. VM65, I just can't decide
+                  how to name it :-)).
 
 Author: Copyright (C) Marek Karcz 2016. All rights reserved.
         Free for personal and non-commercial use.
@@ -15,21 +16,25 @@ MOS 6502 emulator, Virtual CPU/Machine and potentially retro-style 8-bit
 computer emulator.
 MOS-6502-compatible virtual computer featuring BASIC interpreter, machine code
 monitor, input/output device emulation etc.
-Program works in DOS/shell console (text mode) only.
+Main UI of the program works in DOS/shell console.
+Graphics display emulation requires SDL2.
 Makefile are included to build under Windows 32/64 (mingw compiler required)
-and under Linux Ubuntu or Ubuntu based.
+and under Linux Ubuntu or Ubuntu based distro.
+SDL2 library must be on your execution path in order to run program.
 
 To build under Windows 32/64:
 
 * Install MINGW64 under C:\mingw-w64\x86_64-5.3.0 folder.
 * Run mingw terminal.
 * Change current directory to that of this project.
+* Set environment variable SDLDIR.
 * Run: makeming.bat
 
 To build under Linux:
 
 * Make sure C++11 compliant version of GCC compiler is installed.
 * Change current directory to that of this project.
+* Set environment variable SDLDIR.
 * Run: make clean all
 
 Program passed following tests:
@@ -63,12 +68,44 @@ Binary image is always loaded from address $0000 and can be up to 64 kB long,
 so the code must be properly located inside that image. Image can be shorter
 than 64 kB, user will receive warning in such case, but it will be loaded.
 Binary image may have header attached at the top.
-It consists of magic keyword 'SNAPSHOT' followed by 15 bytes of data
-(subject to change in future versions).
+Older version of header consists of magic keyword 'SNAPSHOT' followed by 15 
+bytes of data - this format had no space for expansion and will be removed
+in future version. All new snapshots are saved in newest format.
+Current version of header consists of magic keyword 'SNAPSHOT2' followed by
+128 bytes of data. Not all of the 128 bytes are used, so there is a space
+for expansion without the need of changing the file format.
 The header data saves the status of CPU and emulation facilities like
 character I/O address and enable flag, ROM boundaries and enable flag etc.
 This header is added when user saves snapshot of the VM from debug console
 menu with command: Y [file_name].
+Below is the full detailed description of the header format:
+
+ * MAGIC_KEYWORD
+ * aabbccddefghijklmm[remaining unused bytes]
+ *
+ * Where:
+ *    MAGIC_KEYWORD - text string indicating header, may vary between
+ *                    versions thus rendering headers from previous
+ *                    versions incompatible - currently: "SNAPSHOT2"
+ *
+ *    Data:
+ *
+ *    aa - low and hi bytes of execute address (PC)
+ *    bb - low and hi bytes of char IO address
+ *    cc - low and hi bytes of ROM begin address
+ *    dd - low and hi bytes of ROM end address
+ *    e - 0 if char IO is disabled, 1 if enabled
+ *    f - 0 if ROM is disabled, 1 if enabled
+ *    g - value in CPU Acc (accumulator) register
+ *    h - value in CPU X (X index) register
+ *    i - value in CPU Y (Y index) register
+ *    j - value in CPU PS (processor status/flags)
+ *    k - value in CPU SP (stack pointer) register
+ *    l - 0 if generic graphics display device is disabled,
+ *        1 if graphics display is enabled
+ *    mm - low and hi bytes of graphics display base address
+ *    [remaining unused bytes are filled with 0-s]
+
 Header is not mandatory, so the binary image created outside application can 
 also be used. User will receive warning at startup during image load if
 header is missing, but image will be loaded. In this case, user may need
@@ -131,24 +168,32 @@ ENROM
 ENIO
 EXEC
 address
+ENGRAPH
+GRAPHADDR
+address
 RESET
 
 Where:
 ADDR 		- label indicating that starting and run address will follow in 
-			     the next line
+			  the next line
 ORG 		- label indicating that the address counter will change to the
-      			value provided in next line
+      		  value provided in next line
 IOADDR 		- label indicating that character I/O emulation trap address will
-				follow in the next line
+			  follow in the next line
 ROMBEGIN	- label indicating that the emulated read-only memory start
-                address	will follow in the next line
+              address will follow in the next line
 ROMEND		- label indicating that the emulated read-only memory end address
-				will follow in the next line
+			  will follow in the next line
 ENROM		- enable read-only memory emulation
 ENIO 		- enable character I/O emulation
 EXEC        - label indicating that the auto-execute address will follow
-				in the next line, 6502 program will auto-execute from that
-                address after memory definition file is done loading
+			  in the next line, 6502 program will auto-execute from that
+              address after memory definition file is done loading
+ENGRAPH     - enable generic graphics display device emulation with default 
+              base address
+GRAPHADDR   - label indicating that base address for generic graphics display
+              device will follow in next line, also enables generic graphics
+              device emulation, but with the customized base address
 RESET       - initiate CPU reset sequence after loading memory definition file
 
 
@@ -327,9 +372,9 @@ Emulator is "cycle accurate" but not time or speed accurate.
 This means that each call to MKCpu::ExecOpcode() method is considered a single
 CPU cycle, so depending on the executed opcode, multiple calls (# varies per
 opcode and other conditions) are needed to complete the opcode execution and
-proceed to the next one. Method returns pointer to the the virtual CPU 
-registers. One of the members of this structure is named CyclesLeft. When this
-variable reaches 0, the opcode execution is considered complete.
+proceed to the next one. Method returns pointer to the virtual CPU registers.
+One of the members of this structure is named CyclesLeft. When this variable
+reaches 0, the opcode execution is considered complete.
 
 The VMachine class calls the ExecOpcode() method as fast as possible, so it is
 not real-time accurate, as already mentioned. To implement real-time accurate
@@ -380,6 +425,14 @@ I - toggle char I/O emulation
     to the specified memory address also writes a character code to
     to a virtual console. All reads from specified memory address
     are interpreted as console character input.
+V - toggle graphics display (video) emulation
+    Usage: V [address]
+    Where: address - memory addr. in hexadecimal format [0000.FFFF],
+    Toggles basic raster (pixel) based RGB graphics display emulation.
+    When enabled, window with graphics screen will open and several
+    registers are available to control the device starting at provided
+    base address. Read programmers reference for detailed documentation
+    regarding the available registers and their functions.    
 R - show registers
     Displays CPU registers, flags and stack.
 Y - snapshot
@@ -415,11 +468,13 @@ K - toggle ROM emulation
     (read-only memory) will be mapped. Default range: $D000-$DFFF.
 L - load memory image
     Usage: L [image_type] [image_name]
-    Where: 
-       image_type - B (binary), H (Intel HEX) OR D (definition),
+    Where:
+       image_type - A - (auto), B (binary), H (Intel HEX) OR D (definition),
        image_name - name of the image file.
     This function allows to load new memory image from either binary
     image file, Intel HEX format file or the ASCII definition file.
+    With option 'A' selected, automatic input format detection will be
+    attempted.
     The binary image is always loaded from address 0x0000 and can be up to
     64kB long. The definition file format is a plain text file that can
     contain following keywords and data:
@@ -500,35 +555,35 @@ NOTE:
 
 7. Command line usage.
 
-D:\src\wrk\mkbasic>mkbasic -h
+C:\src\devcppprj\mkbasic>mkbasic -h
 Virtual Machine/CPU Emulator (MOS 6502) and Debugger.
 Copyright (C) by Marek Karcz 2016. All rights reserved.
 
 
 Usage:
 
-        mkbasic [-h] | [ramdeffile] | [-b ramimage] | [-r ramimage]
-        OR
-        mkbasic [-x intelheximage]
+        mkbasic [-h] | [ramdeffile] [-b | -x] [-r]
+
 
 Where:
 
         ramdeffile    - RAM definition file name
-        intelheximage - Intel HEX format file
-        ramimage      - RAM binary image file name
+        -b            - specify input format as binary
+        -x            - specify input format as Intel HEX
+        -r            - after loading, perform CPU RESET
+        -h            - print this help screen
 
 
 When ran with no arguments, program will load default memory
 definition files: default.rom, default.ram and will enter the debug
 console menu.
-When ramdeffile argument is provided, program will load the memory
-definition from the file, set the flags and parameters depending on the
-contents of the memory definition file and enter the corresponding mode
-of operation as defined in that file.
-If used with flag -b or -x, program will load memory from the provided image
-file and enter the debug console menu.
-If used with flag -r, program will load memory from the provided image
-file and execute CPU reset sequence.
+When ramdeffile argument is provided with no input format specified,
+program will attempt to automatically detect input format and load the
+memory definition from the file, set the flags and parameters depending
+on the contents of the memory definition file and enter the corresponding
+mode of operation as defined in that file.
+If input format is specified (-b|-x), program will load memory from the
+provided image file and enter the debug console menu.
 
 8. Utilities.
 
@@ -564,7 +619,90 @@ Where:
                  addr = 0, exec is not set and data blocks with 0-s only
                  are always suppressed.
 
-9. Warranty and License Agreement.
+9. Memory Mapped Device abstraction layer.
+
+In microprocessor based systems in majority of cases communication with
+peripheral devices is done via registers which in turn are located under
+specific memory addresses.
+Programming API responsible for modeling this functionality is implemented
+in Memory and MemMapDev classes. The Memory class implements access to
+specific memory locations and maintains the memory image.
+The MemMapDev class implements specific device address spaces and handling
+methods that are triggered when addresses of the device are accessed by the
+microprocessor.
+Programmers can expand the functionality of this emulator by adding necessary
+code emulating specific devices in MemMapDev and Memory classes implementation
+and header files. In current version, two basic devices are implemented:
+character I/O and raster (pixel based) graphics display. Both can be activated
+or inactivated at will and provide simple register based interface that
+requires no extra memory space use for data.
+E.g.: 
+Character I/O device uses just 2 memory locations, one for non-blocking I/O
+and one for blocking I/O. Writing to location causes character output, while
+reading from location waits for character input (blocking mode) or reads the
+character from keyboard buffer if available (non-blocking mode).
+The graphics display can be accessed by writing to multiple memory locations.
+
+If we assume that GRDEVBASE is the base address of the Graphics Device, there
+are following registers:
+
+Offset   Register               Description
+------------------------------------------------------------------------------    
+ 0       GRAPHDEVREG_X_LO       Least significant part of pixel's X (column)
+                                coordinate or begin of line coord. (0-255)
+ 1       GRAPHDEVREG_X_HI       Most significant part of pixel's X (column)
+                                coordinate or begin of line coord. (0-1)                                      
+ 2       GRAPHDEVREG_Y          Pixel's Y (row) coordinate (0-199)
+ 3       GRAPHDEVREG_PXCOL_R    Pixel's RGB color component - Red (0-255)
+ 4       GRAPHDEVREG_PXCOL_G    Pixel's RGB color component - Green (0-255)
+ 5       GRAPHDEVREG_PXCOL_B    Pixel's RGB color component - Blue (0-255)
+ 6       GRAPHDEVREG_BGCOL_R    Background RGB color component - Red (0-255)
+ 7       GRAPHDEVREG_BGCOL_G    Background RGB color component - Green (0-255)
+ 8       GRAPHDEVREG_BGCOL_B    Background RGB color component - Blue (0-255)
+ 9       GRAPHDEVREG_CMD        Command code
+10       GRAPHDEVREG_X2_LO      Least significant part of end of line's X
+                                coordinate
+11       GRAPHDEVREG_X2_HI      Most significant part of end of line's X
+                                coordinate                                
+12       GRAPHDEVREG_Y2         End of line's Y (row) coordinate (0-199)
+
+Writing values to above memory locations when Graphics Device is enabled
+allows to set the corresponding parameters of the device, while writing to
+command register executes corresponding command (performs action) per codes
+listed below:
+
+Command code                    Command description
+------------------------------------------------------------------------------
+GRAPHDEVCMD_CLRSCR = 0          Clear screen
+GRAPHDEVCMD_SETPXL = 1          Set the pixel location to pixel color
+GRAPHDEVCMD_CLRPXL = 2          Clear the pixel location (set to bg color)
+GRAPHDEVCMD_SETBGC = 3          Set the background color
+GRAPHDEVCMD_SETFGC = 4          Set the foreground (pixel) color
+GRAPHDEVCMD_DRAWLN = 5          Draw line
+GRAPHDEVCMD_ERASLN = 6          Erase line
+
+Reading from registers has no effect (returns 0).
+
+Above method of interfacing GD requires no dedicated graphics memory space
+in VM's RAM. It is also simple to implement.
+The downside - slow performance (multiple memory writes to select/unselect 
+a pixel or set color).
+I plan to add graphics frame buffer in the VM's RAM address space in future
+release.
+
+Simple demo program written in EhBasic that shows how to drive the graphics
+screen is included: grdevdemo.bas.
+
+10. Problems, issues, bugs.
+
+* Regaining focus of the graphics window when it is not being written to by the
+  6502 code is somewhat flakey. Since the window has no title bar, user can
+  only switch to it by ALT-TAB (windows) or clicking on the corresponding icon
+  on the task bar. However it doesn't always work. Switching to the DOS console
+  of emulator while in emulation mode should bring the graphics window back
+  to front.
+
+11. Warranty and License Agreement.
 
 This software is provided with No Warranty.
 I (The Author) will not be held responsible for any damage to computer

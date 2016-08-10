@@ -81,10 +81,13 @@ void VMachine::InitVM()
 	mOpInterrupt = false;
 	mpRAM = new Memory();
 
+	mOldStyleHeader = false;
+	mError = VMERR_OK;
 	mAutoExec = false;	
 	mAutoReset = false;
 	mCharIOAddr = CHARIO_ADDR;
 	mCharIOActive = mCharIO = false;
+	mGraphDispActive = false;
 	if (NULL == mpRAM) {
 		throw MKGenException("Unable to initialize VM (RAM).");
 	}
@@ -324,12 +327,14 @@ Regs *VMachine::Step()
 	Regs *cpureg = NULL;	
 	
 	cpureg = mpCPU->ExecOpcode(addr);
+	if (mGraphDispActive) mpRAM->GraphDisp_ReadEvents();
 	addr = cpureg->PtrAddr;
 	mRunAddr = addr;
 	
 	if (cpureg->CyclesLeft == 0 && mCharIOActive && !mOpInterrupt) {
 		char c = -1;
 		mCharIO = false;
+
 		while ((c = mpRAM->GetCharOut()) != -1) {
 			mOpInterrupt = mOpInterrupt || (c == OPINTERRUPT);
 			if (!mOpInterrupt) {
@@ -374,13 +379,97 @@ void VMachine::LoadROM(string romfname)
  * Method:		LoadRAM()
  * Purpose:		Load data from memory definition file to the memory.
  * Arguments:	ramfname - name of the RAM file definition
- * Returns:		n/a
+ * Returns:		int - error code
  *--------------------------------------------------------------------
  */
-void VMachine::LoadRAM(string ramfname)
+int VMachine::LoadRAM(string ramfname)
 {
-	LoadMEM(ramfname, mpRAM);
-	//mpRAM->EnableROM();
+	int err = 0;
+	eMemoryImageTypes memimg_type = GetMemoryImageType(ramfname);
+	switch (memimg_type) {
+		case MEMIMG_VM65DEF:		err = LoadMEM(ramfname, mpRAM); break;
+		case MEMIMG_INTELHEX:		err = LoadRAMHex(ramfname); break;
+		case MEMIMG_BIN:
+		default:	// unknown type, try to read as binary
+							// and hope for the best
+			err = LoadRAMBin(ramfname);
+			break;
+	}
+	mError = err;
+	return err;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetMemoryImageType()
+ * Purpose:		Detect format of memory image file.
+ * Arguments:	ramfname - name of the RAM file definition
+ * Returns:		eMemoryImageTypes - code of the memory image format
+ *--------------------------------------------------------------------
+ */
+eMemoryImageTypes VMachine::GetMemoryImageType(string ramfname)
+{
+	eMemoryImageTypes ret = MEMIMG_UNKNOWN;
+	char buf[256] = {0};
+	FILE *fp = NULL;
+	int n = 0;
+
+	if ((fp = fopen(ramfname.c_str(), "rb")) != NULL) {
+		memset(buf, 0, 256);
+		while (0 == feof(fp) && 0 == ferror(fp)) {
+			unsigned char val = fgetc(fp);
+			buf[n++] = val;
+			if (n >= 256) break;
+		}
+		fclose(fp);
+	}
+	bool possibly_intelhex = true;
+	for (int i=0; i<256; i++) {
+		char *pc = buf+i;
+		if (isspace(buf[i])) continue;
+		if (i < 256-9 // 256 less the length of the longest expected keyword
+				&&
+				(!strncmp(pc, "ADDR", 4)
+				|| !strncmp(pc, "ORG", 3)
+				|| !strncmp(pc, "IOADDR", 6)
+				|| !strncmp(pc, "ROMBEGIN", 8)
+				|| !strncmp(pc, "ROMEND", 6)
+				|| !strncmp(pc, "ENROM", 5)
+				|| !strncmp(pc, "ENIO", 4)
+				|| !strncmp(pc, "EXEC", 4)
+				|| !strncmp(pc, "RESET", 5)
+				|| !strncmp(pc, "ENGRAPH", 7)
+				|| !strncmp(pc, "GRAPHADDR", 9))
+			 )
+		{
+			ret = MEMIMG_VM65DEF;
+			break;
+		}
+		if (buf[i] != ':'
+			  && buf[i] != '0'
+			  && buf[i] != '1'
+			  && buf[i] != '2'
+			  && buf[i] != '3'
+			  && buf[i] != '4'
+			  && buf[i] != '5'
+			  && buf[i] != '6'
+			  && buf[i] != '7'
+			  && buf[i] != '8'
+			  && buf[i] != '9'
+			  && tolower(buf[i]) != 'a'
+			  && tolower(buf[i]) != 'b'
+			  && tolower(buf[i]) != 'c'
+			  && tolower(buf[i]) != 'd'
+			  && tolower(buf[i]) != 'e'
+			  && tolower(buf[i]) != 'f') 
+		{
+			possibly_intelhex = false;
+		}
+	}
+	if (ret == MEMIMG_UNKNOWN && possibly_intelhex)
+		ret = MEMIMG_INTELHEX;
+
+	return ret;	
 }
 
 /*
@@ -400,6 +489,7 @@ bool VMachine::HasHdrData(FILE *fp)
 
 	memset(buf, 0, 20);
 	
+	rewind(fp);
 	while (0 == feof(fp) && 0 == ferror(fp)) {
 		unsigned char val = fgetc(fp);
 		buf[n] = val;
@@ -413,6 +503,36 @@ bool VMachine::HasHdrData(FILE *fp)
 
 /*
  *--------------------------------------------------------------------
+ * Method:		HasOldHdrData()
+ * Purpose:		Check for previous version header in the binary memory
+ *            image.
+ * Arguments:	File pointer.
+ * Returns:		true if magic keyword found at the beginning of the
+ *						memory image file, false otherwise
+ *--------------------------------------------------------------------
+ */
+bool VMachine::HasOldHdrData(FILE *fp)
+{
+	bool ret = false;
+	int n = 0, l = strlen(HDRMAGICKEY_OLD);
+	char buf[20];
+
+	memset(buf, 0, 20);
+	
+	rewind(fp);
+	while (0 == feof(fp) && 0 == ferror(fp)) {
+		unsigned char val = fgetc(fp);
+		buf[n] = val;
+		n++;
+		if (n >= l) break;
+	}
+	ret = (0 == strncmp(buf, HDRMAGICKEY_OLD, l));
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
  * Method:		LoadHdrData()
  * Purpose:		Load data from binary image header.
  * Arguments:	File pointer.
@@ -420,16 +540,25 @@ bool VMachine::HasHdrData(FILE *fp)
  *
  * Details:
  *    Header of the binary memory image consists of magic keyword
- * string followed by the data (unsigned char values). 
+ * string followed by the 128 bytes of data (unsigned char values). 
  * It has following format:
  *
  * MAGIC_KEYWORD
- * aabbccddefghijk
+ * aabbccddefghijklmm[remaining unused bytes]
  *
  * Where:
  *    MAGIC_KEYWORD - text string indicating header, may vary between
  *                    versions thus rendering headers from previous
- *                    versions incompatible - currently: "SNAPSHOT"
+ *                    versions incompatible - currently: "SNAPSHOT2"
+ *                    NOTE: Previous version of header is currently
+ *                          recognized and can be read, the magic
+ *                          keyword of previous version: "SNAPSHOT".
+ *                          Old header had only 15 bytes of data.
+ *                          This backwards compatibility will be
+ *                          removed in next version as the new
+ *                          format of header with 128 bytes for
+ *                          data leaves space for expansion without
+ *                          the need of changing file format.
  *    aa - low and hi bytes of execute address (PC)
  *    bb - low and hi bytes of char IO address
  *    cc - low and hi bytes of ROM begin address
@@ -441,6 +570,9 @@ bool VMachine::HasHdrData(FILE *fp)
  *    i - value in CPU Y (Y index) register
  *    j - value in CPU PS (processor status/flags)
  *    k - value in CPU SP (stack pointer) register
+ *    l - 0 if generic graphics display device is disabled,
+ *        1 if graphics display is enabled
+ *    mm - low and hi bytes of graphics display base address
  *
  * NOTE:
  *   If magic keyword was detected, this part is already read and file
@@ -450,12 +582,13 @@ bool VMachine::HasHdrData(FILE *fp)
  */
 bool VMachine::LoadHdrData(FILE *fp)
 {
-	int n = 0, l = 0;
+	int n = 0, l = 0, hdrdtlen = HDRDATALEN;
 	unsigned short rb = 0, re = 0;
 	Regs r;
 	bool ret = false;
 
-	while (0 == feof(fp) && 0 == ferror(fp) && n < HDRDATALEN) {
+	if (mOldStyleHeader) hdrdtlen = HDRDATALEN_OLD;
+	while (0 == feof(fp) && 0 == ferror(fp) && n < hdrdtlen) {
 		unsigned char val = fgetc(fp);
 		switch (n)
 		{
@@ -486,6 +619,11 @@ bool VMachine::LoadHdrData(FILE *fp)
 			case 14:	r.PtrStack = val;
 								ret = true;
 								break;
+			case 15:	mGraphDispActive = (val != 0);
+								break;
+			case 17:	if (mGraphDispActive) SetGraphDisp(l + 256 * val);
+								else DisableGraphDisp();
+								break;
 			default: 	break;
 		}
 		l = val;
@@ -499,6 +637,9 @@ bool VMachine::LoadHdrData(FILE *fp)
 	return ret;
 }
 
+// Macro to save header data: v - value, fp - file pointer, n - data counter (dec)
+#define SAVE_HDR_DATA(v,fp,n) {fputc(v, fp); n--;}
+
 /*
  *--------------------------------------------------------------------
  * Method:		SaveHdrData()
@@ -510,6 +651,8 @@ bool VMachine::LoadHdrData(FILE *fp)
 void VMachine::SaveHdrData(FILE *fp)
 {
 	char buf[20] = {0};
+	int n = HDRDATALEN;
+
 	strcpy(buf, HDRMAGICKEY);
 	for (unsigned int i = 0; i < strlen(HDRMAGICKEY); i++) {
 		fputc(buf[i], fp);
@@ -518,32 +661,40 @@ void VMachine::SaveHdrData(FILE *fp)
 	unsigned char lo = 0, hi = 0;
 	lo = (unsigned char) (reg->PtrAddr & 0x00FF);
 	hi = (unsigned char) ((reg->PtrAddr & 0xFF00) >> 8);
-	fputc(lo, fp);
-	fputc(hi, fp);
+	SAVE_HDR_DATA(lo,fp,n);
+	SAVE_HDR_DATA(hi,fp,n);
 	lo = (unsigned char) (mCharIOAddr & 0x00FF);
 	hi = (unsigned char) ((mCharIOAddr & 0xFF00) >> 8);
-	fputc(lo, fp);
-	fputc(hi, fp);
+	SAVE_HDR_DATA(lo,fp,n);
+	SAVE_HDR_DATA(hi,fp,n);	
 	lo = (unsigned char) (GetROMBegin() & 0x00FF);
 	hi = (unsigned char) ((GetROMBegin() & 0xFF00) >> 8);
-	fputc(lo, fp);
-	fputc(hi, fp);	
+	SAVE_HDR_DATA(lo,fp,n);
+	SAVE_HDR_DATA(hi,fp,n);	
 	lo = (unsigned char) (GetROMEnd() & 0x00FF);
 	hi = (unsigned char) ((GetROMEnd() & 0xFF00) >> 8);
-	fputc(lo, fp);
-	fputc(hi, fp);
+	SAVE_HDR_DATA(lo,fp,n);
+	SAVE_HDR_DATA(hi,fp,n);	
 	lo = (mCharIOActive ? 1 : 0);
-	fputc(lo, fp);
+	SAVE_HDR_DATA(lo,fp,n);	
 	lo = (IsROMEnabled() ? 1 : 0);
-	fputc(lo, fp);
+	SAVE_HDR_DATA(lo,fp,n);	
 	Regs *pregs = mpCPU->GetRegs();
 	if (pregs != NULL) {
-		fputc(pregs->Acc, 			fp);
-		fputc(pregs->IndX, 			fp);
-		fputc(pregs->IndY, 			fp);
-		fputc(pregs->Flags, 		fp);
-		fputc(pregs->PtrStack,	fp);
+		SAVE_HDR_DATA(pregs->Acc,fp,n);
+		SAVE_HDR_DATA(pregs->IndX,fp,n);
+		SAVE_HDR_DATA(pregs->IndY,fp,n);
+		SAVE_HDR_DATA(pregs->Flags,fp,n);
+		SAVE_HDR_DATA(pregs->PtrStack,fp,n);
 	}
+	lo = (mGraphDispActive ? 1 : 0);
+	SAVE_HDR_DATA(lo,fp,n);
+	lo = (unsigned char) (GetGraphDispAddr() & 0x00FF);
+	hi = (unsigned char) ((GetGraphDispAddr() & 0xFF00) >> 8);
+	SAVE_HDR_DATA(lo,fp,n);
+	SAVE_HDR_DATA(hi,fp,n);		
+	// fill up the unused slots of header data with 0-s
+	for (int i = n; i > 0; i--) fputc(0, fp);
 }
 
 /*
@@ -564,7 +715,7 @@ int VMachine::SaveSnapshot(string fname)
 		SaveHdrData(fp);
 		for (int addr = 0; addr < MAX_8BIT_ADDR+1; addr++) {
 			if (addr != mCharIOAddr && addr != mCharIOAddr+1) {
-				unsigned char b = mpRAM->Peek8bit((unsigned short)addr);
+				unsigned char b = mpRAM->Peek8bitImg((unsigned short)addr);
 				if (EOF != fputc(b, fp)) ret--;
 				else break;
 			} else {
@@ -574,6 +725,7 @@ int VMachine::SaveSnapshot(string fname)
 		}
 		fclose(fp);
 	}
+	if (0 != ret) mError = VMERR_SAVE_SNAPSHOT;
 
 	return ret;
 }
@@ -584,15 +736,21 @@ int VMachine::SaveSnapshot(string fname)
  * Purpose:		Load data from binary image file to the memory.
  * Arguments:	ramfname - name of the RAM file definition
  * Returns:		int - error code
- *            0 - OK
- *            1 - WARNING: Unexpected EOF (image shorter than 64kB).
- *            2 - WARNING: Unable to open memory image file.
- *            3 - WARNING: Problem with binary image header.
- *            4 - WARNING: No header found in binary image.
- *            5 - WARNING: Problem with binary image header and
- *                         Unexpected EOF (image shorter than 64kB).
- *            6 - WARNING: No header found in binary image and
- *                         Unexpected EOF (image shorter than 64kB).
+ *            MEMIMGERR_OK - OK
+ * 						MEMIMGERR_RAMBIN_EOF
+ *             - WARNING: Unexpected EOF (image shorter than 64kB).
+ *						MEMIMGERR_RAMBIN_OPEN
+ *             - WARNING: Unable to open memory image file.
+ *						MEMIMGERR_RAMBIN_HDR
+ *             - WARNING: Problem with binary image header.
+ *						MEMIMGERR_RAMBIN_NOHDR
+ *             - WARNING: No header found in binary image.
+ *						MEMIMGERR_RAMBIN_HDRANDEOF
+ *             - WARNING: Problem with binary image header and
+ *                        Unexpected EOF (image shorter than 64kB).
+ *						MEMIMGERR_RAMBIN_NOHDRANDEOF
+ *             - WARNING: No header found in binary image and
+ *                        Unexpected EOF (image shorter than 64kB).
  * TO DO:
  *  - Add fixed size header to binary image with emulator
  *    configuration data. Presence of the header will be detected
@@ -607,13 +765,14 @@ int VMachine::LoadRAMBin(string ramfname)
 	unsigned short addr = 0x0000;
 	int n = 0;
 	Memory *pm = mpRAM;
-	int ret = 2;
-	
+	int ret = MEMIMGERR_RAMBIN_OPEN;
+
+	mOldStyleHeader = false;	
 	if ((fp = fopen(ramfname.c_str(), "rb")) != NULL) {
-		if (HasHdrData(fp)) {
-			ret = (LoadHdrData(fp) ? 0 : 3);
+		if (HasHdrData(fp) || (mOldStyleHeader = HasOldHdrData(fp))) {
+			ret = (LoadHdrData(fp) ? MEMIMGERR_OK : MEMIMGERR_RAMBIN_HDR);
 		} else {
-			ret = 4;
+			ret = MEMIMGERR_RAMBIN_NOHDR;
 			rewind(fp);
 		}
 		// temporarily disable emulation facilities to allow
@@ -623,7 +782,7 @@ int VMachine::LoadRAMBin(string ramfname)
 		DisableROM();
 		while (0 == feof(fp) && 0 == ferror(fp)) {
 			unsigned char val = fgetc(fp);
-			pm->Poke8bit(addr, val);
+			pm->Poke8bitImg(addr, val);
 			addr++; n++;
 		}
 		fclose(fp);
@@ -632,13 +791,24 @@ int VMachine::LoadRAMBin(string ramfname)
 		if (tmp2) EnableROM();
 		if (n <= 0xFFFF) {
 			switch (ret) {
-				case 0: ret = 1; break;
-				case 3: ret = 5; break;
-				case 4: ret = 6; break;
+
+				case MEMIMGERR_OK: 
+					ret = MEMIMGERR_RAMBIN_EOF; 
+					break;
+
+				case MEMIMGERR_RAMBIN_HDR: 
+					ret = MEMIMGERR_RAMBIN_HDRANDEOF; 
+					break;
+
+				case MEMIMGERR_RAMBIN_NOHDR: 
+					ret = MEMIMGERR_RAMBIN_NOHDRANDEOF; 
+					break;
+
 				default: break;
 			}
 		}
 	}
+	mError = ret;
 
 	return ret;
 }
@@ -648,10 +818,10 @@ int VMachine::LoadRAMBin(string ramfname)
  * Method:		LoadRAMHex()
  * Purpose:		Load data from Intel HEX file format to memory.
  * Arguments:	hexfname - name of the HEX file
- * Returns:		int, 0 if OK, >0 - error code:
- *               1 - unable to open file
- *							 2 - syntax error
- *							 3 - hex format error
+ * Returns:		int, MEMIMGERR_OK if OK, otherwise error code:
+ *               MEMIMGERR_INTELH_OPEN - unable to open file
+ *							 MEMIMGERR_INTELH_SYNTAX - syntax error
+ *							 MEMIMGERR_INTELH_FMT - hex format error
  *--------------------------------------------------------------------
  */
 int VMachine::LoadRAMHex(string hexfname)
@@ -694,7 +864,7 @@ int VMachine::LoadRAMHex(string hexfname)
 					if (rectype != 0) continue;	// not a data record, next!
 					for (unsigned int i=9; i<reclen*2+9; i+=2,addr++) {
 						if (i>=strlen(line)-3) {
-							ret = 3;	// hex format error
+							ret = MEMIMGERR_INTELH_FMT;	// hex format error
 							break;
 						}
 						char dbuf[3] = {0,0,0};
@@ -704,30 +874,46 @@ int VMachine::LoadRAMHex(string hexfname)
 						dbuf[1] = line[i+1];
 						dbuf[2] = 0;
 						sscanf(dbuf, "%02x", &byteval);
-						pm->Poke8bit(addr, (unsigned char)byteval&0x00FF);
+						pm->Poke8bitImg(addr, (unsigned char)byteval&0x00FF);
 					}
 				} else {
-					ret = 2;	// syntax error
+					ret = MEMIMGERR_INTELH_SYNTAX;	// syntax error
 					break;
 				}
 			}
 			fclose(fp);
 		} else {
-			ret = 1;	// unable to open file
+			ret = MEMIMGERR_INTELH_OPEN;	// unable to open file
 		}
 		if (tmp1) SetCharIO(mCharIOAddr, false);
 		if (tmp2) EnableROM();					
+
+		mError = ret;
 
 		return ret;
 }
 
 /*
  *--------------------------------------------------------------------
+ * Method:		LoadRAMDef()
+ * Purpose:		Load RAM from VM65 memory definition file.
+ * Arguments:	memfname - file name
+ * Returns:		int - error code.
+ *--------------------------------------------------------------------
+ */
+int VMachine::LoadRAMDef(string memfname)
+{
+	return LoadMEM(memfname, mpRAM);
+}
+
+/*
+ *--------------------------------------------------------------------
  * Method:		LoadMEM()
- * Purpose:		Load data from memory definition file to the memory.
+ * Purpose:		Load data from VM65 memory definition file to the
+ *            provided memory device.
  * Arguments: memfname - name of memory definition file
  *						pmem - pointer to memory object
- * Returns:		n/a
+ * Returns:		int - error code
  * Details:
  *    Format of the memory definition file:
  * [; comment]
@@ -747,6 +933,10 @@ int VMachine::LoadRAMHex(string hexfname)
  * [ENROM]
  * [EXEC
  * addrress]
+ * [ENGRAPH]
+ * [GRAPHADDR
+ * address]
+ * [RESET]
  *
  * Where:
  * [] - optional token
@@ -764,6 +954,13 @@ int VMachine::LoadRAMHex(string hexfname)
  * ENROM - label enabling ROM emulation
  * EXEC - label enabling auto-execute of code, address follows in the
  *        next line
+ * ENGRAPH - enable generic graphics display device emulation with
+ *           default base address
+ * GRAPHADDR - label indicating that base address for generic graphics
+ *             display device will follow in next line,
+ *             also enables generic graphics device emulation, but
+ *             with the customized base address
+ * RESET     - initiate CPU reset sequence after loading memory definition file
  * address - decimal or hexadecimal (prefix $) address in memory
  * E.g:
  * ADDR
@@ -803,21 +1000,20 @@ int VMachine::LoadRAMHex(string hexfname)
  * 0 0 0 0 
  *--------------------------------------------------------------------
  */
-void VMachine::LoadMEM(string memfname, Memory *pmem)
+int VMachine::LoadMEM(string memfname, Memory *pmem)
 {
 	FILE *fp = NULL;
 	char line[256] = "\0";
 	int lc = 0, errc = 0;
 	unsigned short addr = 0, rombegin = 0, romend = 0;
-	unsigned int nAddr;
+	unsigned int nAddr, graphaddr = GRDISP_ADDR;
 	bool enrom = false, enio = false, runset = false;
 	bool ioset = false, execset = false, rombegset = false;
-	bool romendset = false;
+	bool romendset = false, engraph = false, graphset = false;
 	Memory *pm = pmem;
+	int err = MEMIMGERR_OK;
 	
 	if ((fp = fopen(memfname.c_str(), "r")) != NULL) {
-		// to ensure proper memory initialization, disable emulation
-		// of char I/O and ROM
 		DisableROM();
 		DisableCharIO();
 		while (0 == feof(fp) && 0 == ferror(fp))
@@ -840,6 +1036,7 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 					mRunAddr = addr;
 					runset = true;
 				} else {
+					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
 					cout << "LINE #" << dec << lc << " WARNING: Run address was already set. Ignoring..." << endl;
 				}
@@ -872,16 +1069,42 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 					}	
 					ioset = true;
 				} else {
+					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
 					cout << "LINE #" << dec << lc << " WARNING: I/O address was already set. Ignoring..." << endl;
 				}
 				continue;
 			}
+			// define generic graphics display device base address (once)
+			if (0 == strncmp(line, "GRAPHADDR", 9)) {
+				line[0] = '\0';
+				fgets(line, 256, fp);
+				lc++;
+				if (!graphset) {
+					if (*line == '$') {
+						sscanf(line+1, "%04x", &nAddr);
+						graphaddr = nAddr;
+					} else {
+						graphaddr = (unsigned short) atoi(line);				
+					}	
+					graphset = true;
+				} else {
+					err = MEMIMGERR_VM65_IGNPROCWRN;
+					errc++;
+					cout << "LINE #" << dec << lc << " WARNING: graphics device base address was already set. Ignoring..." << endl;
+				}
+				continue;
+			}			
 			// enable character I/O emulation
 			if (0 == strncmp(line, "ENIO", 4)) {
 				enio = true;
 				continue;
 			}
+			// enable generic graphics display emulation
+			if (0 == strncmp(line, "ENGRAPH", 7)) {
+				engraph = true;
+				continue;
+			}			
 			// enable ROM emulation
 			if (0 == strncmp(line, "ENROM", 5)) {
 				enrom = true;
@@ -902,6 +1125,7 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 					}	
 					execset = true;
 				} else {
+					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
 					cout << "LINE #" << dec << lc << " WARNING: auto-exec address was already set. Ignoring..." << endl;
 				}
@@ -926,6 +1150,7 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 					}	
 					rombegset = true;
 				} else {
+					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
 					cout << "LINE #" << dec << lc << " WARNING: ROM-begin address was already set. Ignoring..." << endl;
 				}
@@ -945,6 +1170,7 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 					}	
 					romendset = true;
 				} else {
+					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
 					cout << "LINE #" << dec << lc << " WARNING: ROM-end address was already set. Ignoring..." << endl;
 				}
@@ -956,9 +1182,9 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 				unsigned int nVal;
 				if (*s == '$') {
 					sscanf(s+1, "%02x", &nVal);
-					pm->Poke8bit(addr++, (unsigned short)nVal);
+					pm->Poke8bitImg(addr++, (unsigned short)nVal);
 				} else {
-					pm->Poke8bit(addr++, (unsigned short)atoi(s));
+					pm->Poke8bitImg(addr++, (unsigned short)atoi(s));
 				}
 				s = strtok(NULL, " ,");
 			}
@@ -975,8 +1201,12 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 		if (enio) {
 			SetCharIO(mCharIOAddr, false);
 		}
+		if (engraph || graphset) {
+			SetGraphDisp(graphaddr);
+		}
 	}
 	else {
+		err = MEMIMGERR_VM65_OPEN;
 		cout << "WARNING: Unable to open memory definition file: " << memfname << endl;
 		errc++;
 	}	
@@ -985,6 +1215,10 @@ void VMachine::LoadMEM(string memfname, Memory *pmem)
 		cout << "Press [ENTER] to continue...";
 		getchar();		
 	}	
+
+	mError = err;
+
+	return err;
 }
 
 /*
@@ -1086,6 +1320,60 @@ unsigned short VMachine::GetCharIOAddr()
 bool VMachine::GetCharIOActive()
 {
 	return mCharIOActive;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::SetGraphDisp(unsigned short addr)
+{
+	mGraphDispActive = true;
+	mpRAM->SetGraphDisp(addr);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::DisableGraphDisp()
+{
+	mGraphDispActive = false;
+	mpRAM->DisableGraphDisp();
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetGraphDispAddr()
+ * Purpose:		Return base address of graphics display.
+ * Arguments:	n/a
+ * Returns:		unsigned short - address ($0000 - $FFFF)
+ *--------------------------------------------------------------------
+ */
+unsigned short VMachine::GetGraphDispAddr()
+{
+	return mpRAM->GetGraphDispAddr();
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetGraphDispActive()
+ * Purpose:		Returns status of graphics display emulation.
+ * Arguments:	n/a
+ * Returns:		true if graphics display emulation is active
+ *--------------------------------------------------------------------
+ */
+bool VMachine::GetGraphDispActive()
+{
+	return mGraphDispActive;
 }
 
 /*
@@ -1313,6 +1601,22 @@ void VMachine::Reset()
 void VMachine::Interrupt()
 {
 	mpCPU->Interrupt();
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetLastError()
+ * Purpose:		Return error code set by last operation. Reset error
+ *            code to OK.
+ * Arguments: n/a
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+int VMachine::GetLastError()
+{
+	int ret = mError;
+	mError = MEMIMGERR_OK;
+	return ret;
 }
 
 } // namespace MKBasic
