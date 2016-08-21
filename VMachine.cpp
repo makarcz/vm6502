@@ -81,6 +81,11 @@ void VMachine::InitVM()
 	mOpInterrupt = false;
 	mpRAM = new Memory();
 
+	mPerfStats.cycles = 0;
+	mPerfStats.micro_secs = 0;
+	mPerfStats.perf_onemhz = 0;
+	mPerfStats.prev_cycles = 0;
+	mPerfStats.prev_usec = 0;
 	mOldStyleHeader = false;
 	mError = VMERR_OK;
 	mAutoExec = false;	
@@ -225,6 +230,39 @@ void VMachine::ShowDisp()
 	}	
 }
 
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+int VMachine::CalcCurrPerf()
+{
+	auto lap = high_resolution_clock::now();
+	auto beg = mPerfStats.begin_time;
+	mPerfStats.micro_secs = duration_cast<microseconds>(lap-beg).count();
+
+	if (mPerfStats.micro_secs > 0) {
+		int currperf = (int)
+			(((double)mPerfStats.cycles / (double)mPerfStats.micro_secs) * 100.0);
+		if (mPerfStats.perf_onemhz == 0)
+			mPerfStats.perf_onemhz = currperf;
+		else
+			mPerfStats.perf_onemhz = (mPerfStats.perf_onemhz + currperf) / 2;
+
+		mPerfStats.prev_cycles = mPerfStats.cycles;
+		mPerfStats.prev_usec = mPerfStats.micro_secs;
+		mPerfStats.cycles = 0;
+		mPerfStats.micro_secs = 0;
+		mPerfStats.begin_time = high_resolution_clock::now();
+	}
+
+	return mPerfStats.perf_onemhz;
+} 
+
 /*
  *--------------------------------------------------------------------
  * Method:		Run()
@@ -240,14 +278,17 @@ Regs *VMachine::Run()
 	mOpInterrupt = false;
 	ClearScreen();
 	ShowDisp();
+	mPerfStats.cycles = 0;
+	mPerfStats.micro_secs = 0;
+	mPerfStats.begin_time = high_resolution_clock::now();	
 	while (true) {
+		mPerfStats.cycles++;		
 		cpureg = Step();
-		if (cpureg->CyclesLeft == 0 && mCharIO) {
-			ShowDisp();
-		}
-		if (cpureg->SoftIrq || mOpInterrupt)
-			break;
+		if (cpureg->CyclesLeft == 0 && mCharIO)	ShowDisp();
+		if (cpureg->SoftIrq || mOpInterrupt) break;
+		//if (mPerfStats.cycles == PERFSTAT_INTERVAL)	CalcCurrPerf();
 	}
+	CalcCurrPerf();
 
 	ShowDisp();	
 	
@@ -285,18 +326,37 @@ Regs *VMachine::Exec()
 	mOpInterrupt = false;
 	ClearScreen();
 	ShowDisp();
+	mPerfStats.cycles = 0;
+	mPerfStats.micro_secs = 0;
+	mPerfStats.begin_time = high_resolution_clock::now();
 	while (true) {
+		mPerfStats.cycles++;
 		cpureg = Step();
 		if (cpureg->CyclesLeft == 0 && mCharIO) {
 			cout << mpDisp->GetLastChar();
 			cout << flush;
 		}
 		if (cpureg->LastRTS || mOpInterrupt) break;
+		//if (mPerfStats.cycles == PERFSTAT_INTERVAL) CalcCurrPerf();
 	}
+	CalcCurrPerf();
 
 	ShowDisp();	
 	
 	return cpureg;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+PerfStats VMachine::GetPerfStats()
+{
+	return mPerfStats;
 }
 
 /*
@@ -327,7 +387,9 @@ Regs *VMachine::Step()
 	Regs *cpureg = NULL;	
 	
 	cpureg = mpCPU->ExecOpcode(addr);
-	if (mGraphDispActive) mpRAM->GraphDisp_ReadEvents();
+	if (mGraphDispActive && cpureg->CyclesLeft == 0) {
+		mpRAM->GraphDisp_ReadEvents();
+	}
 	addr = cpureg->PtrAddr;
 	mRunAddr = addr;
 	
@@ -1617,6 +1679,32 @@ int VMachine::GetLastError()
 	int ret = mError;
 	mError = MEMIMGERR_OK;
 	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::EnableExecHistory(bool enexehist)
+{
+	mpCPU->EnableExecHistory(enexehist);
+}
+		
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */		
+bool VMachine::IsExecHistoryActive()
+{
+	return mpCPU->IsExecHistoryEnabled();
 }
 
 } // namespace MKBasic

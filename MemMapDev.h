@@ -225,7 +225,7 @@ class MemMapDev {
 
 		void set_conio_terminal_mode();
 		int kbhit();
-		int getch();
+		int getch();		
 
 #endif		
 

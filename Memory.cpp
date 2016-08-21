@@ -1,5 +1,6 @@
 
 #include "Memory.h"
+#include "MKGenException.h"
 
 //#define DBG 1
 #if defined (DBG)
@@ -57,6 +58,9 @@ void Memory::Initialize()
 	unsigned short addr = 0;
 	for (int i=0; i < 0xFFFF; i++) {
 		m8bitMem[addr++] = 0;
+	}
+	for (int i=0; i < MEM_PAGE_SIZE; i++) {
+		mMemPageDev[i] = -1;
 	}
 	mCharIOAddr = CHARIO_ADDR;
 	mCharIOActive = false;
@@ -138,37 +142,32 @@ unsigned char Memory::Peek8bit(unsigned short addr)
 {
 	// if memory address is in range of any active memory mapped
 	// devices, call corresponding device handling function
-	bool cont_loop = true;
-	for (vector<int>::iterator it = mActiveDevNumVec.begin();
-		   it != mActiveDevNumVec.end() && cont_loop;
-		   ++it
-		  ) {
+	int mempg = addr / MEM_PAGE_SIZE;
+	if (mMemPageDev[mempg] >= 0) {
+		bool cont_loop = true;
+		for (vector<Device>::iterator devit = mActiveDeviceVec.begin();
+				 devit != mActiveDeviceVec.end() && cont_loop;
+				 ++devit
+				) {		   
 
-		Device dev = mpMemMapDev->GetDevice(*it);
-		if (dev.num >= 0) {
-			for (MemAddrRanges::iterator memrangeit = dev.addr_ranges.begin();
-				   memrangeit != dev.addr_ranges.end();
-				   ++memrangeit
-				  ) {
-				AddrRange addr_range = *memrangeit;
-				if (addr >= addr_range.start_addr && addr <= addr_range.end_addr) {
-					ReadFunPtr pfun = dev.read_fun_ptr;
-					if (pfun != NULL) {
-						cont_loop = false;
-						(mpMemMapDev->*pfun)((int)addr);
-						break;
+			if (devit->num >= 0) {
+				for (MemAddrRanges::iterator memrangeit = devit->addr_ranges.begin();
+					   memrangeit != devit->addr_ranges.end();
+					   ++memrangeit
+					  ) {				   
+					if (addr >= memrangeit->start_addr && addr <= memrangeit->end_addr) {
+						ReadFunPtr pfun = devit->read_fun_ptr;
+						if (pfun != NULL) {
+							cont_loop = false;
+							(mpMemMapDev->*pfun)((int)addr);
+							break;
+						}
 					}
 				}
+				mDispOp = (DEVNUM_GRDISP == devit->num);
 			}
 		}
-		mDispOp = (DEVNUM_GRDISP == dev.num);		
 	}
-	/*
-	if (mCharIOActive && addr == mCharIOAddr) {
-		m8bitMem[addr] = ReadCharKb(false); // blocking mode input
-	} else if (mCharIOActive && addr == mCharIOAddr+1) {
-		m8bitMem[addr] = ReadCharKb(true);	// non-blocking mode input
-	}*/
 		
 	return m8bitMem[addr];
 }
@@ -204,38 +203,32 @@ unsigned short Memory::Peek16bit(unsigned short addr)
 
 	// if memory address is in range of any active memory mapped
 	// devices, call corresponding device handling function
-	bool cont_loop = true;
-	for (vector<int>::iterator it = mActiveDevNumVec.begin();
-		   it != mActiveDevNumVec.end() && cont_loop;
-		   ++it
-		  ) {
-		Device dev = mpMemMapDev->GetDevice(*it);
-		if (dev.num >= 0) {
-			for (MemAddrRanges::iterator memrangeit = dev.addr_ranges.begin();
-				   memrangeit != dev.addr_ranges.end();
-				   ++memrangeit
-				  ) {
-				AddrRange addr_range = *memrangeit;
-				if (addr >= addr_range.start_addr && addr <= addr_range.end_addr) {
-					ReadFunPtr pfun = dev.read_fun_ptr;
-					if (pfun != NULL) {
-						cont_loop = false;
-						(mpMemMapDev->*pfun)((int)addr);
-						break;
+	int mempg = addr / MEM_PAGE_SIZE;
+	if (mMemPageDev[mempg] >= 0) {	
+		bool cont_loop = true;
+		for (vector<Device>::iterator devit = mActiveDeviceVec.begin();
+			   devit != mActiveDeviceVec.end() && cont_loop;
+			   ++devit
+			  ) {		   
+			if (devit->num >= 0) {
+				for (MemAddrRanges::iterator memrangeit = devit->addr_ranges.begin();
+					   memrangeit != devit->addr_ranges.end();
+					   ++memrangeit
+					  ) {				   
+					if (addr >= memrangeit->start_addr && addr <= memrangeit->end_addr) {
+						ReadFunPtr pfun = devit->read_fun_ptr;
+						if (pfun != NULL) {
+							cont_loop = false;
+							(mpMemMapDev->*pfun)((int)addr);
+							break;
+						}
 					}
 				}
+				mDispOp = (DEVNUM_GRDISP == devit->num);
 			}
 		}
-		mDispOp = (DEVNUM_GRDISP == dev.num);
 	}
 
-	/*
-	if (mCharIOActive && addr == mCharIOAddr) {
-		m8bitMem[addr] = ReadCharKb(false);	// blocking mode input
-	} else if (mCharIOActive && addr == mCharIOAddr+1) {
-		m8bitMem[addr] = ReadCharKb(true);	// non-blocking mode input
-	}*/
-			
 	ret = m8bitMem[addr++];
 	ret += m8bitMem[addr] * 256;
 
@@ -259,35 +252,32 @@ void Memory::Poke8bit(unsigned short addr, unsigned char val)
 {
 	// if memory address is in range of any active memory mapped
 	// devices, call corresponding device handling function
-	bool cont_loop = true;
-	for (vector<int>::iterator it = mActiveDevNumVec.begin();
-		   it != mActiveDevNumVec.end() && cont_loop;
-		   ++it
-		  ) {	
-		Device dev = mpMemMapDev->GetDevice(*it);
-		if (dev.num >= 0) {
-			for (MemAddrRanges::iterator memrangeit = dev.addr_ranges.begin();
-				   memrangeit != dev.addr_ranges.end();
-				   ++memrangeit
-				  ) {
-				AddrRange addr_range = *memrangeit;
-				if (addr >= addr_range.start_addr && addr <= addr_range.end_addr) {
-					WriteFunPtr pfun = dev.write_fun_ptr;
-					if (pfun != NULL) {
-						cont_loop = false;
-						(mpMemMapDev->*pfun)((int)addr,(int)val);
-						m8bitMem[addr] = val;
-						break;
+	int mempg = addr / MEM_PAGE_SIZE;
+	if (mMemPageDev[mempg] >= 0) {	
+		bool cont_loop = true;
+		for (vector<Device>::iterator devit = mActiveDeviceVec.begin();
+			   devit != mActiveDeviceVec.end() && cont_loop;
+			   ++devit
+			  ) {			   
+			if (devit->num >= 0) {
+				for (MemAddrRanges::iterator memrangeit = devit->addr_ranges.begin();
+					   memrangeit != devit->addr_ranges.end();
+					   ++memrangeit
+					  ) {				   
+					if (addr >= memrangeit->start_addr && addr <= memrangeit->end_addr) {
+						WriteFunPtr pfun = devit->write_fun_ptr;
+						if (pfun != NULL) {
+							cont_loop = false;
+							(mpMemMapDev->*pfun)((int)addr,(int)val);
+							break;
+						}
 					}
 				}
+				mDispOp = (DEVNUM_GRDISP == devit->num);
 			}
 		}
-		mDispOp = (DEVNUM_GRDISP == dev.num);
 	}
-	/*
-	if (mCharIOActive && addr == mCharIOAddr)
-		PutCharIO(val);
-		*/
+
 	if (!mROMActive || (addr < mROMBegin || addr > mROMEnd)) {
 		m8bitMem[addr] = val;
 	}
@@ -319,7 +309,6 @@ void Memory::Poke8bitImg(unsigned short addr, unsigned char val)
 void Memory::SetCharIO(unsigned short addr, bool echo)
 {
 	mCharIOAddr = addr;
-	//mCharIOActive = true;
 	mIOEcho = echo;
 
 	AddrRange addr_range(addr, addr+1);
@@ -330,9 +319,9 @@ void Memory::SetCharIO(unsigned short addr, bool echo)
 	dev_params.push_back(dev_par);
 	memaddr_ranges.push_back(addr_range);	
 
-	if (false == mCharIOActive) AddDevice(DEVNUM_CHARIO);
-	mCharIOActive = true;
 	SetupDevice(DEVNUM_CHARIO, memaddr_ranges, dev_params);
+	if (false == mCharIOActive) AddDevice(DEVNUM_CHARIO);
+	mCharIOActive = true;	
 }
 
 /*
@@ -380,9 +369,9 @@ void Memory::SetGraphDisp(unsigned short addr)
 	dev_params.push_back(dev_par);
 	memaddr_ranges.push_back(addr_range);	
 
-	if (false == mGraphDispActive) AddDevice(DEVNUM_GRDISP);
-	mGraphDispActive = true;
 	SetupDevice(DEVNUM_GRDISP, memaddr_ranges, dev_params);
+	if (false == mGraphDispActive) AddDevice(DEVNUM_GRDISP);
+	mGraphDispActive = true;	
 	mpMemMapDev->ActivateGraphDisp();
 }
 
@@ -458,14 +447,49 @@ bool Memory::IsROMEnabled()
  * Method:		AddDevice()
  * Purpose:		Add device number to active devices list.
  * Arguments:	devnum - device number
- * Returns:		0
+ * Returns:		-1 if device is not supported OR already cached
+ *            devnum - device number if it was found
  *--------------------------------------------------------------------
  */		
 int Memory::AddDevice(int devnum)
 {
-	mActiveDevNumVec.push_back(devnum);
+	int ret = -1;
+	bool found = false;
+	Device dev = mpMemMapDev->GetDevice(devnum);
+	if (dev.num >= 0) {
+		for (vector<Device>::iterator devit = mActiveDeviceVec.begin();
+				 devit != mActiveDeviceVec.end();
+				 ++devit
+				) {
 
-	return 0;
+			if (devit->num == devnum) {
+				found = true;
+				break;
+			}
+		}
+		// if device not found in local cache, add it
+		if (!found) {
+			mActiveDeviceVec.push_back(dev);
+			ret = devnum;
+
+			// update the device usage flag in memory pages devices array mMemPageDev
+			for (MemAddrRanges::iterator memrangeit = dev.addr_ranges.begin();
+				   memrangeit != dev.addr_ranges.end();
+				   ++memrangeit
+				  ) {			
+
+				int pgnum = memrangeit->start_addr / MEM_PAGE_SIZE;
+				while (pgnum < MEM_PAGE_SIZE) {
+					mMemPageDev[pgnum] = devnum;
+					pgnum++;
+					if (pgnum * MEM_PAGE_SIZE > memrangeit->end_addr) break;
+				}
+			}
+		}
+	}	// END if (dev.num >= 0)
+	// else device with wuch number is not supported
+
+	return ret;
 }
 
 /*
@@ -473,25 +497,56 @@ int Memory::AddDevice(int devnum)
  * Method:		DeleteDevice()
  * Purpose:		Delete device number from active devices list.
  * Arguments:	devnum - device number
- * Returns:		0
+ * Returns:		>=0 if device was found in local cache and deleted
+ *            -1 if device was not found
  *--------------------------------------------------------------------
  */		
 int Memory::DeleteDevice(int devnum)
 {
-	vector<int> active_new;
+	vector<Device> actdev_new;
+	int ret = -1;
 
-	for (vector<int>::iterator it = mActiveDevNumVec.begin();
-			 it != mActiveDevNumVec.end();
-			 ++it
-			) {
-		if (*it != devnum) {
-			active_new.push_back(*it);
-		}
+	for (int i=0; i < MEM_PAGE_SIZE; i++) {
+		mMemPageDev[i] = -1;
 	}
-	mActiveDevNumVec.clear();
-	mActiveDevNumVec = active_new;
+	// device is deleted by refreshing local active devices cache
+	// the device to be deleted is skipped and not re-added to refreshed
+	// cache vector
+	for (vector<Device>::iterator devit = mActiveDeviceVec.begin();
+			 devit != mActiveDeviceVec.end();
+			 ++devit
+			) {
 
-	return 0;
+		if (devit->num != devnum) {
+
+			Device dev = mpMemMapDev->GetDevice(devit->num);
+
+			if (dev.num < 0) 
+				throw MKGenException("Unsupported device in local cache");
+
+			actdev_new.push_back(mpMemMapDev->GetDevice(devit->num));
+
+			// update the device number in memory pages devices array mMemPageDev
+			for (MemAddrRanges::iterator memrangeit = devit->addr_ranges.begin();
+				   memrangeit != devit->addr_ranges.end();
+				   ++memrangeit
+				  ) {			
+
+				int pgnum = memrangeit->start_addr / MEM_PAGE_SIZE;
+				while (pgnum < MEM_PAGE_SIZE) {
+					mMemPageDev[pgnum] = devit->num;
+					pgnum++;
+					if (pgnum * MEM_PAGE_SIZE > memrangeit->end_addr) break;
+				}
+			}			
+
+		} else ret++;	// indicating that the device was found in cache
+	}
+	// refresh local active devices cache
+	mActiveDeviceVec.clear();
+	mActiveDeviceVec = actdev_new;
+
+	return ret;
 }
 
 /*
@@ -508,14 +563,12 @@ void Memory::SetupDevice(int devnum,
 												 MemAddrRanges memranges, 
 												 DevParams params)
 {
-	for (vector<int>::iterator it = mActiveDevNumVec.begin();
-			 it != mActiveDevNumVec.end();
-			 ++it
-			) {
-		if (devnum == *it) {
-			mpMemMapDev->SetupDevice(devnum, memranges, params);
-			break;
-		}
+	Device dev = mpMemMapDev->GetDevice(devnum);
+	if (dev.num >= 0) {
+		mpMemMapDev->SetupDevice(devnum, memranges, params);
+		// reload device to local vector because its setup has changed
+		// but only if device was cached locally already (active)
+		if (0 <= DeleteDevice(devnum)) AddDevice(devnum);		
 	}
 	if (DEVNUM_CHARIO == devnum) {
 		mCharIOAddr = mpMemMapDev->GetCharIOAddr();

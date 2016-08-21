@@ -130,9 +130,8 @@ Device MemMapDev::GetDevice(int devnum)
 		   ++devit
 		  ) {
 
-		Device dev = *devit;	
-		if (dev.num == devnum) {
-			ret = dev;
+		if (devit->num == devnum) {
+			ret = *devit;
 			break;
 		}
 	}
@@ -287,6 +286,7 @@ int MemMapDev::getch()
         return c;
     }
 }
+
 #endif
 
 /*
@@ -307,9 +307,17 @@ unsigned char MemMapDev::ReadCharKb(bool nonblock)
 		static int c = ' ';
 		if (mIOEcho && isprint(c)) putchar(c);
 		fflush(stdout);
-		if (!nonblock) while(!kbhit());
-		else c = 0;
-		c = getch();
+		
+		if (nonblock) { 
+			// get a keystroke only if character is already in buffer	
+			if (kbhit()) c = getch();
+			else c = 0;			
+
+		}	else {
+			// wait for a keystroke, then get the character from buffer
+			while(!kbhit());
+			c = getch();
+		}
 #if defined(LINUX)
 		if (c == 3) { // capture CTRL-C in CONIO mode
 			reset_terminal_mode();

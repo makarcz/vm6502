@@ -3,6 +3,7 @@
 
 #include <string>
 #include <queue>
+#include <chrono>
 #include "system.h"
 #include "MKCpu.h"
 #include "Memory.h"
@@ -20,8 +21,10 @@
 #define HDRDATALEN	128
 #define HDRDATALEN_OLD	15
 #define HEXEOF	":00000001FF"
+//#define PERFSTAT_INTERVAL	30000000
 
 using namespace std;
+using namespace chrono;
 
 namespace MKBasic {
 
@@ -61,6 +64,16 @@ enum eVMErrors {
 																							// snapshot
 	//-------------------------------------------------------------------------
 	VMERR_UNKNOWN																// unknown error
+};
+
+struct PerfStats {
+	time_point<high_resolution_clock> 
+			 begin_time;				// the moment of time count start
+	long cycles;						// performance stats
+	long micro_secs;				// performance stats
+	long prev_cycles;				// previously measured stats
+	long prev_usec;					// previously measured stats
+	int  perf_onemhz;				// avg. % perf. based on 1MHz CPU.
 };
 
 class VMachine
@@ -113,7 +126,12 @@ class VMachine
 		int GetLastError();
 		void SetGraphDisp(unsigned short addr);
 		void DisableGraphDisp();
-		unsigned short GetGraphDispAddr();		
+		unsigned short GetGraphDispAddr();
+		PerfStats GetPerfStats();	// returns performance stats based on 1 million
+															// cycles per second (1 MHz CPU).
+		void EnableExecHistory(bool enexehist);
+		bool IsExecHistoryActive();
+
 		
 	protected:
 		
@@ -133,6 +151,7 @@ class VMachine
 		int  mError;			 // last error code
 		bool mGraphDispActive;
 		bool mOldStyleHeader;
+		PerfStats mPerfStats;
 		
 		int  LoadMEM(string memfname, Memory *pmem);
 		void ShowDisp();
@@ -141,6 +160,7 @@ class VMachine
 		bool LoadHdrData(FILE *fp);
 		void SaveHdrData(FILE *fp);
 		eMemoryImageTypes GetMemoryImageType(string ramfname);
+		int CalcCurrPerf();
 };
 
 } // namespace MKBasic

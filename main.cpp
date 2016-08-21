@@ -317,6 +317,8 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 		cout << " at: $" << hex << pvm->GetGraphDispAddr() << endl;
 		cout << "ROM: " << ((pvm->IsROMEnabled()) ? "enabled." : "disabled.") << " ";
 		cout << "Range: $" << hex << pvm->GetROMBegin() << " - $" << hex << pvm->GetROMEnd() << "." << endl;
+		cout << "Op-code execute history: " << (pvm->IsExecHistoryActive() ? "enabled" : "disabled");
+		cout << "." << endl;
 	}
 	cout << "                                                                               \r";
 
@@ -341,9 +343,9 @@ void ShowMenu()
 	cout << "   E - toggle I/O local echo        |    F - toggle registers animation" << endl;
 	cout << "   J - set animation delay          |    M - dump memory, W - write memory" << endl;	
 	cout << "   K - toggle ROM emulation         |    R - show registers, Y - snapshot" << endl;
-	cout << "   L - load memory image            |    O - display op-codes history" << endl;
+	cout << "   L - load memory image            |    O - display op-code exec. history" << endl;
 	cout << "   D - disassemble code in memory   |    Q - quit, 0 - reset, H - help" << endl;
-	cout << "   V - toggle graphics emulation    |" << endl;
+	cout << "   V - toggle graphics emulation    |    U - enable/disable exec. history" << endl;
 	cout << "------------------------------------+----------------------------------------" << endl;
 } 
 
@@ -390,6 +392,227 @@ void ShowMenu()
 		nsteps--;                                                               \
 		stct++;                                                                 \
 	}                                                                         \
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		ShowSpeedStats()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void ShowSpeedStats()
+{
+		cout << endl;
+	cout << dec;
+	cout << "CPU emulation speed stats: " << endl;
+	cout << "|-> Average speed based on 1MHz CPU: " << pvm->GetPerfStats().perf_onemhz << " %" << endl;
+	cout << "|-> Last measured # of cycles exec.: " << pvm->GetPerfStats().prev_cycles << endl;
+	cout << "|-> Last measured time of execution: " << pvm->GetPerfStats().prev_usec << " usec" << endl; 
+	cout << endl;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		ExecHistory()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void ExecHistory()
+{
+	if (pvm->IsExecHistoryActive()) {
+		queue<string> exechist(pvm->GetExecHistory());
+		cout << "PC   : INSTR                    ACC |  X  |  Y  | PS  | SP" << endl;
+		cout << "------------------------------------+-----+-----+-----+-----" << endl;
+		while (exechist.size()) {
+			cout << exechist.front() << endl;
+			exechist.pop();
+		}
+	} else {
+		cout << "Sorry. Op-code execute history is currently disabled." << endl;
+	} 	
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		LoadImage()
+ * Purpose:		Load memory image from file. Set new execute address.
+ * Arguments:	newaddr - current execute address
+ * Returns:		unsigned int - new execute address
+ *--------------------------------------------------------------------
+ */
+unsigned int LoadImage(unsigned int newaddr)
+{
+	char typ = 0;
+	for (char c = tolower(typ); 
+			 c != 'a' && c != 'b' && c != 'h' && c != 'd';
+			 c = tolower(typ)) {
+		cout << "Type (A - auto/B - binary/H - Intel HEX/D - definition): ";
+		cin >> typ;
+	}
+	cout << " [";
+	switch (tolower(typ)) {
+		case 'a': cout << "auto"; break;
+		case 'b': cout << "binary"; break;
+		case 'h': cout << "Intel HEX"; break;
+		case 'd': cout << "definition"; break;
+		default: break;	// should never happen
+	}
+	cout << "]" << endl;
+	string name;
+	cout << "Memory Image File Name: ";
+	cin >> name;
+	cout << " [" << name << "]" << endl;
+	if (typ == 'b') PrintVMErr (pvm->LoadRAMBin(name));
+	else if (typ == 'h') PrintVMErr (pvm->LoadRAMHex(name));
+	else if (typ == 'd') {
+		PrintVMErr (pvm->LoadRAMDef(name));
+		if (pvm->IsAutoExec()) execvm = true;
+		if (newaddr == 0) newaddr = 0x10000;					
+	}
+	else {	// automatic file format detection
+		pvm->LoadRAM(name);
+		if (pvm->IsAutoExec()) execvm = true;
+		if (newaddr == 0) newaddr = 0x10000;
+	}	
+
+	return newaddr;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		ToggleIO()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+unsigned int ToggleIO(unsigned int ioaddr)
+{
+	if (pvm->GetCharIOActive()) {
+		pvm->DisableCharIO();
+		cout << "I/O deactivated." << endl;
+	} else {
+		ioaddr = PromptNewAddress("Address (0..FFFF): ");
+		cout << " [" << hex << ioaddr << "]" << endl;
+		pvm->SetCharIO(ioaddr, ioecho);
+		cout << "I/O activated." << endl;
+	}	
+
+	return ioaddr;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		ToggleGrDisp()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+unsigned int ToggleGrDisp(unsigned int graddr)
+{
+	if (pvm->GetGraphDispActive()) {
+		pvm->DisableGraphDisp();
+		cout << "Graphics display deactivated." << endl;
+	} else {
+		graddr = PromptNewAddress("Address (0..FFFF): ");
+		cout << " [" << hex << graddr << "]" << endl;
+		pvm->SetGraphDisp(graddr);
+		cout << "Graphics display activated." << endl;
+	}	
+
+	return graddr;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		WriteToMemory()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void WriteToMemory()
+{
+	unsigned int tmpaddr = PromptNewAddress("Address (0..FFFF): ");
+	cout << " [" << hex << tmpaddr << "]" << endl;
+	cout << "Enter hex bytes [00..FF] values separated with NL or spaces, end with [100]:" << endl;
+	unsigned short v = 0;
+	while (true) {
+		cin >> hex >> v;
+		cout << " " << hex << v;
+		if (v > 0xFF) break;
+		pvm->MemPoke8bit(tmpaddr++, v & 0xFF);
+	};
+	cout << endl;	
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		DisassembleMemory()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void DisassembleMemory()
+{
+	unsigned int addrbeg = 0x10000, addrend = 0x10000;
+	cout << "Enter address range (0..0xFFFF)..." << endl;
+	addrbeg = PromptNewAddress("Start address (0..FFFF): ");
+	cout << " [" << hex << addrbeg << "]" << endl;
+	addrend = PromptNewAddress("End address   (0..FFFF): ");
+	cout << " [" << hex << addrend << "]" << endl;
+	cout << endl;
+	for (unsigned int addr = addrbeg; addr <= addrend;) {
+		char instrbuf[DISS_BUF_SIZE];
+		addr = pvm->Disassemble((unsigned short)addr, instrbuf);
+		cout << instrbuf << endl;
+	}	
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		DumpMemory()
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void DumpMemory()
+{
+	unsigned int addrbeg = 0x10000, addrend = 0x10000;
+	cout << "Enter address range (0..0xFFFF)..." << endl;
+	addrbeg = PromptNewAddress("Start address (0..FFFF): ");
+	cout << " [" << hex << addrbeg << "]" << endl;
+	addrend = PromptNewAddress("End address   (0..FFFF): ");
+	cout << " [" << hex << addrend << "]" << endl;
+	cout << endl;
+	for (unsigned int addr = addrbeg; addr <= addrend; addr+=16) {
+		cout << "\t|";
+		for (unsigned int j=0; j < 16; j++) {
+			unsigned int hv = (unsigned int)pvm->MemPeek8bit(addr+j);
+			if (hv < 16) {
+				cout << 0;
+			}
+			cout << hex << hv << " ";
+		}
+		cout << "|";
+		for (int j=0; j < 16; j++) {
+			char cc = (char)pvm->MemPeek8bit(addr+j);
+			if (isprint(cc))
+				cout << cc;
+			else
+				cout << "?";	
+		}
+		cout << '\r';
+		cout << hex << addr;
+		cout << endl;
+	}	
 }
 
 /*
@@ -478,8 +701,8 @@ int main(int argc, char *argv[]) {
 		CopyrightBanner();
 		string cmd;
 		bool runvm = false, step = false, brk = false, execaddr = false, stop = true;
-		bool lrts = false, anim = false, enrom = pvm->IsROMEnabled();
-		unsigned int newaddr = pvm->GetRunAddr(), ioaddr = pvm->GetCharIOAddr(), tmpaddr = 0x0000;
+		bool lrts = false, anim = false, enrom = pvm->IsROMEnabled(), show_menu = true;
+		unsigned int newaddr = pvm->GetRunAddr(), ioaddr = pvm->GetCharIOAddr();
 		unsigned int graddr = pvm->GetGraphDispAddr();
 		unsigned int rombegin = pvm->GetROMBegin(), romend = pvm->GetROMEnd(), delay = ANIM_DELAY;
 		int nsteps = 0;
@@ -532,19 +755,36 @@ int main(int argc, char *argv[]) {
 				}	else if (stop) {
 					cout << "STOPPED at " << hex << ((newaddr > 0xFFFF) ? preg->PtrAddr : newaddr) << endl;
 				}
+				ShowSpeedStats();
 				opbrk = brk = stop = lrts = false;
 				pvm->SetOpInterrupt(false);
 				ShowRegs(preg,pvm,ioecho,true);
+				show_menu = true;
 			}
-			ShowMenu();
+			if (show_menu) {
+
+				ShowMenu();
+				show_menu = false;
+
+			} else {
+
+				cout << endl;
+				cout << "Type '?' and press ENTER for Menu ..." << endl;
+				cout << endl;
+
+			}
 			cout << "> ";
 			cin >> cmd;
 			char c = tolower(cmd.c_str()[0]);
-			if (c == 'h') {	// display help
+			if (c == '?') {
+				show_menu = true;
+			}
+			else if (c == 'h') {	// display help
 				ShowHelp();
 			} else if (c == 'p') {	// Interrupt ReQuest
 				pvm->Interrupt();
 				cout << "OK" << endl;
+				show_menu = true;
 			} else if (c == 'y') {	// save snapshot of current CPU and memory in binary image
 				string name;
 				cout << "Enter file name: ";
@@ -560,47 +800,11 @@ int main(int argc, char *argv[]) {
 				reset = true;
 				execvm = true;
 				runvm = false;
+				show_menu = true;
 			} else if (c == 'o') {
-				queue<string> exechist(pvm->GetExecHistory());
-				cout << "PC   : INSTR                    ACC |  X  |  Y  | PS  | SP" << endl;
-				cout << "------------------------------------+-----+-----+-----+-----" << endl;
-				while (exechist.size()) {
-					cout << exechist.front() << endl;
-					exechist.pop();
-				}
+				ExecHistory();
 			} else if (c == 'l') {	// load memory image
-				char typ = 0;
-				for (char c = tolower(typ); 
-						 c != 'a' && c != 'b' && c != 'h' && c != 'd';
-						 c = tolower(typ)) {
-					cout << "Type (A - auto/B - binary/H - Intel HEX/D - definition): ";
-					cin >> typ;
-				}
-				cout << " [";
-				switch (tolower(typ)) {
-					case 'a': cout << "auto"; break;
-					case 'b': cout << "binary"; break;
-					case 'h': cout << "Intel HEX"; break;
-					case 'd': cout << "definition"; break;
-					default: break;	// should never happen
-				}
-				cout << "]" << endl;
-				string name;
-				cout << "Memory Image File Name: ";
-				cin >> name;
-				cout << " [" << name << "]" << endl;
-				if (typ == 'b') PrintVMErr (pvm->LoadRAMBin(name));
-				else if (typ == 'h') PrintVMErr (pvm->LoadRAMHex(name));
-				else if (typ == 'd') {
-					PrintVMErr (pvm->LoadRAMDef(name));
-					if (pvm->IsAutoExec()) execvm = true;
-					if (newaddr == 0) newaddr = 0x10000;					
-				}
-				else {	// automatic file format detection
-					pvm->LoadRAM(name);
-					if (pvm->IsAutoExec()) execvm = true;
-					if (newaddr == 0) newaddr = 0x10000;
-				}
+				newaddr = LoadImage(newaddr);
 			} else if (c == 'k') {	// toggle ROM emulation
 				if (!enrom) {
 					enrom = true;
@@ -645,37 +849,11 @@ int main(int argc, char *argv[]) {
 					cout << "ERROR: I/O is deactivated." << endl;
 				}
 			} else if (c == 'i') {	// toggle I/O
-				if (pvm->GetCharIOActive()) {
-					pvm->DisableCharIO();
-					cout << "I/O deactivated." << endl;
-				} else {
-					ioaddr = PromptNewAddress("Address (0..FFFF): ");
-					cout << " [" << hex << ioaddr << "]" << endl;
-					pvm->SetCharIO(ioaddr, ioecho);
-					cout << "I/O activated." << endl;
-				}
+				ioaddr = ToggleIO(ioaddr);
 			} else if (c == 'v') { // toggle graphics display
-				if (pvm->GetGraphDispActive()) {
-					pvm->DisableGraphDisp();
-					cout << "Graphics display deactivated." << endl;
-				} else {
-					graddr = PromptNewAddress("Address (0..FFFF): ");
-					cout << " [" << hex << graddr << "]" << endl;
-					pvm->SetGraphDisp(graddr);
-					cout << "Graphics display activated." << endl;
-				}
+				graddr = ToggleGrDisp(graddr);
 			} else if (c == 'w') {	// write to memory
-				tmpaddr = PromptNewAddress("Address (0..FFFF): ");
-				cout << " [" << hex << tmpaddr << "]" << endl;
-				cout << "Enter hex bytes [00..FF] values separated with NL or spaces, end with [100]:" << endl;
-				unsigned short v = 0;
-				while (true) {
-					cin >> hex >> v;
-					cout << " " << hex << v;
-					if (v > 0xFF) break;
-					pvm->MemPoke8bit(tmpaddr++, v & 0xFF);
-				};
-				cout << endl;
+				WriteToMemory();
 			} else if (c == 'a') {	// change run address
 				execaddr = stop = true;
 				newaddr = PromptNewAddress("Address (0..FFFF): ");
@@ -690,62 +868,33 @@ int main(int argc, char *argv[]) {
 				}
 				cout << " [" << dec << nsteps << "]" << endl;
 				runvm = step = stop = true;				
+				show_menu = true;
 			} else if (c == 'c') {	// continue running code
 				runvm = true;
+				show_menu = true;
 			} else if (c == 'g') {	// run from new address until BRK
 				runvm = true;
 				execaddr = true;
 				newaddr = PromptNewAddress("Address (0..FFFF): ");
 				cout << " [" << hex << newaddr << "]" << endl;
+				show_menu = true;
 			} else if (c == 'x') {	// execute code at address
 				execvm = true;
 				execaddr = true;
 				newaddr = PromptNewAddress("Address (0..FFFF): ");
-				cout << " [" << hex << newaddr << "]" << endl;				
+				cout << " [" << hex << newaddr << "]" << endl;
+				show_menu = true;
 			} else if (c == 'q') {	// quit
 				break;
 			} else if (c == 'd') {	// disassemble code in memory
-				unsigned int addrbeg = 0x10000, addrend = 0x10000;
-				cout << "Enter address range (0..0xFFFF)..." << endl;
-				addrbeg = PromptNewAddress("Start address (0..FFFF): ");
-				cout << " [" << hex << addrbeg << "]" << endl;
-				addrend = PromptNewAddress("End address   (0..FFFF): ");
-				cout << " [" << hex << addrend << "]" << endl;
-				cout << endl;
-				for (unsigned int addr = addrbeg; addr <= addrend;) {
-					char instrbuf[DISS_BUF_SIZE];
-					addr = pvm->Disassemble((unsigned short)addr, instrbuf);
-					cout << instrbuf << endl;
-				}
+				DisassembleMemory();
 			} else if (c == 'm') {	// dump memory
-				unsigned int addrbeg = 0x10000, addrend = 0x10000;
-				cout << "Enter address range (0..0xFFFF)..." << endl;
-				addrbeg = PromptNewAddress("Start address (0..FFFF): ");
-				cout << " [" << hex << addrbeg << "]" << endl;
-				addrend = PromptNewAddress("End address   (0..FFFF): ");
-				cout << " [" << hex << addrend << "]" << endl;
+				DumpMemory();
+			} else if (c == 'u') {	// toggle enable/disable op-code exec. history
+				pvm->EnableExecHistory(!pvm->IsExecHistoryActive());
+				cout << "Op-code execute history has been ";
+				cout << (pvm->IsExecHistoryActive() ? "enabled" : "disabled") << ".";
 				cout << endl;
-				for (unsigned int addr = addrbeg; addr <= addrend; addr+=16) {
-					cout << "\t|";
-					for (unsigned int j=0; j < 16; j++) {
-						unsigned int hv = (unsigned int)pvm->MemPeek8bit(addr+j);
-						if (hv < 16) {
-							cout << 0;
-						}
-						cout << hex << hv << " ";
-					}
-					cout << "|";
-					for (int j=0; j < 16; j++) {
-						char cc = (char)pvm->MemPeek8bit(addr+j);
-						if (isprint(cc))
-							cout << cc;
-						else
-							cout << "?";	
-					}
-					cout << '\r';
-					cout << hex << addr;
-					cout << endl;
-				}
 			}
 		}
 	}
@@ -963,11 +1112,32 @@ L - load memory image
                 in decimal or hexadecimal format.
 
       RESET     Enables auto-reset of the CPU. After loading the memory
-                definition file, the CPU reset sequence will be initiated.                      
+                definition file, the CPU reset sequence will be initiated.
+
+      ENGRAPH   Enables raster graphics device emulation.
+
+      GRAPHADDR Defines the base address of raster graphics device. The next
+                line that follows sets the address in decimal or hexadecimal
+                format.
+
+     NOTE: The binary image file can contain a header which contains
+           definitions corresponding to the above parameters at fixed
+           positions. This header is created when user saves the snapshot of
+           current emulator memory image and status. Example use scenario:
+           * User loads the image definition file.
+           * User adjusts various parameters of the emulator
+             (enables/disables devices, sets addresses, changes memory
+             contents).
+           * User saves the snapshot with 'Y' command.
+           * Next time user loads the snapshot image, all the parameters
+             and memory contents stick. This way game status can be saved
+             or a BASIC interpreter with BASIC program in it.
+           See command 'Y' for details.
                 
 O - display op-codes history
     Show the history of last executed op-codes/instructions, full with
-    disassembled mnemonic and argument.
+    disassembled mnemonic, argument and CPU registers and status.
+    NOTE: op-codes execute history must be enabled, see command 'U'.
 D - diassemble code in memory
     Usage: D [startaddr] [endaddr]
     Where: startaddr,endaddr - hexadecimal address [0000..FFFF].
@@ -983,6 +1153,11 @@ D - diassemble code in memory
     jumping to main loop. The reset routine disables trapping last RTS
     opcode if stack is empty, so the VM will never return from opcodes
     execution loop unless user interrupts with CTRL-C or CTRL-Break.
+? - display commands menu
+    Display the menu of all available in Debug Console commands.
+U - enable/disable exec. history
+    Toggle enable/disable of op-codes execute history.
+    Disabling this feature improves performance.
                     
 NOTE:
     1. If no arguments provided, each command will prompt user to enter

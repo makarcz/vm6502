@@ -5,6 +5,7 @@
 #include "MemMapDev.h"
 
 #define MAX_8BIT_ADDR 	0xFFFF
+#define MEM_PAGE_SIZE		0x100
 #define ROM_BEGIN				0xD000
 #define ROM_END					0xDFFF
 #define MIN_ROM_BEGIN		0x0200
@@ -54,14 +55,19 @@ class Memory
 	private:
 		
 		unsigned char m8bitMem[MAX_8BIT_ADDR+1];
+		// array of device usage for each memory page
+		// this is performance optimization array that keeps values >= 0 under the
+		// indexes of memory pages where the memory mapped device is active or -1
+		// if there is no active device on given memory page
+		int mMemPageDev[MEM_PAGE_SIZE];
 		unsigned short mCharIOAddr;
 		bool mCharIOActive;
 		bool mIOEcho;
 		unsigned short mROMBegin;
 		unsigned short mROMEnd;
 		bool mROMActive;
-		vector<int> mActiveDevNumVec;	// active devices numbers
-		MemMapDev *mpMemMapDev;				// pointer to MemMapDev object
+		vector<Device> mActiveDeviceVec;	// active devices
+		MemMapDev *mpMemMapDev;						// pointer to MemMapDev object
 		bool mGraphDispActive;
 		bool mDispOp;
 		

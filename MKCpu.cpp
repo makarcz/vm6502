@@ -351,6 +351,7 @@ void MKCpu::InitCpu()
 	mReg.PageBoundary = false;
 	mLocalMem = false;
 	mExitAtLastRTS = true;
+	mEnableHistory = false;	// performance decrease when enabled
 	if (NULL == mpMem) {
 		mpMem = new Memory();
 		if (NULL == mpMem) {
@@ -359,15 +360,15 @@ void MKCpu::InitCpu()
 		mLocalMem = true;
 	}	
 	// Set default BRK vector ($FFFE -> $FFF0)
-	mpMem->Poke8bit(0xFFFE,0xF0); // LSB
-	mpMem->Poke8bit(0xFFFF,0xFF); // MSB
+	mpMem->Poke8bitImg(0xFFFE,0xF0); // LSB
+	mpMem->Poke8bitImg(0xFFFF,0xFF); // MSB
 	// Put RTI opcode at BRK procedure address.
-	mpMem->Poke8bit(0xFFF0, OPCODE_RTI);
+	mpMem->Poke8bitImg(0xFFF0, OPCODE_RTI);
 	// Set default RESET vector ($FFFC -> $0200)
-	mpMem->Poke8bit(0xFFFC,0x00); // LSB
-	mpMem->Poke8bit(0xFFFD,0x02); // MSB
+	mpMem->Poke8bitImg(0xFFFC,0x00); // LSB
+	mpMem->Poke8bitImg(0xFFFD,0x02); // MSB
 	// Set BRK code at the RESET procedure address.
-	mpMem->Poke8bit(0x0200,OPCODE_BRK);
+	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 }
 
 /*
@@ -922,24 +923,24 @@ unsigned short MKCpu::GetArgWithMode(unsigned short addr, int mode)
 /*
  *--------------------------------------------------------------------
  * Method:		Disassemble()
- * Purpose:		Disassemble instruction and argument per addressing mode
- * Arguments:	n/a - internal
+ * Purpose:		Disassemble op-code exec. history item.
+ * Arguments:	histit - pointer to OpCodeHistItem type
  * Returns:		0
  *--------------------------------------------------------------------
  */
-unsigned short MKCpu::Disassemble()
+unsigned short MKCpu::Disassemble(OpCodeHistItem *histit)
 {
 	char sArg[40];
 	char sFmt[20];
 
 	strcpy(sFmt, "%s ");
-	strcat(sFmt, mArgFmtTbl[mReg.LastAddrMode].c_str());
+	strcat(sFmt, mArgFmtTbl[histit->LastAddrMode].c_str());
 	sprintf(sArg, sFmt, 
-						((mOpCodesMap[(eOpCodes)mReg.LastOpCode]).amf.length() > 0 
-							? (mOpCodesMap[(eOpCodes)mReg.LastOpCode]).amf.c_str() : "???"),
-						mReg.LastArg);
+						((mOpCodesMap[(eOpCodes)histit->LastOpCode]).amf.length() > 0 
+							? (mOpCodesMap[(eOpCodes)histit->LastOpCode]).amf.c_str() : "???"),
+						histit->LastArg);
 	for (unsigned int i=0; i<strlen(sArg); i++) sArg[i] = toupper(sArg[i]);
-	mReg.LastInstr = sArg;
+	histit->LastInstr = sArg;
 	
 	return 0;
 }
@@ -963,7 +964,7 @@ unsigned short MKCpu::Disassemble(unsigned short opcaddr, char *instrbuf)
 	int opcode = -1;
 	int addrmode = -1;
 
-	opcode = mpMem->Peek8bit(addr++);
+	opcode = mpMem->Peek8bitImg(addr++);
 	addrmode = (mOpCodesMap[(eOpCodes)opcode]).amf.length() > 0
 							? (mOpCodesMap[(eOpCodes)opcode]).addrmode : -1;
 							
@@ -971,12 +972,12 @@ unsigned short MKCpu::Disassemble(unsigned short opcaddr, char *instrbuf)
   switch (mAddrModesLen[addrmode])
   {
   	case 2:
-  		sprintf(sBuf, "$%02x    ", mpMem->Peek8bit(addr));
+  		sprintf(sBuf, "$%02x    ", mpMem->Peek8bitImg(addr));
   		break;
   		
   	case 3:
-  		sprintf(sBuf, "$%02x $%02x", mpMem->Peek8bit(addr), 
-  						mpMem->Peek8bit(addr+1));
+  		sprintf(sBuf, "$%02x $%02x", mpMem->Peek8bitImg(addr), 
+  						mpMem->Peek8bitImg(addr+1));
   		break;
   		  	
   	default:
@@ -985,7 +986,7 @@ unsigned short MKCpu::Disassemble(unsigned short opcaddr, char *instrbuf)
 	}
 	strcpy(sFmt, "$%04x: $%02x %s   %s ");
 	strcat(sFmt, mArgFmtTbl[addrmode].c_str());
-	sprintf(sArg, sFmt, opcaddr, mpMem->Peek8bit(opcaddr), sBuf,
+	sprintf(sArg, sFmt, opcaddr, mpMem->Peek8bitImg(opcaddr), sBuf,
 								((mOpCodesMap[(eOpCodes)opcode]).amf.length() > 0 
 											? (mOpCodesMap[(eOpCodes)opcode]).amf.c_str() : "???"),
 								GetArgWithMode(addr,addrmode));
@@ -3821,19 +3822,22 @@ Regs *MKCpu::ExecOpcode(unsigned short memaddr)
 	mReg.LastAddr = memaddr;
 	unsigned char opcode = OPCODE_BRK;
 
-	// skip until all the cycles were completed
+	// The op-code action was executed already once.
+	// Now skip if the clock cycles for this op-code are not yet completed.
 	if (mReg.CyclesLeft > 0) {
 		mReg.CyclesLeft--;
 		return &mReg;
 	}
 
-	// if no IRQ waiting, get the next opcode and advance PC
+	// If no IRQ waiting, get the next opcode and advance PC.
+	// Otherwise the opcode is OPCODE_BRK and with IrqPending
+	// flag set the IRQ sequence will be executed.
 	if (!mReg.IrqPending) {
 		opcode = mpMem->Peek8bit(mReg.PtrAddr++);
 	}
 
 	// load CPU instruction details from map
-	OpCode instrdet = mOpCodesMap[(eOpCodes)opcode];
+	OpCode *instrdet = &mOpCodesMap[(eOpCodes)opcode];
 	
 	SetFlag(false, FLAGS_BRK);	// reset BRK flag - we want to detect
 	mReg.SoftIrq = false;				// software interrupt each time it
@@ -3843,27 +3847,34 @@ Regs *MKCpu::ExecOpcode(unsigned short memaddr)
 	mReg.LastAddrMode = ADDRMODE_UND;
 	mReg.LastArg = 0;
 
-	string s = (instrdet.amf.length() > 0 
-							? instrdet.amf.c_str() : "???");
+	string s = (instrdet->amf.length() > 0 
+							? instrdet->amf.c_str() : "???");
 
 	if (s.compare("ILL") == 0) {
 		// trap any illegal opcode
 		mReg.SoftIrq = true;	
 	} else {
-		// execute legal opcode
-		mReg.CyclesLeft = instrdet.time - 1;
-		OpCodeHdlrFn pfun = instrdet.pfun;
+		// reset remaining cycles counter and execute legal opcode
+		mReg.CyclesLeft = instrdet->time - 1;
+		OpCodeHdlrFn pfun = instrdet->pfun;
 		if (NULL != pfun) (this->*pfun)();
 	}
 				
-	
-	Disassemble();
-	char histentry[80];
-	sprintf(histentry, 
-					"$%04x: %-16s \t$%02x | $%02x | $%02x | $%02x | $%02x",
-					mReg.LastAddr, mReg.LastInstr.c_str(), mReg.Acc, mReg.IndX,
-					mReg.IndY, mReg.Flags, mReg.PtrStack);
-	Add2History(histentry);
+	// Update history/log of recently executed op-codes/instructions.
+	if (mEnableHistory) {
+
+		OpCodeHistItem histentry;
+		histentry.LastAddr = mReg.LastAddr;
+		histentry.Acc = mReg.Acc;
+		histentry.IndX = mReg.IndX;
+		histentry.IndY = mReg.IndY;
+		histentry.Flags = mReg.Flags;
+		histentry.PtrStack = mReg.PtrStack;
+		histentry.LastOpCode = mReg.LastOpCode;
+		histentry.LastAddrMode = mReg.LastAddrMode;
+		histentry.LastArg = mReg.LastArg;
+		Add2History(histentry);
+	}
 	
 	return &mReg;
 }
@@ -3884,28 +3895,75 @@ Regs *MKCpu::GetRegs()
 /*
  *--------------------------------------------------------------------
  * Method:		Add2History()
- * Purpose:		Add entry to execute history.
+ * Purpose:		Add entry with last executed op-code, arguments and
+ *            CPU status to execute history.
  * Arguments:	s - string (entry)
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::Add2History(string s)
+void MKCpu::Add2History(OpCodeHistItem histitem)
 {
-	mExecHistory.push(s);
-	while (mExecHistory.size() > 20) mExecHistory.pop();
+	mExecHistory.push(histitem);
+	while (mExecHistory.size() > OPCO_HIS_SIZE) mExecHistory.pop();
 }
 
 /*
  *--------------------------------------------------------------------
  * Method:		GetExecHistory()
- * Purpose:		Return queue with execute history.
+ * Purpose:		Disassemble op-codes execute history stored in
+ *            mExecHistory and create/return queue of strings with
+ *            execute history in symbolic form (assembly mnemonics,
+ *            properly converted arguments in corresponding addressing 
+ *            mode notation that adheres to MOS-6502 industry
+ *            standard.)
  * Arguments:	n/a
  * Returns:		queue<string>
  *--------------------------------------------------------------------
  */
 queue<string>	MKCpu::GetExecHistory()
 {
-	return mExecHistory;
+	queue<string> ret;
+	queue<OpCodeHistItem> exechist(mExecHistory);
+
+	while (exechist.size()) {
+		OpCodeHistItem item = exechist.front();
+		Disassemble(&item);
+		char histentry[80];
+		sprintf(histentry, 
+						"$%04x: %-16s \t$%02x | $%02x | $%02x | $%02x | $%02x",
+						item.LastAddr, item.LastInstr.c_str(), item.Acc, item.IndX,
+						item.IndY, item.Flags, item.PtrStack);		
+		ret.push(histentry);
+		exechist.pop();
+	}
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		EnableExecHistory()
+ * Purpose:		Enable/disable recording of op-codes execute history.
+ * Arguments:	bool - true = enable / false = disable
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void	MKCpu::EnableExecHistory(bool enexehist)
+{
+	mEnableHistory = enexehist;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		IsExecHistoryEnabled()
+ * Purpose:		Check if op-code execute history is enabled.
+ * Arguments:	n/a
+ * Returns:		bool - true = enabled / false = disabled
+ *--------------------------------------------------------------------
+ */
+bool	MKCpu::IsExecHistoryEnabled()
+{
+	return mEnableHistory;
 }
 
 /*

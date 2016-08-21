@@ -12,6 +12,7 @@ using namespace std;
 namespace MKBasic {
 	
 #define DISS_BUF_SIZE 60	// disassembled instruction buffer size	
+#define OPCO_HIS_SIZE 20	// size of op-code execute history queue	
 
 struct Regs {
 	unsigned char 	Acc;					// 8-bit accumulator
@@ -427,6 +428,8 @@ class MKCpu
 		Regs *GetRegs();
 		void	SetRegs(Regs r);
 		queue<string>	GetExecHistory();
+		void	EnableExecHistory(bool enexehist);
+		bool	IsExecHistoryEnabled();
 		unsigned short Disassemble(unsigned short addr,
 															 char *instrbuf);					// Disassemble instruction in memory, return next instruction addr.
 		void Reset();																				// reset CPU		
@@ -435,6 +438,20 @@ class MKCpu
 	protected:
 		
 	private:
+
+		// keeps all needed data to disassemble op-codes in execute history queue
+		struct OpCodeHistItem {
+			unsigned char 	Acc;					// 8-bit accumulator
+			unsigned char 	IndX;					// 8-bit index register X
+			unsigned char 	IndY;					// 8-bit index register Y
+			unsigned char 	Flags;				// CPU flags			
+			unsigned char 	PtrStack;			// 8-bit stack pointer (0-255).			
+			unsigned short	LastAddr;			// PC at the time of previous op-code
+			string					LastInstr;		// instruction and argument executed in previous step
+			int							LastOpCode;		// op-code of last instruction
+			unsigned short	LastArg;			// argument to the last instruction
+			int							LastAddrMode;	// addressing mode of last instruction			
+		};
 		
 		struct Regs mReg;						// CPU registers
 		Memory 			*mpMem;					// pointer to memory object
@@ -442,7 +459,8 @@ class MKCpu
 		OpCodesMap	mOpCodesMap;		// hash table of all opcodes
 		int					mAddrModesLen[ADDRMODE_LENGTH];	// array of instructions lengths per addressing mode
 		string			mArgFmtTbl[ADDRMODE_LENGTH];		// array of instructions assembly formats per addressing mode
-		queue<string>	mExecHistory;	// history of last 20 op-codes with arguments and registers statuses
+		queue<OpCodeHistItem> mExecHistory;					// keep the op-codes execute history
+		bool				mEnableHistory;	// enable/disable execute history
 		
 		
 		void	InitCpu();
@@ -466,8 +484,9 @@ class MKCpu
 		unsigned short GetAddrWithMode(int mode);						// Get address of the byte argument with specified addr. mode
 		unsigned short GetArgWithMode(unsigned short opcaddr,
 																	int mode);						// Get argument from address with specified addr. mode
-		unsigned short Disassemble();												// Disassemble instruction and argument per addressing mode
-		void Add2History(string s);													// add entry to op-codes execute history
+		unsigned short Disassemble(OpCodeHistItem *histit);	// Disassemble op-code exec history item
+		//void Add2History(string s);													// add entry to op-codes execute history
+		void Add2History(OpCodeHistItem histitem);					// add entry to op-codes execute history
 		bool PageBoundary(unsigned short startaddr,
 											unsigned short endaddr);					// detect if page boundary was crossed
 
