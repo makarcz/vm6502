@@ -1,14 +1,52 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			VMachine.cpp
+ *
+ * Purpose: 		Implementation of VMachine class.
+ *							The VMachine class implements the Virtual Machine
+ *							in its entirety. It creates all the objects that
+ *							emulate the component's of the whole system and
+ *							implements the methods to execute the code on the
+ *							emulated platform.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
 
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #include <stdio.h>
 #include <iostream>
+#include <sstream>
 #include <string.h>
 #include "system.h"
 #include "VMachine.h"
 #include "MKGenException.h"
 
+/*
 #if defined(WINDOWS)
 #include <conio.h>
 #endif
+*/
 
 using namespace std;
 
@@ -62,10 +100,11 @@ VMachine::VMachine(string romfname, string ramfname)
  */
 VMachine::~VMachine()
 {
-	delete mpDisp;
+	//delete mpDisp;
 	delete mpCPU;
 	delete mpROM;
 	delete mpRAM;
+	delete mpConIO;
 }
 
 /*
@@ -82,7 +121,6 @@ void VMachine::InitVM()
 	mpRAM = new Memory();
 
 	mPerfStats.cycles = 0;
-	mPerfStats.micro_secs = 0;
 	mPerfStats.perf_onemhz = 0;
 	mPerfStats.prev_cycles = 0;
 	mPerfStats.prev_usec = 0;
@@ -93,6 +131,8 @@ void VMachine::InitVM()
 	mCharIOAddr = CHARIO_ADDR;
 	mCharIOActive = mCharIO = false;
 	mGraphDispActive = false;
+	mPerfStatsActive = false;
+	mDebugTraceActive = false;
 	if (NULL == mpRAM) {
 		throw MKGenException("Unable to initialize VM (RAM).");
 	}
@@ -105,13 +145,17 @@ void VMachine::InitVM()
 	if (NULL == mpCPU) {
 		throw MKGenException("Unable to initialize VM (CPU).");
 	}
+	/*
 	mpDisp = new Display();
 	if (NULL == mpDisp) {
 		throw MKGenException("Unable to initialize VM (Display).");
-	}		
+	}	*/	
+	mpConIO = new ConsoleIO();
+	if (NULL == mpConIO) {
+		throw MKGenException("Unable to initialize VM (ConsoleIO)");
+	}
+	mBeginTime = high_resolution_clock::now();
 }
-
-#if defined(WINDOWS)
 
 /*
  *--------------------------------------------------------------------
@@ -124,39 +168,7 @@ void VMachine::InitVM()
  */
 void VMachine::ClearScreen()
 {
-  HANDLE                     hStdOut;
-  CONSOLE_SCREEN_BUFFER_INFO csbi;
-  DWORD                      count;
-  DWORD                      cellCount;
-  COORD                      homeCoords = { 0, 0 };
-
-  hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
-  if (hStdOut == INVALID_HANDLE_VALUE) return;
-
-  /* Get the number of cells in the current buffer */
-  if (!GetConsoleScreenBufferInfo( hStdOut, &csbi )) return;
-  cellCount = csbi.dwSize.X *csbi.dwSize.Y;
-
-  /* Fill the entire buffer with spaces */
-  if (!FillConsoleOutputCharacter(
-    hStdOut,
-    (TCHAR) ' ',
-    cellCount,
-    homeCoords,
-    &count
-    )) return;
-
-  /* Fill the entire buffer with the current colors and attributes */
-  if (!FillConsoleOutputAttribute(
-    hStdOut,
-    csbi.wAttributes,
-    cellCount,
-    homeCoords,
-    &count
-    )) return;
-
-  /* Move the cursor home */
-  SetConsoleCursorPosition( hStdOut, homeCoords );
+	mpConIO->ClearScreen();
 }
 
 /*
@@ -170,49 +182,8 @@ void VMachine::ClearScreen()
  */
 void VMachine::ScrHome()
 {
-  HANDLE                     hStdOut;
-  COORD                      homeCoords = { 0, 0 };
-
-  hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
-  if (hStdOut == INVALID_HANDLE_VALUE) return;
-
-  /* Move the cursor home */
-  SetConsoleCursorPosition( hStdOut, homeCoords );
+	mpConIO->ScrHome();
 }
-
-#endif
-
-#if defined(LINUX)
-
-/*
- *--------------------------------------------------------------------
- * Method:		ClearScreen()
- * Purpose:		Clear the working are of the VM - Linux. 
- *            This is not a part of virtual display emulation.
- * Arguments:	n/a
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
-void VMachine::ClearScreen()
-{
-   system("clear");
-}
-
-/*
- *--------------------------------------------------------------------
- * Method:		ScrHome()
- * Purpose:		Bring the console cursor to home position - Linux.
- *            This is not a part of virtual display emulation.
- * Arguments:	n/a
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
-void VMachine::ScrHome()
-{
-   cout << "\033[1;1H";
-}
-
-#endif
 
 /*
  *--------------------------------------------------------------------
@@ -224,7 +195,7 @@ void VMachine::ScrHome()
  */
 void VMachine::ShowDisp()
 {
-	if (mCharIOActive) {
+	if (mCharIOActive && NULL != mpDisp) {
 			ScrHome();
 			mpDisp->ShowScr();
 	}	
@@ -233,35 +204,66 @@ void VMachine::ShowDisp()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		CalcCurrPerf()
+ * Purpose:		Calculate CPU emulation performance based on 1 MHz model
+ *						CPU.
+ * Arguments:	n/a
+ * Returns:		Integer, the % of speed as compared to 1 MHz CPU.
  *--------------------------------------------------------------------
  */
 int VMachine::CalcCurrPerf()
 {
-	auto lap = high_resolution_clock::now();
-	auto beg = mPerfStats.begin_time;
-	mPerfStats.micro_secs = duration_cast<microseconds>(lap-beg).count();
+	if (!mPerfStatsActive) return 0;
 
-	if (mPerfStats.micro_secs > 0) {
-		int currperf = (int)
-			(((double)mPerfStats.cycles / (double)mPerfStats.micro_secs) * 100.0);
+	auto lap = high_resolution_clock::now();
+	long usec = duration_cast<microseconds>(lap-mPerfStats.begin_time).count();
+
+	if (usec > 0) {
+		int currperf = (int)(((double)mPerfStats.cycles / (double)usec) * 100.0);
 		if (mPerfStats.perf_onemhz == 0)
 			mPerfStats.perf_onemhz = currperf;
 		else
 			mPerfStats.perf_onemhz = (mPerfStats.perf_onemhz + currperf) / 2;
 
 		mPerfStats.prev_cycles = mPerfStats.cycles;
-		mPerfStats.prev_usec = mPerfStats.micro_secs;
+		mPerfStats.prev_usec = usec;
 		mPerfStats.cycles = 0;
-		mPerfStats.micro_secs = 0;
-		mPerfStats.begin_time = high_resolution_clock::now();
+		mPerfStats.begin_time = lap;
+		if (mDebugTraceActive) {	// prepare and log some debug traces
+			stringstream sscp, ssap;
+			string msg, avgprf, curprf;
+			ssap << mPerfStats.perf_onemhz;
+			ssap >> avgprf;
+			sscp << currperf;
+			sscp >> curprf;
+			msg = "Perf. measured. Curr.: " + curprf + " %, Avg.: " + avgprf + " %";
+			AddDebugTrace(msg);
+		}
 	}
 
 	return mPerfStats.perf_onemhz;
 } 
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		PERFSTAT_LAP (macro)
+ * Purpose:		Calculate emulation performace at pre-defined interval
+ *            of real time and clock ticks.
+ * Arguments:	cycles - long : number of clock ticks executed so far
+ *            begin - time_point<high_resolution_clock> : the moment
+ *                    when time measurement started
+ * Returns:		n/a
+ * Remarks:		Call inside emulation execute loop.
+ *--------------------------------------------------------------------
+ */
+#define PERFSTAT_LAP(cycles,begin) \
+{	\
+	if (mPerfStatsActive && cycles%PERFSTAT_CYCLES == 0) {	\
+		long usec = duration_cast<microseconds>	\
+							(high_resolution_clock::now()-begin).count();	\
+		if (usec >= PERFSTAT_INTERVAL) CalcCurrPerf();	\
+	}	\
+}
 
 /*
  *--------------------------------------------------------------------
@@ -275,18 +277,18 @@ Regs *VMachine::Run()
 {
 	Regs *cpureg = NULL;
 
+	AddDebugTrace("Running code at: $" + Addr2HexStr(mRunAddr));
 	mOpInterrupt = false;
 	ClearScreen();
 	ShowDisp();
 	mPerfStats.cycles = 0;
-	mPerfStats.micro_secs = 0;
 	mPerfStats.begin_time = high_resolution_clock::now();	
 	while (true) {
 		mPerfStats.cycles++;		
 		cpureg = Step();
 		if (cpureg->CyclesLeft == 0 && mCharIO)	ShowDisp();
 		if (cpureg->SoftIrq || mOpInterrupt) break;
-		//if (mPerfStats.cycles == PERFSTAT_INTERVAL)	CalcCurrPerf();
+		PERFSTAT_LAP(mPerfStats.cycles,mPerfStats.begin_time);
 	}
 	CalcCurrPerf();
 
@@ -323,21 +325,17 @@ Regs *VMachine::Exec()
 {
 	Regs *cpureg = NULL;
 
+	AddDebugTrace("Executing code at: $" + Addr2HexStr(mRunAddr));
 	mOpInterrupt = false;
 	ClearScreen();
 	ShowDisp();
 	mPerfStats.cycles = 0;
-	mPerfStats.micro_secs = 0;
 	mPerfStats.begin_time = high_resolution_clock::now();
 	while (true) {
 		mPerfStats.cycles++;
 		cpureg = Step();
-		if (cpureg->CyclesLeft == 0 && mCharIO) {
-			cout << mpDisp->GetLastChar();
-			cout << flush;
-		}
 		if (cpureg->LastRTS || mOpInterrupt) break;
-		//if (mPerfStats.cycles == PERFSTAT_INTERVAL) CalcCurrPerf();
+		PERFSTAT_LAP(mPerfStats.cycles,mPerfStats.begin_time);
 	}
 	CalcCurrPerf();
 
@@ -383,28 +381,13 @@ Regs *VMachine::Exec(unsigned short addr)
  */
 Regs *VMachine::Step()
 {
-	unsigned short addr = mRunAddr;
 	Regs *cpureg = NULL;	
 	
-	cpureg = mpCPU->ExecOpcode(addr);
+	cpureg = mpCPU->ExecOpcode(mRunAddr);
 	if (mGraphDispActive && cpureg->CyclesLeft == 0) {
 		mpRAM->GraphDisp_ReadEvents();
 	}
-	addr = cpureg->PtrAddr;
-	mRunAddr = addr;
-	
-	if (cpureg->CyclesLeft == 0 && mCharIOActive && !mOpInterrupt) {
-		char c = -1;
-		mCharIO = false;
-
-		while ((c = mpRAM->GetCharOut()) != -1) {
-			mOpInterrupt = mOpInterrupt || (c == OPINTERRUPT);
-			if (!mOpInterrupt) {
-				mpDisp->PutChar(c);
-				mCharIO = true;				
-			}
-		}
-	}
+	mRunAddr = cpureg->PtrAddr;
 	
 	return cpureg;
 }
@@ -458,6 +441,15 @@ int VMachine::LoadRAM(string ramfname)
 			break;
 	}
 	mError = err;
+	if (mDebugTraceActive && err) {
+		stringstream sserr;
+		string msg, strerr;
+		sserr << err;
+		sserr >> strerr;
+		msg = "ERROR: LoadRAM, error code: " + strerr;
+		AddDebugTrace(msg);
+	}		
+
 	return err;
 }
 
@@ -560,6 +552,8 @@ bool VMachine::HasHdrData(FILE *fp)
 	}
 	ret = (0 == strncmp(buf, HDRMAGICKEY, l));
 
+	AddDebugTrace(((ret) ? "HasHdrData: YES" : "HasHdrData: NO"));
+
 	return ret;
 }
 
@@ -589,6 +583,8 @@ bool VMachine::HasOldHdrData(FILE *fp)
 		if (n >= l) break;
 	}
 	ret = (0 == strncmp(buf, HDRMAGICKEY_OLD, l));
+
+	AddDebugTrace(((ret) ? "HasOldHdrData: YES" : "HasOldHdrData: NO"));
 
 	return ret;
 }
@@ -655,20 +651,26 @@ bool VMachine::LoadHdrData(FILE *fp)
 		switch (n)
 		{
 			case 1:		mRunAddr = l + 256 * val;
+								ADD_DBG_LDMEMPARHEX("LoadHdrData : mRunAddr",mRunAddr);
 								break;
 			case 3:		mCharIOAddr = l + 256 * val;
+								ADD_DBG_LDMEMPARHEX("LoadHdrData : mCharIOAddr",mCharIOAddr);
 								break;
 			case 5:		rb = l + 256 * val;
 								break;
 			case 7: 	re = l + 256 * val;
 								break;
 			case 8: 	mCharIOActive = (val != 0);
+								ADD_DBG_LDMEMPARVAL("LoadHdrData : mCharIOActive",mCharIOActive);
 								break;
 			case 9: 	if (val != 0) {
 									mpRAM->EnableROM(rb, re);
 								} else {
 									mpRAM->SetROM(rb, re);
 								}
+								ADD_DBG_LDMEMPARHEX("LoadHdrData : ROM begin",rb);
+								ADD_DBG_LDMEMPARHEX("LoadHdrData : ROM end",re);
+								ADD_DBG_LDMEMPARVAL("LoadHdrData : ROM enable",((val!=0)?1:0));
 								break;
 			case 10:	r.Acc = val;
 								break;
@@ -682,9 +684,11 @@ bool VMachine::LoadHdrData(FILE *fp)
 								ret = true;
 								break;
 			case 15:	mGraphDispActive = (val != 0);
+								ADD_DBG_LDMEMPARVAL("LoadHdrData : mGraphDispActive",mGraphDispActive);
 								break;
 			case 17:	if (mGraphDispActive) SetGraphDisp(l + 256 * val);
 								else DisableGraphDisp();
+								ADD_DBG_LDMEMPARHEX("LoadHdrData : Graph. Disp. addr",(l + 256 * val));
 								break;
 			default: 	break;
 		}
@@ -698,9 +702,6 @@ bool VMachine::LoadHdrData(FILE *fp)
 
 	return ret;
 }
-
-// Macro to save header data: v - value, fp - file pointer, n - data counter (dec)
-#define SAVE_HDR_DATA(v,fp,n) {fputc(v, fp); n--;}
 
 /*
  *--------------------------------------------------------------------
@@ -788,6 +789,14 @@ int VMachine::SaveSnapshot(string fname)
 		fclose(fp);
 	}
 	if (0 != ret) mError = VMERR_SAVE_SNAPSHOT;
+	if (mDebugTraceActive && ret) {
+		stringstream sserr;
+		string msg, strerr;
+		sserr << ret;
+		sserr >> strerr;
+		msg = "ERROR: SaveSnapshot, error code: " + strerr;
+		AddDebugTrace(msg);
+	}		
 
 	return ret;
 }
@@ -829,6 +838,7 @@ int VMachine::LoadRAMBin(string ramfname)
 	Memory *pm = mpRAM;
 	int ret = MEMIMGERR_RAMBIN_OPEN;
 
+	AddDebugTrace("LoadRAMBin : " + ramfname);
 	mOldStyleHeader = false;	
 	if ((fp = fopen(ramfname.c_str(), "rb")) != NULL) {
 		if (HasHdrData(fp) || (mOldStyleHeader = HasOldHdrData(fp))) {
@@ -1074,7 +1084,11 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 	bool romendset = false, engraph = false, graphset = false;
 	Memory *pm = pmem;
 	int err = MEMIMGERR_OK;
-	
+
+	if (mDebugTraceActive) {
+		string msg = "LoadMEM: " + memfname;
+		AddDebugTrace(msg);
+	}
 	if ((fp = fopen(memfname.c_str(), "r")) != NULL) {
 		DisableROM();
 		DisableCharIO();
@@ -1100,8 +1114,10 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
-					cout << "LINE #" << dec << lc << " WARNING: Run address was already set. Ignoring..." << endl;
+					ADD_DBG_LOADMEM(lc," WARNING: Run address was already set. Ignoring...");
+					//cout << "LINE #" << dec << lc << " WARNING: Run address was already set. Ignoring..." << endl;
 				}
+				ADD_DBG_LDMEMPARHEX("ADDR",addr);
 				continue;
 			}
 			// change address counter
@@ -1115,6 +1131,7 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					addr = (unsigned short) atoi(line);				
 				}	
+				ADD_DBG_LDMEMPARHEX("ORG",addr);
 				continue;
 			}
 			// define I/O emulation address (once)
@@ -1133,8 +1150,10 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
-					cout << "LINE #" << dec << lc << " WARNING: I/O address was already set. Ignoring..." << endl;
+					ADD_DBG_LOADMEM(lc," WARNING: I/O address was already set. Ignoring...");
+					//cout << "LINE #" << dec << lc << " WARNING: I/O address was already set. Ignoring..." << endl;
 				}
+				ADD_DBG_LDMEMPARHEX("IOADDR",mCharIOAddr);
 				continue;
 			}
 			// define generic graphics display device base address (once)
@@ -1153,23 +1172,28 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
-					cout << "LINE #" << dec << lc << " WARNING: graphics device base address was already set. Ignoring..." << endl;
+					ADD_DBG_LOADMEM(lc," WARNING: graphics device base address was already set. Ignoring...");
+					//cout << "LINE #" << dec << lc << " WARNING: graphics device base address was already set. Ignoring..." << endl;
 				}
+				ADD_DBG_LDMEMPARHEX("GRAPHADDR",graphaddr);
 				continue;
 			}			
 			// enable character I/O emulation
 			if (0 == strncmp(line, "ENIO", 4)) {
 				enio = true;
+				ADD_DBG_LDMEMPARVAL("ENIO",enio);
 				continue;
 			}
 			// enable generic graphics display emulation
 			if (0 == strncmp(line, "ENGRAPH", 7)) {
 				engraph = true;
+				ADD_DBG_LDMEMPARVAL("ENIO",engraph);
 				continue;
 			}			
 			// enable ROM emulation
 			if (0 == strncmp(line, "ENROM", 5)) {
 				enrom = true;
+				ADD_DBG_LDMEMPARVAL("ENROM",enrom);
 				continue;
 			}			
 			// auto execute from address
@@ -1189,13 +1213,16 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
-					cout << "LINE #" << dec << lc << " WARNING: auto-exec address was already set. Ignoring..." << endl;
+					ADD_DBG_LOADMEM(lc," WARNING: auto-exec address was already set. Ignoring...");
+					//cout << "LINE #" << dec << lc << " WARNING: auto-exec address was already set. Ignoring..." << endl;
 				}
+				ADD_DBG_LDMEMPARHEX("EXEC",mRunAddr);
 				continue;
 			}
 			// auto reset
 			if (0 == strncmp(line, "RESET", 5)) {
 				mAutoReset = true;
+				ADD_DBG_LDMEMPARVAL("RESET",mAutoReset);
 				continue;
 			}			
 			// define ROM begin address
@@ -1214,8 +1241,10 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
-					cout << "LINE #" << dec << lc << " WARNING: ROM-begin address was already set. Ignoring..." << endl;
+					ADD_DBG_LOADMEM(lc," WARNING: ROM-begin address was already set. Ignoring...");
+					//cout << "LINE #" << dec << lc << " WARNING: ROM-begin address was already set. Ignoring..." << endl;
 				}
+				ADD_DBG_LDMEMPARHEX("ROMBEGIN",rombegin);
 				continue;
 			}
 			// define ROM end address
@@ -1234,8 +1263,10 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 				} else {
 					err = MEMIMGERR_VM65_IGNPROCWRN;
 					errc++;
-					cout << "LINE #" << dec << lc << " WARNING: ROM-end address was already set. Ignoring..." << endl;
+					ADD_DBG_LOADMEM(lc," WARNING: ROM-end address was already set. Ignoring...");
+					//cout << "LINE #" << dec << lc << " WARNING: ROM-end address was already set. Ignoring..." << endl;
 				}
+				ADD_DBG_LDMEMPARHEX("ROMEND",romend);
 				continue;
 			}			
 			if (';' == *line) continue; // skip comment lines
@@ -1269,7 +1300,8 @@ int VMachine::LoadMEM(string memfname, Memory *pmem)
 	}
 	else {
 		err = MEMIMGERR_VM65_OPEN;
-		cout << "WARNING: Unable to open memory definition file: " << memfname << endl;
+		cout << "WARNING: Unable to open memory definition file: ";
+		cout << memfname << endl;
 		errc++;
 	}	
 	if (errc) {
@@ -1341,7 +1373,13 @@ void VMachine::SetCharIO(unsigned short addr, bool echo)
 	mCharIOAddr = addr;
 	mCharIOActive = true;
 	mpRAM->SetCharIO(addr, echo);
-	mpDisp->ClrScr();
+	mpDisp = mpRAM->GetMemMapDevPtr()->GetDispPtr();
+	if (mDebugTraceActive) {
+		string msg;
+		msg = "Char I/O activated at: $" + Addr2HexStr(addr) + ", echo: "
+					+ ((echo) ? "ON" : "OFF");
+		AddDebugTrace(msg);
+	}
 }
 
 /*
@@ -1356,6 +1394,8 @@ void VMachine::DisableCharIO()
 {
 	mCharIOActive = false;
 	mpRAM->DisableCharIO();
+	AddDebugTrace("Char I/O DISABLED");
+	//mpRAM->GetMemMapDevPtr()->DeactivateCharIO();
 }
 
 /*
@@ -1386,16 +1426,21 @@ bool VMachine::GetCharIOActive()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		SetGraphDisp()
+ * Purpose:		Set graphics device address and enable.
+ * Arguments:	addr - unsigned short : device base address.
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void VMachine::SetGraphDisp(unsigned short addr)
 {
 	mGraphDispActive = true;
 	mpRAM->SetGraphDisp(addr);
+	if (mDebugTraceActive) {
+		string msg;
+		msg = "Graphics Device set at: $" + Addr2HexStr(addr) + ".";
+		AddDebugTrace(msg);
+	}
 }
 
 /*
@@ -1410,6 +1455,7 @@ void VMachine::DisableGraphDisp()
 {
 	mGraphDispActive = false;
 	mpRAM->DisableGraphDisp();
+	AddDebugTrace("Graphics Device DISABLED.");
 }
 
 /*
@@ -1448,7 +1494,7 @@ bool VMachine::GetGraphDispActive()
  */
 void VMachine::ShowIO()
 {
-	if (mCharIOActive)
+	if (mCharIOActive && NULL != mpDisp)
 		mpDisp->ShowScr();
 }
 
@@ -1489,6 +1535,7 @@ bool VMachine::IsAutoReset()
 void VMachine::EnableROM()
 {
 	mpRAM->EnableROM();
+	AddDebugTrace("ROM ENABLED.");
 }
 		
 /*
@@ -1502,6 +1549,7 @@ void VMachine::EnableROM()
 void VMachine::DisableROM()
 {
 	mpRAM->DisableROM();
+	AddDebugTrace("ROM DISABLED.");
 }
 		
 /*
@@ -1515,19 +1563,32 @@ void VMachine::DisableROM()
 void VMachine::SetROM(unsigned short start, unsigned short end)
 {
 	mpRAM->SetROM(start, end);
+	if (mDebugTraceActive) {
+		string msg;
+		msg = "ROM SET, Start: $" + Addr2HexStr(start) + ", End: $";
+		msg += Addr2HexStr(end) + ".";		
+		AddDebugTrace(msg);
+	}	
 }
 		
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		EnableROM()
+ * Purpose:		Sets and enables Read Only Memory range.
+ * Arguments:	start, end - unsigned short : start and end addresses
+ *												 of the ROM.
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */		
 void VMachine::EnableROM(unsigned short start, unsigned short end)
 {
 	mpRAM->EnableROM(start, end);
+	if (mDebugTraceActive) {
+		string msg;
+		msg = "ROM ENABLED, Start: $" + Addr2HexStr(start) + ", End: $";
+		msg += Addr2HexStr(end) + ".";		
+		AddDebugTrace(msg);
+	}
 }
 
 /*
@@ -1650,6 +1711,7 @@ void VMachine::Reset()
 	mpCPU->Reset();
 	Exec(mpCPU->GetRegs()->PtrAddr);
 	mpCPU->mExitAtLastRTS = true;
+	AddDebugTrace("*** CPU RESET ***");
 }
 
 /*
@@ -1692,6 +1754,13 @@ int VMachine::GetLastError()
 void VMachine::EnableExecHistory(bool enexehist)
 {
 	mpCPU->EnableExecHistory(enexehist);
+	if (mDebugTraceActive) {
+		string msg;
+		msg = "The op-code execute history " 
+					+ (string)((enexehist) ? "ENABLED" : "DISABLED");
+		msg += ".";
+		AddDebugTrace(msg);
+	}
 }
 		
 /*
@@ -1705,6 +1774,175 @@ void VMachine::EnableExecHistory(bool enexehist)
 bool VMachine::IsExecHistoryActive()
 {
 	return mpCPU->IsExecHistoryEnabled();
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::EnableDebugTrace()
+{
+	if (!mDebugTraceActive) {
+		mDebugTraceActive = true;
+		while (!mDebugTraces.empty()) mDebugTraces.pop();
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::DisableDebugTrace()
+{
+	mDebugTraceActive = false;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+bool VMachine::IsDebugTraceActive()
+{
+	return mDebugTraceActive;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+queue<string> VMachine::GetDebugTraces()
+{
+	return mDebugTraces;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::EnablePerfStats()
+{
+	if (!mPerfStatsActive) {
+		mPerfStatsActive = true;
+		mPerfStats.cycles = 0;
+		mPerfStats.prev_cycles = 0;
+		mPerfStats.prev_usec = 0;
+		mPerfStats.perf_onemhz = 0;
+		AddDebugTrace("Performance stats ENABLED.");
+	}
+}
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::DisablePerfStats()
+{
+	mPerfStatsActive = false;
+	AddDebugTrace("Performance stats DISABLED.");
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:
+ * Purpose:
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+bool VMachine::IsPerfStatsActive()
+{
+	return mPerfStatsActive;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		AddDebugTrace()
+ * Purpose:		Add string to the debug messages queue.  String is
+ *            prefixed with time stamp (number of microseconds since
+ *            start of program. Queue is maintained to not exceed
+ *            DBG_TRACE_SIZE. If the size is exceeded with the next
+ *            added debug message, the first one in the queue is
+ *            deleted (FIFO).
+ * Arguments:	msg - string : debug message.
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void VMachine::AddDebugTrace(string msg)
+{
+	if (mDebugTraceActive) {
+		stringstream ss;
+		string mmsg;
+
+		// add timestamp in front (micro seconds)
+		auto lap = high_resolution_clock::now();
+		unsigned long usec = duration_cast<microseconds>(lap-mBeginTime).count();
+		ss << usec;
+		ss >> mmsg;
+		mmsg += " : " + msg;
+		mDebugTraces.push(mmsg);
+		while (mDebugTraces.size() > DBG_TRACE_SIZE) mDebugTraces.pop();
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		Addr2HexStr()
+ * Purpose:   Convert 16-bit address to a hex notation string.
+ * Arguments: addr - 16-bit unsigned
+ * Returns:   string
+ *--------------------------------------------------------------------
+ */
+string VMachine::Addr2HexStr(unsigned short addr)
+{
+	stringstream ss;
+	string ret;
+
+	ss << hex << addr;
+	ss >> ret;
+
+	return ret;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		Addr2DecStr()
+ * Purpose:   Convert 16-bit address to a decimal notation string.
+ * Arguments: addr - 16-bit unsigned
+ * Returns:   string
+ *--------------------------------------------------------------------
+ */
+string VMachine::Addr2DecStr(unsigned short addr)
+{
+	stringstream ss;
+	string ret;
+	
+	ss << addr;
+	ss >> ret;
+
+	return ret;
 }
 
 } // namespace MKBasic

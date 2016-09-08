@@ -1,3 +1,35 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:  	VM65 - Virtual Machine/CPU emulator programming
+ *                    framework.  
+ *
+ * File:   		main.cpp
+ *
+ * Purpose: 		Define User Interface, Debug Console and main loop
+ *							of the app.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright: 	(C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:   	makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
+
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and exercise common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #include <cstdlib>
 #include <iostream>
 #include <bitset>
@@ -17,8 +49,15 @@ using namespace std;
 using namespace MKBasic;
 
 #define ANIM_DELAY 250
+#define PROMPT_ADDR 			"Address (0..FFFF): "
+#define PROMPT_START_ADDR	"Start address (0..FFFF): "
+#define PROMPT_RANGE_ADDR	"Enter address range (0..0xFFFF).."
+#define PROMPT_END_ADDR		"End address   (0..FFFF): "
 
 const bool ClsIfDirty = true;
+
+char diss_buf[DISS_BUF_SIZE];		// last disassembled instruction buffer
+char curr_buf[DISS_BUF_SIZE];		// current disassembled instruction buffer
 
 VMachine *pvm = NULL;
 Regs *preg = NULL;
@@ -34,6 +73,26 @@ void CopyrightBanner();
 
 /*
  *--------------------------------------------------------------------
+ * Method:		PressEnter2Cont()
+ * Purpose:		Print a message and wait for ENTER to be pressed.
+ * Arguments:	msg - string : message
+ * Returns:		
+ *--------------------------------------------------------------------
+ */
+void PressEnter2Cont(string msg)
+{
+	string mesg = msg;
+	if (0 == msg.length()) mesg = "Press [ENTER]...";
+	cout << mesg;
+	fflush(stdin);
+	while (true) {
+		int c = getchar();
+		if ('\n' == c || EOF == c) break;
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
  * Method:		RunSingleInstr()
  * Purpose:		Execute single instruction of the CPU (all cycles).
  * Arguments:	addr - unsigned short, instruction address
@@ -44,9 +103,14 @@ void CopyrightBanner();
  {
  		Regs *ret = NULL;
 
+ 		pvm->Disassemble(addr, diss_buf);
+ 		// skip # cycles per op-code specs
  		do {
     	ret = pvm->Step(addr);
   	} while (ret->CyclesLeft > 0);
+  	// and now execute the actual op-code
+  	ret = pvm->Step(addr);
+ 		pvm->Disassemble(ret->PtrAddr, curr_buf);  	
 
   	return ret;
  }
@@ -64,12 +128,55 @@ void CopyrightBanner();
  {
  		Regs *ret = NULL;
 
+ 		pvm->Disassemble(preg->PtrAddr, diss_buf);
+ 		// skip # cycles per op-code specs
  		do {
     	ret = pvm->Step();
   	} while (ret->CyclesLeft > 0);
+  	// and now execute the actual op-code
+  	ret = pvm->Step();  	
+ 		pvm->Disassemble(ret->PtrAddr, curr_buf);  	
 
   	return ret;
  }
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    VMErr
+ * Purpose:   Data structure and macros supporting VM errors
+ *						messages
+ * Arguments: 
+ * Returns:   
+ *--------------------------------------------------------------------
+ */
+
+#define WARN_UNEXPECTED_EOF		"WARNING: Unexpected EOF (image shorter than 64kB)."
+#define WARN_NOHDR_BINIMG			"WARNING: No header found in binary image."
+#define WARN_HDRPRBLM_BINIMG	"WARNING: Problem with binary image header."
+
+struct VMErr {
+
+	int 		id;
+	char 		text1[80];
+	char 		text2[80];
+
+} g_vmerrtbl[] = {
+
+	{MEMIMGERR_RAMBIN_EOF,				WARN_UNEXPECTED_EOF,	""},
+	{MEMIMGERR_RAMBIN_OPEN,				"WARNING: Unable to open memory image file.",	""},
+	{MEMIMGERR_RAMBIN_HDR,				WARN_HDRPRBLM_BINIMG,	""},
+	{MEMIMGERR_RAMBIN_NOHDR,			WARN_NOHDR_BINIMG,	""},
+	{MEMIMGERR_RAMBIN_HDRANDEOF,	WARN_HDRPRBLM_BINIMG,	WARN_UNEXPECTED_EOF},
+	{MEMIMGERR_RAMBIN_NOHDRANDEOF,WARN_NOHDR_BINIMG,	WARN_UNEXPECTED_EOF},
+	{MEMIMGERR_INTELH_OPEN,				"WARNING: Unable to open Intel HEX file.",	""},
+	{MEMIMGERR_INTELH_SYNTAX,			"ERROR: Syntax error.",	""},
+	{MEMIMGERR_INTELH_FMT,				"ERROR: Intel HEX format error.",	""},
+	{MEMIMGERR_VM65_OPEN,					"ERROR: Unable to open memory definition file.",	""},
+	{MEMIMGERR_VM65_IGNPROCWRN,		"WARNING: There were problems while processing memory definition file.",	""},
+	{VMERR_SAVE_SNAPSHOT,					"WARNING: There was a problem saving memory snapshot.",	""},
+	{-1,	"",	""}
+
+};
 
 /*
  *--------------------------------------------------------------------
@@ -81,57 +188,23 @@ void CopyrightBanner();
  */
 void PrintVMErr(int err)
 {
-	bool pressenter = true;
-	switch (err) {
-		case MEMIMGERR_RAMBIN_EOF: 
-			cout << "WARNING: Unexpected EOF (image shorter than 64kB).";
-			cout << endl;
-			break;
-		case MEMIMGERR_RAMBIN_OPEN: 
-			cout << "WARNING: Unable to open memory image file." << endl;
-			break;
-		case MEMIMGERR_RAMBIN_HDR: 
-			cout << "WARNING: Problem with binary image header." << endl;
-			break;
-		case MEMIMGERR_RAMBIN_NOHDR: 
-			cout << "WARNING: No header found in binary image." << endl;
-			break;
-		case MEMIMGERR_RAMBIN_HDRANDEOF: 
-			cout << "WARNING: Problem with binary image header." << endl;
-			cout << "WARNING: Unexpected EOF (image shorter than 64kB).";
-			cout << endl;
-			break;
-		case MEMIMGERR_RAMBIN_NOHDRANDEOF: 
-			cout << "WARNING: No header found in binary image." << endl;
-			cout << "WARNING: Unexpected EOF (image shorter than 64kB).";
-			cout << endl;
-			break;
-		case MEMIMGERR_INTELH_OPEN: 
-			cout << "WARNING: Unable to open Intel HEX file." << endl;
-			break;
-		case MEMIMGERR_INTELH_SYNTAX: 
-			cout << "ERROR: Syntax error." << endl;
-			break;
-		case MEMIMGERR_INTELH_FMT: 
-			cout << "ERROR: Intel HEX format error." << endl;
+	bool pressenter = false;
+
+	for (int i=0; g_vmerrtbl[i].id >= 0; i++) {
+		if (g_vmerrtbl[i].id == err) {
+			pressenter = true;
+			if (strlen(g_vmerrtbl[i].text1)) {
+				cout << g_vmerrtbl[i].text1 << endl;
+			}
+			if (strlen(g_vmerrtbl[i].text2)) {
+				cout << g_vmerrtbl[i].text2 << endl;
+			}
 			break;			
-		case MEMIMGERR_VM65_OPEN:
-			cout << "ERROR: Unable to open memory definition file.";
-			cout << endl;
-			break;
-		case MEMIMGERR_VM65_IGNPROCWRN:
-			cout << "WARNING: There were problems while processing";
-			cout << " memory definition file." << endl;
-			break;	
-		case VMERR_SAVE_SNAPSHOT:
-			cout << "WARNING: There was a problem saving memory snapshot.";
-			cout << endl;
-			break;
-		default: pressenter = false; break;
-	}	
+		}
+	}
+
 	if (pressenter) {
-		cout << "Press [ENTER]...";
-		getchar();
+		PressEnter2Cont("");
 	}
 }
 
@@ -156,7 +229,7 @@ void trap_signal(int signum)
   		pvm->SetOpInterrupt(true);
   		opbrk = true;
 	 }
-   //exit(signum);
+
    return;
 }
 
@@ -181,7 +254,7 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
   switch( fdwCtrlType ) 
   { 
     case CTRL_C_EVENT: 
-      //Beep( 750, 300 ); 
+
     	if (NULL != pvm && NULL != preg) {
     		pvm->SetOpInterrupt(true);
     		opbrk = true;
@@ -190,12 +263,12 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
       
  
     case CTRL_CLOSE_EVENT: 
-      //Beep( 600, 200 ); 
+
       cout << "Ctrl-Close event" << endl;
       return TRUE ; 
  
     case CTRL_BREAK_EVENT: 
-      //Beep( 900, 200 ); 
+
     	if (NULL != pvm && NULL != preg) {
 				pvm->SetOpInterrupt(true);
 				opbrk = true;
@@ -203,7 +276,7 @@ BOOL CtrlHandler(DWORD fdwCtrlType)
       return TRUE; 
  
     case CTRL_LOGOFF_EVENT: 
-      //Beep( 1000, 200 ); 
+
       cout << "Ctrl-Logoff event" << endl;
       return FALSE; 
  
@@ -275,18 +348,24 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 	bool ret = false;
 	char sBuf[80] = {0};
 	
-	sprintf(sBuf, "|  PC: $%04x  |  Acc: $%02x (" BYTETOBINARYPATTERN ")  |  X: $%02x  |  Y: $%02x  |",
-								preg->PtrAddr, preg->Acc, BYTETOBINARY(preg->Acc), preg->IndX, preg->IndY);
-	cout << "*-------------*-----------------------*----------*----------*" << endl;								
+	sprintf(sBuf, "|  PC: $%04x  |  Acc: $%02x (" BYTETOBINARYPATTERN 
+		            ")  |  X: $%02x  |  Y: $%02x  |",
+								preg->PtrAddr, preg->Acc, BYTETOBINARY(preg->Acc), 
+								preg->IndX, preg->IndY);
+	cout << "*-------------*-----------------------*----------*----------*";
+	cout << endl;
 	cout << sBuf << endl;
-	cout << "*-------------*-----------------------*----------*----------*" << endl;
-	cout << "|  NV-BDIZC   |" << endl;
+	cout << "*-------------*-----------------------*----------*----------*";
+	cout << endl;
+	cout << "|  NV-BDIZC   |";
+	cout << " : " << diss_buf << "          " << endl;
 	cout << "|  " << bitset<8>((int)preg->Flags) << "   |";
-	cout << " Last instr.: " << preg->LastInstr << "          " << endl;
+	cout << " : " << curr_buf << "          " << endl;
 	cout << "*-------------*" << endl;
 	cout << endl;
 	cout << "Stack: $" << hex << (unsigned short)preg->PtrStack << "   " << endl;
-	cout << "                                                                               \r";
+	cout << "                                   ";
+	cout << "                                            \r";
 	// display stack contents
 	cout << "       [";
 	int j = 0, stacklines = 1;
@@ -310,14 +389,19 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 	// end display stack contents
 
 	if (showiostat) {
-		cout << endl << "I/O status: " << (pvm->GetCharIOActive() ? "enabled" : "disabled") << ", ";
+		cout << endl << "I/O status: ";
+		cout << (pvm->GetCharIOActive() ? "enabled" : "disabled") << ", ";
 		cout << " at: $" << hex << pvm->GetCharIOAddr() << ", ";
 		cout << " local echo: " << (ioecho ? "ON" : "OFF") << "." << endl;
-		cout << "Graphics status: " << (pvm->GetGraphDispActive() ? "enabled" : "disabled") << ", ";
+		cout << "Graphics status: ";
+		cout << (pvm->GetGraphDispActive() ? "enabled" : "disabled") << ", ";
 		cout << " at: $" << hex << pvm->GetGraphDispAddr() << endl;
-		cout << "ROM: " << ((pvm->IsROMEnabled()) ? "enabled." : "disabled.") << " ";
-		cout << "Range: $" << hex << pvm->GetROMBegin() << " - $" << hex << pvm->GetROMEnd() << "." << endl;
-		cout << "Op-code execute history: " << (pvm->IsExecHistoryActive() ? "enabled" : "disabled");
+		cout << "ROM: ";
+		cout << ((pvm->IsROMEnabled()) ? "enabled." : "disabled.") << " ";
+		cout << "Range: $" << hex << pvm->GetROMBegin() << " - $";
+		cout << hex << pvm->GetROMEnd() << "." << endl;
+		cout << "Op-code execute history: ";
+		cout << (pvm->IsExecHistoryActive() ? "enabled" : "disabled");
 		cout << "." << endl;
 	}
 	cout << "                                                                               \r";
@@ -327,8 +411,8 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
+ * Method:		ShowMenu()
+ * Purpose:		Print available commands on the console.
  * Arguments:
  * Returns:
  *--------------------------------------------------------------------
@@ -346,6 +430,8 @@ void ShowMenu()
 	cout << "   L - load memory image            |    O - display op-code exec. history" << endl;
 	cout << "   D - disassemble code in memory   |    Q - quit, 0 - reset, H - help" << endl;
 	cout << "   V - toggle graphics emulation    |    U - enable/disable exec. history" << endl;
+	cout << "   Z - enable/disable debug traces  |    1 - enable/disable perf. stats" << endl;
+	cout << "   2 - display debug traces         |    ? - show this menu" << endl;
 	cout << "------------------------------------+----------------------------------------" << endl;
 } 
 
@@ -377,9 +463,9 @@ void ShowMenu()
 	brk = preg->SoftIrq;                                                      \
 	lrts = preg->LastRTS;                                                     \
 	while(step && nsteps > 1 && !brk && !lrts && !opbrk) {                    \
+		preg = RunSingleCurrInstr();                                            \
 		cout << "addr: $" << hex << preg->PtrAddr << ", step: " << dec << stct; \
 		cout  << "    \r";                                                      \
-		preg = RunSingleCurrInstr();                                            \
 		if (anim) {                                                             \
 			if (cls & ClsIfDirty) { pvm->ClearScreen(); cls = false; }            \
 			pvm->ScrHome();                                                       \
@@ -404,13 +490,19 @@ void ShowMenu()
  */
 void ShowSpeedStats()
 {
+	if (pvm->IsPerfStatsActive()) {
 		cout << endl;
-	cout << dec;
-	cout << "CPU emulation speed stats: " << endl;
-	cout << "|-> Average speed based on 1MHz CPU: " << pvm->GetPerfStats().perf_onemhz << " %" << endl;
-	cout << "|-> Last measured # of cycles exec.: " << pvm->GetPerfStats().prev_cycles << endl;
-	cout << "|-> Last measured time of execution: " << pvm->GetPerfStats().prev_usec << " usec" << endl; 
-	cout << endl;
+		cout << dec;
+		cout << "CPU emulation speed stats: " << endl;
+		cout << "|-> Average speed based on 1MHz CPU: " << pvm->GetPerfStats().perf_onemhz << " %" << endl;
+		cout << "|-> Last measured # of cycles exec.: " << pvm->GetPerfStats().prev_cycles << endl;
+		cout << "|-> Last measured time of execution: " << pvm->GetPerfStats().prev_usec << " usec" << endl; 
+		cout << endl;
+	} else {
+		cout << endl;
+		cout << "Emulation performance stats is OFF." << endl;
+		cout << endl;
+	}
 }
 
 /*
@@ -425,8 +517,10 @@ void ExecHistory()
 {
 	if (pvm->IsExecHistoryActive()) {
 		queue<string> exechist(pvm->GetExecHistory());
-		cout << "PC   : INSTR                    ACC |  X  |  Y  | PS  | SP" << endl;
-		cout << "------------------------------------+-----+-----+-----+-----" << endl;
+		cout << "PC   : INSTR                    ACC |  X  |  Y  | PS  | SP";
+		cout << endl;
+		cout << "------------------------------------+-----+-----+-----+-----";
+		cout << endl;
 		while (exechist.size()) {
 			cout << exechist.front() << endl;
 			exechist.pop();
@@ -478,6 +572,7 @@ unsigned int LoadImage(unsigned int newaddr)
 		if (pvm->IsAutoExec()) execvm = true;
 		if (newaddr == 0) newaddr = 0x10000;
 	}	
+	PrintVMErr(pvm->GetLastError());
 
 	return newaddr;
 }
@@ -496,7 +591,7 @@ unsigned int ToggleIO(unsigned int ioaddr)
 		pvm->DisableCharIO();
 		cout << "I/O deactivated." << endl;
 	} else {
-		ioaddr = PromptNewAddress("Address (0..FFFF): ");
+		ioaddr = PromptNewAddress(PROMPT_ADDR);
 		cout << " [" << hex << ioaddr << "]" << endl;
 		pvm->SetCharIO(ioaddr, ioecho);
 		cout << "I/O activated." << endl;
@@ -519,7 +614,7 @@ unsigned int ToggleGrDisp(unsigned int graddr)
 		pvm->DisableGraphDisp();
 		cout << "Graphics display deactivated." << endl;
 	} else {
-		graddr = PromptNewAddress("Address (0..FFFF): ");
+		graddr = PromptNewAddress(PROMPT_ADDR);
 		cout << " [" << hex << graddr << "]" << endl;
 		pvm->SetGraphDisp(graddr);
 		cout << "Graphics display activated." << endl;
@@ -531,14 +626,14 @@ unsigned int ToggleGrDisp(unsigned int graddr)
 /*
  *--------------------------------------------------------------------
  * Method:		WriteToMemory()
- * Purpose:
+ * Purpose:		Take user input and write to memory.
  * Arguments:
  * Returns:
  *--------------------------------------------------------------------
  */
 void WriteToMemory()
 {
-	unsigned int tmpaddr = PromptNewAddress("Address (0..FFFF): ");
+	unsigned int tmpaddr = PromptNewAddress(PROMPT_ADDR);
 	cout << " [" << hex << tmpaddr << "]" << endl;
 	cout << "Enter hex bytes [00..FF] values separated with NL or spaces, end with [100]:" << endl;
 	unsigned short v = 0;
@@ -554,7 +649,7 @@ void WriteToMemory()
 /*
  *--------------------------------------------------------------------
  * Method:		DisassembleMemory()
- * Purpose:
+ * Purpose:		Disassemble machine code in memory to symbolic format.
  * Arguments:
  * Returns:
  *--------------------------------------------------------------------
@@ -562,10 +657,10 @@ void WriteToMemory()
 void DisassembleMemory()
 {
 	unsigned int addrbeg = 0x10000, addrend = 0x10000;
-	cout << "Enter address range (0..0xFFFF)..." << endl;
-	addrbeg = PromptNewAddress("Start address (0..FFFF): ");
+	cout << PROMPT_RANGE_ADDR << endl;
+	addrbeg = PromptNewAddress(PROMPT_START_ADDR);
 	cout << " [" << hex << addrbeg << "]" << endl;
-	addrend = PromptNewAddress("End address   (0..FFFF): ");
+	addrend = PromptNewAddress(PROMPT_END_ADDR);
 	cout << " [" << hex << addrend << "]" << endl;
 	cout << endl;
 	for (unsigned int addr = addrbeg; addr <= addrend;) {
@@ -578,7 +673,7 @@ void DisassembleMemory()
 /*
  *--------------------------------------------------------------------
  * Method:		DumpMemory()
- * Purpose:
+ * Purpose:		Display contents of memory, range entered by user.
  * Arguments:
  * Returns:
  *--------------------------------------------------------------------
@@ -586,10 +681,10 @@ void DisassembleMemory()
 void DumpMemory()
 {
 	unsigned int addrbeg = 0x10000, addrend = 0x10000;
-	cout << "Enter address range (0..0xFFFF)..." << endl;
-	addrbeg = PromptNewAddress("Start address (0..FFFF): ");
+	cout << PROMPT_RANGE_ADDR << endl;
+	addrbeg = PromptNewAddress(PROMPT_START_ADDR);
 	cout << " [" << hex << addrbeg << "]" << endl;
-	addrend = PromptNewAddress("End address   (0..FFFF): ");
+	addrend = PromptNewAddress(PROMPT_END_ADDR);
 	cout << " [" << hex << addrend << "]" << endl;
 	cout << endl;
 	for (unsigned int addr = addrbeg; addr <= addrend; addr+=16) {
@@ -613,6 +708,87 @@ void DumpMemory()
 		cout << hex << addr;
 		cout << endl;
 	}	
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		ToggleDebugTraces()
+ * Purpose:		Enable/disable debug traces.
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void ToggleDebugTraces()
+{
+	if (pvm->IsDebugTraceActive()) {
+		pvm->DisableDebugTrace();
+		cout << "Debug traces disabled." << endl;
+	} else {
+		pvm->EnableDebugTrace();
+		cout << "Debug traces enabled." << endl;
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Macro:			SCRDIV_xxCOL
+ * Purpose:		Print line out of xx '-' signs, no NL.
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+#define SCRDIV_20COL	cout << "--------------------";
+#define SCRDIV_19COL	cout << "-------------------";
+#define SCRDIV_79COL	SCRDIV_20COL; SCRDIV_20COL; SCRDIV_20COL; SCRDIV_19COL;
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		DebugTraces()
+ * Purpose:		Show debug traces.
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void DebugTraces()
+{
+	if (pvm->IsDebugTraceActive()) {
+		queue<string> dbgtrc(pvm->GetDebugTraces());
+		cout << "Time [usec] : Message" << endl;
+		SCRDIV_79COL; cout << endl;
+		int n=0;
+		while (dbgtrc.size()) {
+			cout << dbgtrc.front() << endl;
+			dbgtrc.pop();
+			if (n++ == 20) {
+				n = 0;
+				cout << endl;
+				PressEnter2Cont("Press [ENTER] for more...");
+				cout << endl;
+			}
+		}
+		SCRDIV_79COL; cout << endl;		
+	} else {
+		cout << "Sorry. Debug traces are currently disabled." << endl;
+	} 			
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		TogglePerfStats()
+ * Purpose:		Enable/disable performance stats.
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void TogglePerfStats()
+{
+	if (pvm->IsPerfStatsActive()) {
+		pvm->DisablePerfStats();
+		cout << "Performance stats were disabled." << endl;
+	} else {
+		pvm->EnablePerfStats();
+		cout << "Performance stats were enabled." << endl;
+	}
 }
 
 /*
@@ -769,7 +945,7 @@ int main(int argc, char *argv[]) {
 			} else {
 
 				cout << endl;
-				cout << "Type '?' and press ENTER for Menu ..." << endl;
+				cout << "Type '?' and press [ENTER] for Menu ..." << endl;
 				cout << endl;
 
 			}
@@ -805,6 +981,7 @@ int main(int argc, char *argv[]) {
 				ExecHistory();
 			} else if (c == 'l') {	// load memory image
 				newaddr = LoadImage(newaddr);
+				ioaddr = pvm->GetCharIOAddr();
 			} else if (c == 'k') {	// toggle ROM emulation
 				if (!enrom) {
 					enrom = true;
@@ -856,7 +1033,7 @@ int main(int argc, char *argv[]) {
 				WriteToMemory();
 			} else if (c == 'a') {	// change run address
 				execaddr = stop = true;
-				newaddr = PromptNewAddress("Address (0..FFFF): ");
+				newaddr = PromptNewAddress(PROMPT_ADDR);
 				cout << " [" << hex << newaddr << "]" << endl;				
 			} else if (c == 's') {
 				runvm = step = stop = true;
@@ -875,13 +1052,13 @@ int main(int argc, char *argv[]) {
 			} else if (c == 'g') {	// run from new address until BRK
 				runvm = true;
 				execaddr = true;
-				newaddr = PromptNewAddress("Address (0..FFFF): ");
+				newaddr = PromptNewAddress(PROMPT_ADDR);
 				cout << " [" << hex << newaddr << "]" << endl;
 				show_menu = true;
 			} else if (c == 'x') {	// execute code at address
 				execvm = true;
 				execaddr = true;
-				newaddr = PromptNewAddress("Address (0..FFFF): ");
+				newaddr = PromptNewAddress(PROMPT_ADDR);
 				cout << " [" << hex << newaddr << "]" << endl;
 				show_menu = true;
 			} else if (c == 'q') {	// quit
@@ -895,6 +1072,14 @@ int main(int argc, char *argv[]) {
 				cout << "Op-code execute history has been ";
 				cout << (pvm->IsExecHistoryActive() ? "enabled" : "disabled") << ".";
 				cout << endl;
+			} else if (c == 'z') {	// toggle enable/disable debug traces in VM
+				ToggleDebugTraces();
+			} else if (c == '2') {	// show debug traces
+				DebugTraces();
+			} else if (c == '1') {	// toggle enable/disable perf. stats
+				TogglePerfStats();
+			} else {
+				cout << "ERROR: Unknown command." << endl;
 			}
 		}
 	}
@@ -1158,6 +1343,12 @@ D - diassemble code in memory
 U - enable/disable exec. history
     Toggle enable/disable of op-codes execute history.
     Disabling this feature improves performance.
+Z - enable/disable debug traces
+    Toggle enable/disable of debug traces.
+2 - display debug traces
+    Display recent debug traces.
+1 - enable/disable performance stats
+    Toggle enable/disable emulation speed measurement.
                     
 NOTE:
     1. If no arguments provided, each command will prompt user to enter

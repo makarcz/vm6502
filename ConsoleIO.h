@@ -3,11 +3,11 @@
  * Project:     VM65 - Virtual Machine/CPU emulator programming
  *                     framework.  
  *
- * File:   			system.h
+ * File:        ConsoleIO.h
  *
- * Purpose: 		Definitions related to platform portability.
+ * Purpose:     Prototype of ConsoleIO class.
  *
- * Date:      	8/25/2016
+ * Date:        8/26/2016
  *
  * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
  *
@@ -29,6 +29,33 @@
 
  *--------------------------------------------------------------------
  */
-#if !defined(LINUX)
-#define WINDOWS
+#ifndef CONSOLEIO_H
+#define CONSOLEIO_H
+
+#include <string>
+#include <queue>
+#include <chrono>
+#include "system.h"
+
+//#define WINDOWS 1
+#if defined (WINDOWS)
+#include <windows.h>
 #endif
+
+namespace MKBasic {
+
+   class ConsoleIO
+   {
+      public:
+
+         ConsoleIO();
+         ~ConsoleIO();
+
+         void ClearScreen();
+         void ScrHome();
+
+   };
+
+}  // namespace MKBasic
+
+#endif   // #ifndef CONSOLEIO_H 

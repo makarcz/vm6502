@@ -1,4 +1,42 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			Memory.cpp.
+ *
+ * Purpose: 		Implementation of class Memory.
+ *							The Memory class implements the highest abstraction
+ *							layer of Visrtual Machine's memory. in this particular
+ *							case the Virtual Machine emulates a computer system
+ *							based on a 8-bit microprocessor. Therefore it
+ *              implements image size and addressing space adequate
+ *              for the specific architecture of such microprocessor.
+ *							The Memory class also interfaces with the MemMapDev
+ *              API (Memory Mapped Devices).
+ *
+ * Date:      
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
 
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #include "Memory.h"
 #include "MKGenException.h"
 
@@ -322,6 +360,7 @@ void Memory::SetCharIO(unsigned short addr, bool echo)
 	SetupDevice(DEVNUM_CHARIO, memaddr_ranges, dev_params);
 	if (false == mCharIOActive) AddDevice(DEVNUM_CHARIO);
 	mCharIOActive = true;	
+	mpMemMapDev->ActivateCharIO();
 }
 
 /*
@@ -336,6 +375,7 @@ void Memory::DisableCharIO()
 {
 	mCharIOActive = false;
 	DeleteDevice(DEVNUM_CHARIO);
+	mpMemMapDev->DeactivateCharIO();
 }
 
 /*
@@ -405,10 +445,10 @@ unsigned short Memory::GetGraphDispAddr()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		GetROMBegin()
+ * Purpose:		Get starting address of read-only memory.
+ * Arguments:	
+ * Returns:		unsigned short - address ($0000-$FFFF)
  *--------------------------------------------------------------------
  */
 unsigned short Memory::GetROMBegin()
@@ -418,10 +458,10 @@ unsigned short Memory::GetROMBegin()
 		
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
+ * Method:		GetROMEnd()
+ * Purpose:		Get end address of read-only memory.
  * Arguments:
- * Returns:
+ * Returns:		unsigned short - address ($0000-$FFFF)
  *--------------------------------------------------------------------
  */		
 unsigned short Memory::GetROMEnd()
@@ -431,10 +471,10 @@ unsigned short Memory::GetROMEnd()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		IsROMEnabled()
+ * Purpose:		Get status of ROM.
+ * Arguments:	
+ * Returns:		bool - true if enabled.
  *--------------------------------------------------------------------
  */		
 bool Memory::IsROMEnabled()
@@ -445,7 +485,7 @@ bool Memory::IsROMEnabled()
 /*
  *--------------------------------------------------------------------
  * Method:		AddDevice()
- * Purpose:		Add device number to active devices list.
+ * Purpose:		Add device to active devices cache.
  * Arguments:	devnum - device number
  * Returns:		-1 if device is not supported OR already cached
  *            devnum - device number if it was found
@@ -487,7 +527,7 @@ int Memory::AddDevice(int devnum)
 			}
 		}
 	}	// END if (dev.num >= 0)
-	// else device with wuch number is not supported
+	// else device with such number is not supported
 
 	return ret;
 }
@@ -495,7 +535,7 @@ int Memory::AddDevice(int devnum)
 /*
  *--------------------------------------------------------------------
  * Method:		DeleteDevice()
- * Purpose:		Delete device number from active devices list.
+ * Purpose:		Delete device from active devices cache.
  * Arguments:	devnum - device number
  * Returns:		>=0 if device was found in local cache and deleted
  *            -1 if device was not found
@@ -607,10 +647,10 @@ char Memory::GetCharOut()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		GraphDisp_ReadEvents()
+ * Purpose:		Read events from the graphics display window.
+ * Arguments: n/a
+ * Returns:   n/a
  *--------------------------------------------------------------------
  */
 void Memory::GraphDisp_ReadEvents()
@@ -620,10 +660,10 @@ void Memory::GraphDisp_ReadEvents()
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
+ * Method:		GraphDisp_Update()
+ * Purpose:		Trigger update handler of the graphics display window.
+ * Arguments:	n/a
+ * Returns:		n/a
  *--------------------------------------------------------------------
  */
 void Memory::GraphDisp_Update()
@@ -644,6 +684,19 @@ void Memory::GraphDisp_Update()
 bool Memory::GraphDispOp()
 {
 	return mDispOp;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		GetMemMapDevPtr()
+ * Purpose:		Get the pointer to MemMapDev object.
+ * Arguments:	n/a
+ * Returns:		Pointer to MemMapDev object.
+ *--------------------------------------------------------------------
+ */
+MemMapDev *Memory::GetMemMapDevPtr()
+{
+	return mpMemMapDev;
 }
 
 } // namespace MKBasic

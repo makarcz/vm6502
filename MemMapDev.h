@@ -1,3 +1,35 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			MemMapDev.h
+ *
+ * Purpose: 		Prototype of MemMapDev class and all supporting
+ *							data structures, enumarators, constants and macros.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
+
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #ifndef MEMMAPDEV_H
 #define MEMMAPDEV_H
 
@@ -6,6 +38,7 @@
 #include "system.h"
 //#include "Memory.h"
 #include "GraphDisp.h"
+#include "Display.h"
 
 #if defined(LINUX)
 #include <unistd.h>
@@ -102,6 +135,7 @@ struct Device {
 
 typedef vector<Device> MemMappedDevices;
 
+// currently supported devices
 enum DevNums {
 	DEVNUM_CHARIO = 0,	// character I/O device
 	DEVNUM_GRDISP = 1,	// raster graphics display device
@@ -112,7 +146,7 @@ enum DevNums {
  * 
  * The emulated device is a model of a electronic device that is connected
  * to the CPU-s bus (address, memory, control signals).
- * Depending on the device, the memory address range maybe as simple as
+ * Depending on the device, the memory address range may be as simple as
  * a single memory address or it may contain multiple memory addresses
  * or ranges of addresses positioned at various non-contiguous places.
  * The functions of these addresses are handled internally by the MemMapDev
@@ -184,8 +218,13 @@ class MemMapDev {
 
 		char GetCharIn();
 		char GetCharOut();
+		void CharIOFlush();
 		unsigned short GetCharIOAddr();
 		bool GetCharIOEchoOn();
+		bool IsCharIOActive();
+		Display* ActivateCharIO();
+		Display* GetDispPtr();
+		void DeactivateCharIO();
 
 		int CharIODevice_Read(int addr);
 		void CharIODevice_Write(int addr, int val);
@@ -199,6 +238,8 @@ class MemMapDev {
 
 		void GraphDisp_ReadEvents();
 		void GraphDisp_Update();
+
+		//void SetCharIODispPtr(Display *p, bool active);
 
 	private:
 
@@ -214,6 +255,8 @@ class MemMapDev {
 		bool mIOEcho;		
 		unsigned int mGraphDispAddr;
 		GraphDisp *mpGraphDisp;			// pointer to Graphics Device object
+		Display   *mpCharIODisp;		// pointer to character I/O device object
+		bool			mCharIOActive;		// indicate if character I/O is active
 		GraphDeviceRegs mGrDevRegs;	// graphics display device registers
 
 		void Initialize();

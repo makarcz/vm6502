@@ -1,3 +1,35 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			VMachine.h
+ *
+ * Purpose: 		Prototype of VMachine class and all supporting data
+ *							structures, enumerations, constants and macros.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
+
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #ifndef VMACHINE_H
 #define VMACHINE_H
 
@@ -8,6 +40,7 @@
 #include "MKCpu.h"
 #include "Memory.h"
 #include "Display.h"
+#include "ConsoleIO.h"
 
 //#define WINDOWS 1
 #if defined (WINDOWS)
@@ -21,10 +54,45 @@
 #define HDRDATALEN	128
 #define HDRDATALEN_OLD	15
 #define HEXEOF	":00000001FF"
-//#define PERFSTAT_INTERVAL	30000000
+// take emulation speed measurement every 2 minutes (120,000,000 usec)
+#define PERFSTAT_INTERVAL	120000000
+// but not more often than 30,000,000 clock ticks
+#define PERFSTAT_CYCLES 30000000
+#define DBG_TRACE_SIZE	200	// maximum size of debug messages queue
 
 using namespace std;
 using namespace chrono;
+
+// Macros for debug log.
+#define ADD_DBG_LOADMEM(lc,txt) \
+	if (mDebugTraceActive)	\
+	{	\
+		stringstream ss;	\
+		string msg, s;		\
+		ss << lc;					\
+		ss >> s;					\
+		msg = "LINE #" + s + txt;	\
+		AddDebugTrace(msg);	\
+	}
+
+#define ADD_DBG_LDMEMPARHEX(name,value) \
+	if (mDebugTraceActive)	\
+	{	\
+		string msg;						\
+		msg = (string)name + " = $" + Addr2HexStr(value);	\
+		AddDebugTrace(msg);		\
+	}	
+
+#define ADD_DBG_LDMEMPARVAL(name,value) \
+	if (mDebugTraceActive)	\
+	{	\
+		string msg;							\
+		msg = (string)name + " = " + Addr2DecStr(value);	\
+		AddDebugTrace(msg);			\
+	}	
+
+// Macro to save header data: v - value, fp - file pointer, n - data counter (dec)
+#define SAVE_HDR_DATA(v,fp,n) {fputc(v, fp); n--;}	
 
 namespace MKBasic {
 
@@ -70,7 +138,6 @@ struct PerfStats {
 	time_point<high_resolution_clock> 
 			 begin_time;				// the moment of time count start
 	long cycles;						// performance stats
-	long micro_secs;				// performance stats
 	long prev_cycles;				// previously measured stats
 	long prev_usec;					// previously measured stats
 	int  perf_onemhz;				// avg. % perf. based on 1MHz CPU.
@@ -131,16 +198,24 @@ class VMachine
 															// cycles per second (1 MHz CPU).
 		void EnableExecHistory(bool enexehist);
 		bool IsExecHistoryActive();
+		void EnableDebugTrace();
+		void DisableDebugTrace();
+		bool IsDebugTraceActive();
+		void EnablePerfStats();
+		void DisablePerfStats();
+		bool IsPerfStatsActive();
+		queue<string> GetDebugTraces();
 
 		
 	protected:
 		
 	private:
 		
-		MKCpu		*mpCPU;
-		Memory	*mpROM;
-		Memory	*mpRAM;
-		Display	*mpDisp;
+		MKCpu		*mpCPU;			// object maintained locally
+		Memory	*mpROM;			// object maintained locally
+		Memory	*mpRAM;			// object maintained locally
+		Display	*mpDisp;		// just a pointer
+		ConsoleIO *mpConIO;	// object maintained locally
 		unsigned short mRunAddr;
 		unsigned short mCharIOAddr;
 		bool mCharIOActive;
@@ -152,6 +227,10 @@ class VMachine
 		bool mGraphDispActive;
 		bool mOldStyleHeader;
 		PerfStats mPerfStats;
+		queue<string> mDebugTraces;
+		bool mPerfStatsActive;
+		bool mDebugTraceActive;
+		time_point<high_resolution_clock> mBeginTime;
 		
 		int  LoadMEM(string memfname, Memory *pmem);
 		void ShowDisp();
@@ -161,6 +240,9 @@ class VMachine
 		void SaveHdrData(FILE *fp);
 		eMemoryImageTypes GetMemoryImageType(string ramfname);
 		int CalcCurrPerf();
+		void AddDebugTrace(string msg);
+		string Addr2HexStr(unsigned short addr);
+		string Addr2DecStr(unsigned short addr);
 };
 
 } // namespace MKBasic

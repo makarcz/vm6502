@@ -82,11 +82,14 @@ provided image file and enter the debug console menu.
 	which will be referred to as Debug Console:
 
 STOPPED at 0
+
+Emulation performance stats is OFF.
+
 *-------------*-----------------------*----------*----------*
 |  PC: $0000  |  Acc: $00 (00000000)  |  X: $00  |  Y: $00  |
 *-------------*-----------------------*----------*----------*
-|  NV-BDIZC   |
-|  00100000   | Last instr.:
+|  NV-BDIZC   | :
+|  00100000   | :
 *-------------*
 
 Stack: $ff
@@ -95,6 +98,7 @@ Stack: $ff
 I/O status: disabled,  at: $e000,  local echo: OFF.
 Graphics status: disabled,  at: $e002
 ROM: disabled. Range: $d000 - $dfff.
+Op-code execute history: disabled.
 ------------------------------------+----------------------------------------
    C - continue,  S - step          |    A - set address for next step
    G - go/cont. from new address    |    N - go number of steps, P - IRQ
@@ -103,11 +107,38 @@ ROM: disabled. Range: $d000 - $dfff.
    E - toggle I/O local echo        |    F - toggle registers animation
    J - set animation delay          |    M - dump memory, W - write memory
    K - toggle ROM emulation         |    R - show registers, Y - snapshot
-   L - load memory image            |    O - display op-codes history
+   L - load memory image            |    O - display op-code exec. history
    D - disassemble code in memory   |    Q - quit, 0 - reset, H - help
-   V - toggle graphics emulation    |
+   V - toggle graphics emulation    |    U - enable/disable exec. history
+   Z - enable/disable debug traces  |    1 - enable/disable perf. stats
+   2 - display debug traces         |    ? - show this menu
 ------------------------------------+----------------------------------------
-> _
+>
+
+	Upper part of the screen consists of current CPU registers status.
+	If performance statistics are enabled, they are right above the CPU
+	registers.
+	PC shows address of currently executed op-code, while to the right of status
+	flags below PC is a disassembled (now empty, showing just the ':' signs)
+	instructions section. It shows 2 lines, 1-st line is the previously executed
+	instruction while the 2-nd line shows current instruction. Instructions are
+	shown in binary (hex) and	symbolic (disassembled mnemonics, hex arguments)
+	format.
+	Accumulator and index registers X and Y values are also shown in the CPU
+	registers section.
+	Stack pointer and its contents are displayed below the CPU registers.
+	The contents of the Processor registers, disassembled executed instructions
+	and stack pointer and contents are updated dymanically during the multi-step
+	program debugging.
+	
+	Below the stack data we have current status of various flags and parameters
+	that don't belong to emulated CPU.
+	
+	Next goes the full list of available commands with short descriptions.
+	The menu of commands is not always displayed. It is usually skipped when
+	there were no screen actions that could potentially obstruct that menu.
+	The menu of commands can be always recalled to the screen by issuing
+	command '?' after the command prompt '>' and pressing ENTER.
 
 	Each of the commands in Debug Console is interactive and can be used in two
 	ways - user can issue command in the prompt, press enter and follow the
@@ -116,9 +147,9 @@ ROM: disabled. Range: $d000 - $dfff.
 	To see full help for above commands, issue command H in the prompt and press
 	ENTER.
 
-	A quick overview of the some commands available in Debug Console:
+	A quick overview of some of the commands available in Debug Console:
 
-	* Code execution and debugging commands.
+	2.1. Code execution and debugging aid commands.
 
 	C - Continue
 
@@ -126,17 +157,22 @@ ROM: disabled. Range: $d000 - $dfff.
 
 	S - Step
 
-			Executes single opcode at current address.
+			Executes single op-code at current address. The address for the next
+			step can be changed with command 'A'.
 
 	A - Set address for next step
 
-			Sets current address to one provided is argument (or prompts for one).
+			Sets current address to one provided as argument (or prompts for one).
 
 	G - Execute (continue) from address.
 
 			Asks for (if not provided as argument) address and then executes code.
 
 	N - Execute # of steps.
+
+			Useful when we want to skip ahead (e.g.: in a loop) and execute multiple
+			op-codes before next stop. Look also at commands 'F' and 'J' for
+			features and parameters associated with it.
 
 	X - Execute from address.
 
@@ -159,7 +195,7 @@ ROM: disabled. Range: $d000 - $dfff.
 
   		Displays current status of CPU registers, flags and stack.
 
-  O - Display op-codes history.
+  O - Display op-codes execute history.
 
       Show the history of last executed op-codes/instructions, full with
     	disassembled mnemonic and argument.
@@ -181,7 +217,47 @@ ROM: disabled. Range: $d000 - $dfff.
 	    opcode if stack is empty, so the VM will never return from opcodes
 	    execution loop unless user interrupts with CTRL-C or CTRL-Break.
 
-	* Memory access commands.
+	Z - Toggle enable/disable debug traces.
+
+			Emulator may produce debug messages that can be helpful when
+			troubleshooting issues with 6502 code. Since the immediate output
+			to the same console where emulated program is connected is in many
+			cases undesired, the debug messages are remembered in an internal
+			log. The log holds last 200 messages. If enabled, this log can be
+			recalled with command '2'. When the log is disabled and then enabled
+			again, the old log messages will be deleted.
+
+	2 - Display debug traces.
+
+			Displays debug traces log (200 maximum) in 20 messages long pages.
+
+	U - Toggle enable/disable op-codes execute history.
+
+			See also option 'O'.
+			This debuggin aid is not needed during normal emulator run, therefore
+			option to disable this feature was added, mainly because it affects
+			performance. But in debugging mode, when we often trace code step by
+			step, the performance compromise may be justified as a trade off for
+			getting more internal data from the system.
+
+	1 - Toggle enable/disable emulation performance statistics.
+
+			MKCpu class includes code to measure the emulation speed.
+			The speed is measured as a % of model 1 MHz MOS-6502. Number of executed
+			cycles is divided by number of microseconds that passed and multiplied
+			by 100 to get this figure.
+			Performance is only measured in the execute/run modes.
+			It doesn't make much sense in	debug/step by step modes, therefore even
+			when the feature is enabled, the stats are not calculated in these modes
+			of operation.
+			Emulation performance feature is useful mainly during the development
+			cycle of the emulator and since this is a programming framework for
+			buiding your own virtual machines/CPU emulators, then it is included.
+			However as with any debugging aid, it affects performance, therefore
+			option was added to disable it when we just want to run the 6502 code
+			and enjoy it at maximum possible speed.
+
+	2.2. Memory access commands.
 
 	M - Dump memory.
 
@@ -191,7 +267,7 @@ ROM: disabled. Range: $d000 - $dfff.
 
 			Writes provided values to memory starting at specified address.
 
-	* I/O devices commands.
+	2.3. I/O devices commands.
 
 	I - Toggle char I/O emulation.
 
@@ -250,6 +326,76 @@ ROM: disabled. Range: $d000 - $dfff.
 
 	NOTE: All addresses and memory values are to be entered in hexadecimal
 				format.
+
+	2.4. Typical debug session.
+
+			 Your typical debug session, after starting VM65 is:
+
+			 * Load the memory image with command 'L' (if not already loaded from
+			 	 command line). E.g.:
+
+			 	 L A 6502_func_test.bin
+
+			 * Set the program start address with command 'A' (if not already set
+			 	 in the memory image definition file). E.g.:
+
+			 	 A 0400
+
+			 * Enable/disable various debug and I/O facilities as required by the
+			 	 loaded 6502 code. E.g.: to enable dymanic processor registers updates
+			 	 and show the executed code dynamically while executing multiple steps
+			 	 with command 'N', you need to issue command 'F' to enable registers
+			 	 animation and optionally 'J' to change the speed (delay) of the
+			 	 step-by-step animation:
+
+			 	 F
+			 	 J 100
+			 	 N 1000
+
+			 	 OR if command 'S' is used to manually step through 6502 instructions,
+			 	 the animation of the CPU registers doesn't have top be enabled.
+			 	 The registers values and disassembled instructions will be refreshed
+			 	 after each step on the screen.
+			 	 Each step is considered a single instructions (not a clock cycle).
+			 	 If user wants to skip several (thousands perhaps) instructions, then
+			 	 registers animation (command 'F') should be disabled, which will
+			 	 make the steps to proceed much quicker. E.g.: assuming that currently
+			 	 the animation is enabled, and user wants to skip 5000 instructions
+			 	 quickly without looking at the changing registers and disassembled
+			 	 instructions, user would issue commands:
+
+			 	 F
+			 	 N 5000
+
+			 	 At any moment during multi-step execution (command 'N'), user can
+			 	 interrupt before all the steps are concluded with CTRL-C and then
+			 	 lool-up/alter memory content (commands 'M', 'W'), change the address
+			 	 of the next executed instruction (command 'A') etc. and then continue
+			 	 debugging with 'S', 'N', 'X', 'C', '0' or 'P' commands.
+
+			 	 User can enable the history of executed op-codes with command 'U' and
+			 	 display the history of the last 20 op-codes and CPU registers values
+			 	 in the last 20 steps. E.g.:
+
+			 	 L A 6502_func_test.bin
+			 	 A 0400
+			 	 U
+			 	 N 5
+			 	 O
+
+			 	 Output from 'O':
+
+			 	 > o
+				 PC   : INSTR                    ACC |  X  |  Y  | PS  | SP
+				 ------------------------------------+-----+-----+-----+-----
+				 $0400: CLD                      $00 | $00 | $00 | $20 | $ff
+				 $0401: LDX #$FF                 $00 | $ff | $00 | $a0 | $ff
+				 $0403: TXS                      $00 | $ff | $00 | $a0 | $ff
+				 $0404: LDA #$00                 $00 | $ff | $00 | $22 | $ff
+				 $0406: STA $0200                $00 | $ff | $00 | $22 | $ff
+
+				 Type '?' and press [ENTER] for Menu ...
+
 
 3. Implementing the Virtual Machine.
 
@@ -565,3 +711,58 @@ ROM: disabled. Range: $d000 - $dfff.
 		See Memory::SetGraphDisp() and VMachine::SetGraphDisp() methods for
 		an example. The SetGraphDisp() method in Memory class defines the memory
 		mapped device on a lower level and calls SetupDevice().
+
+5. Debug traces.
+
+	 VMachine class implements debug messages queue which can be used during
+	 development cycle.
+
+ 		void EnableDebugTrace();
+		void DisableDebugTrace();
+		bool IsDebugTraceActive();
+		queue<string> GetDebugTraces();
+		void AddDebugTrace(string msg);
+
+	This is a FIFO queue and it is maintained to not exceed the length as
+	defined:
+
+	#define DBG_TRACE_SIZE	200	// maximum size of debug messages queue
+
+	Therefore the next message added to queue that overfills the queue causes
+	the earliest added message to be removed.
+	Shortly put - the last 200 added messages only are remembered internally
+	in VMachine object and can be recalled with GetDebugTraces() method like
+	shown in this example:
+
+	VMachine *pvm;
+	[...]
+		queue<string> dbgtrc(pvm->GetDebugTraces());
+		while (dbgtrc.size()) {
+			cout << dbgtrc.front() << endl;
+			dbgtrc.pop();
+		}
+
+	Good example of AddDebugTrace() use is EnableROM() method:
+
+	void VMachine::EnableROM(unsigned short start, unsigned short end)
+	{
+		mpRAM->EnableROM(start, end);
+		if (mDebugTraceActive) {
+			stringstream sssa, ssea;
+			string msg, startaddr, endaddr;
+			sssa << start;
+			sssa >> startaddr;
+			ssea << end;
+			ssea >> endaddr;
+			msg = "ROM ENABLED, Start: " + startaddr + ", End: " + endaddr + ".";		
+			AddDebugTrace(msg);
+		}
+	}
+
+	NOTE: The AddDebugTrace method checks mDebugTraceActive flag internally,
+				however for performance's sake we also check it in the higher level
+				code especially if there are intermediate objects to be created
+				to produce the debug string. This way we don't execute code related
+				to creation of debug message unnecessarily if the debugging messages
+				are disabled.
+

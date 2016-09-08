@@ -21,13 +21,15 @@ Graphics display emulation requires SDL2.
 Makefile are included to build under Windows 32/64 (mingw compiler required)
 and under Linux Ubuntu or Ubuntu based distro.
 SDL2 library must be on your execution path in order to run program.
+E.g.:
+set PATH=C:\src\SDL\lib\x64;%PATH%
 
 To build under Windows 32/64:
 
 * Install MINGW64 under C:\mingw-w64\x86_64-5.3.0 folder.
 * Run mingw terminal.
 * Change current directory to that of this project.
-* Set environment variable SDLDIR.
+* Set environment variable SDLDIR. (E.g.: set SDLDIR=C:\src\SDL)
 * Run: makeming.bat
 
 To build under Linux:
@@ -595,6 +597,12 @@ D - diassemble code in memory
 U - enable/disable exec. history
     Toggle enable/disable of op-codes execute history.
     Disabling this feature improves performance.
+Z - enable/disable debug traces
+    Toggle enable/disable of debug traces.
+2 - display debug traces
+    Display recent debug traces.
+1 - enable/disable performance stats
+    Toggle enable/disable emulation speed measurement.
                     
 NOTE:
     1. If no arguments provided, each command will prompt user to enter
@@ -603,7 +611,7 @@ NOTE:
        by pressing CTRL-C or CTRL-Pause/Break, which will generate
        a "Operator Interrupt". However in the character input mode
        use CTRL-Y combination or CTRL-Break (DOS), CTRL-C (Linux).
-       You may need to press ENTER after that in input mode (DOS).       
+       You may need to press ENTER after that in input mode (DOS).
 
 7. Command line usage.
 
@@ -770,7 +778,7 @@ With all peripherals disabled and op-code history enabled we are down to
 411 % on PC1 and 312 % on PC2.
 
 Enabling and adding the emulated memory mapped devices to the pool may cause
-the emulation speed to drop as well. Hovever even with currently implemented
+the emulation speed to drop as well. However even with currently implemented
 peripherals (char I/O, graphics raster device) enabled and actively used and
 op-codes execute history enabled the performance is still well above 300 %
 on both PC1 and on PC2 (* see annotations for PC configurations/specs).

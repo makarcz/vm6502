@@ -1,3 +1,35 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			GraphDisp.h
+ *
+ * Purpose: 		Prototype of GraphDisp class and supporting data
+ *							structures, enumerations, constants and macros.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
+
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #ifndef GRAPHDISP_H
 #define GRAPHDISP_H
 
@@ -12,8 +44,8 @@ using namespace std;
 
 namespace MKBasic {
 
-const int GRAPHDISP_MAXW = 640;	// "real" display width or maximum virtual width
-const int GRAPHDISP_MAXH = 400;	// "real" display width or maximum virtual height
+const int GRAPHDISP_MAXW = 960; // "real" display width or maximum virtual width
+const int GRAPHDISP_MAXH = 600; // "real" display width or maximum virtual height
 
 class GraphDisp {
 
@@ -43,8 +75,8 @@ class GraphDisp {
 
 		int	mWidth = 320;			// virtual display width
 		int mHeight = 200;		// virtual display height
-		int mPixelSizeX = 2;	// virtual pixel width
-		int mPixelSizeY = 2;	// virtual pixel height
+		int mPixelSizeX = 3;	// virtual pixel width
+		int mPixelSizeY = 3;	// virtual pixel height
 		int mWinPosX = 0;			// SDL window position coordinate X
 		int mWinPosY = 0;			// SDL window position coordinate Y
 		int mBgRgbR = 0;			// bg color, RGB red intensity

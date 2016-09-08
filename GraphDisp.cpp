@@ -1,4 +1,40 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			GraphDisp.cpp
+ *
+ * Purpose: 		Implementation of GraphDisp class.
+ *							The GraphDisp class emulates the graphics raster
+ *							device. It handles displaying of the graphics, the
+ *							events loop and the 'hardware' API to the device.
+ *							The higher level abstraction layer - MemMapDev
+ *							defines the actual behavior/response of the emulated
+ *							device in the emulated system.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
 
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #include "GraphDisp.h"
 #include "MKGenException.h"
 #include "system.h"
@@ -75,6 +111,8 @@ void GraphDisp::Initialize()
 {
 	int desk_w, desk_h, winbd_top = 5, winbd_right = 5;
 
+	mPixelSizeX = GRAPHDISP_MAXW / mWidth;
+	mPixelSizeY = GRAPHDISP_MAXH / mHeight;
 	GetDesktopResolution(desk_w, desk_h);
 	// Available in version > 2.0.4
 	//SDL_GetWindowBordersSize(mpWindow, &winbd_top, NULL, NULL, &winbd_right);

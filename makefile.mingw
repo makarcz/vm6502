@@ -1,4 +1,4 @@
-# Project: MKBasic
+# Project: VM65
 # Makefile created by Dev-C++ 5.11
 # and modified for standalone MINGW compiler installation.
 
@@ -7,9 +7,9 @@ SDLBASE  = $(SDLDIR)
 CPP      = g++.exe -D__DEBUG__
 CC       = gcc.exe -D__DEBUG__
 WINDRES  = windres.exe
-OBJ      = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o
+OBJ      = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o
 OBJ2     = bin2hex.o
-LINKOBJ  = main.o VMachine.o MKBasic.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o
+LINKOBJ  = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o
 LINKOBJ2 = bin2hex.o
 LIBS     = -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -L"C:\mingw-w64\x86_64-5.3.0\mingw64\x86_64-w64-mingw32/lib" -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32
 SDLLIBS  = -L"$(SDLBASE)\x86_64-w64-mingw32/lib" -lSDL2main -lSDL2
@@ -40,9 +40,6 @@ main.o: main.cpp
 VMachine.o: VMachine.cpp VMachine.h
 	$(CPP) -c VMachine.cpp -o VMachine.o $(CXXFLAGS) $(SDLINCS)
 
-MKBasic.o: MKBasic.cpp MKBasic.h
-	$(CPP) -c MKBasic.cpp -o MKBasic.o $(CXXFLAGS) $(SDLINCS)
-
 MKCpu.o: MKCpu.cpp MKCpu.h
 	$(CPP) -c MKCpu.cpp -o MKCpu.o $(CXXFLAGS) $(SDLINCS)
 
@@ -60,6 +57,9 @@ MemMapDev.o: MemMapDev.cpp MemMapDev.h
 
 MKGenException.o: MKGenException.cpp MKGenException.h
 	$(CPP) -c MKGenException.cpp -o MKGenException.o $(CXXFLAGS)
+
+ConsoleIO.o: ConsoleIO.cpp ConsoleIO.h
+	$(CPP) -c ConsoleIO.cpp -o ConsoleIO.o $(CXXFLAGS)	
 
 $(BIN2): $(OBJ2)
 	$(CC) $(LINKOBJ2) -o $(BIN2) $(LIBS)

@@ -1,4 +1,47 @@
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   			MemMapDev.cpp
+ *
+ * Purpose: 		Implementation of MemMapDev class.
+ *							The MemMapDev class implements the highest abstraction
+ *							layer for interfacing with emulated devices via memory
+ *							addressing space, which is a typical way of
+ *							interfacing the CPU with peripherals in the real world
+ *							microprocessor systems.
+ *							It also implements/emulates the behavior of the
+ *							devices. The core implementation of the devices may
+ *							be contained in separate classes or inside MemMapDev
+ *							class. Note that MemMapDev class always contains
+ *							at least partial (highest abstraction layer)
+ *							implementation of the emulated device as it defines
+ *							the methods triggered by corresponding memory address
+ *							accesses.
+ *
+ * Date:      	8/25/2016
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
 
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
 #include "MemMapDev.h"
 #include "Memory.h"
 #include "MKGenException.h"
@@ -83,6 +126,7 @@ void MemMapDev::Initialize()
 	mCharIOAddr = CHARIO_ADDR;
 	mGraphDispAddr = GRDISP_ADDR;
 	mpGraphDisp = NULL;
+	mpCharIODisp = NULL;
 	AddrRange addr_range(CHARIO_ADDR, CHARIO_ADDR+1);
 	DevPar dev_par("echo", "false");
 	MemAddrRanges addr_ranges_chario;
@@ -112,6 +156,7 @@ void MemMapDev::Initialize()
 									  &MemMapDev::GraphDispDevice_Write,
 									  dev_params_grdisp);
 	mDevices.push_back(dev_grdisp);	
+	mCharIOActive = false;
 }
 
 /*
@@ -287,7 +332,7 @@ int MemMapDev::getch()
     }
 }
 
-#endif
+#endif	// #define LINUX
 
 /*
  *--------------------------------------------------------------------
@@ -304,10 +349,11 @@ unsigned char MemMapDev::ReadCharKb(bool nonblock)
 #if defined(LINUX)
     set_conio_terminal_mode();
 #endif
-		static int c = ' ';
-		if (mIOEcho && isprint(c)) putchar(c);
-		fflush(stdout);
-		
+		static int c = ' ';	// static, initializes once, remembers prev.
+												// value
+		// checking mCharIOActive may be too much of a precaution since
+		// this method will not be called unless char I/O is enabled
+		if (mCharIOActive && mIOEcho && isprint(c)) putchar(c);
 		if (nonblock) { 
 			// get a keystroke only if character is already in buffer	
 			if (kbhit()) c = getch();
@@ -377,8 +423,29 @@ char MemMapDev::GetCharOut()
 
 /*
  *--------------------------------------------------------------------
+ * Method:    CharIOFlush()
+ * Purpose:   Flush the character I/O FIFO output buffer contents
+ *            to the character I/O device's screen buffer.
+ * Arguments: 
+ * Returns:   
+ *--------------------------------------------------------------------
+ */
+void MemMapDev::CharIOFlush()
+{
+	char cr = -1;
+	while ((cr = GetCharOut()) != -1) {
+		mpCharIODisp->PutChar(cr);
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
  * Method:		PutCharIO()
  * Purpose:		Put character in the output char I/O FIFO buffer.
+ *            If character I/O device emulation is enabled, print the
+ *            character to the standard output, then flush the I/O
+ *            FIFO output buffer to the character device screen
+ *            buffer.
  * Arguments: c - character
  * Returns:   n/a
  *--------------------------------------------------------------------
@@ -388,6 +455,10 @@ void MemMapDev::PutCharIO(char c)
 	mCharIOBufOut[mOutBufDataEnd] = c;
 	mOutBufDataEnd++;
 	if (mOutBufDataEnd >= CHARIO_BUF_SIZE) mOutBufDataEnd = 0;
+	if (mCharIOActive) {
+		putchar((int)c);
+		CharIOFlush();
+	}
 }
 
 /*
@@ -449,6 +520,69 @@ unsigned short MemMapDev::GetCharIOAddr()
 bool MemMapDev::GetCharIOEchoOn()
 {
 	return mIOEcho;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    	IsCharIOActive()
+ * Purpose:   
+ * Arguments: 
+ * Returns:   
+ *--------------------------------------------------------------------
+ */
+bool MemMapDev::IsCharIOActive()
+{
+	return mCharIOActive;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    	ActivateCharIO()
+ * Purpose:   	Activate character I/O device, create Display object.
+ * Arguments: 	n/a
+ * Returns:   	Pointer to Display object.
+ *--------------------------------------------------------------------
+ */
+Display *MemMapDev::ActivateCharIO()
+{
+	if (NULL == mpCharIODisp) {
+		mpCharIODisp = new Display();
+		if (NULL == mpCharIODisp)
+			throw MKGenException(
+				"Out of memory while initializing Character I/O Display Device");
+	}
+	mCharIOActive = true;
+	mpCharIODisp->ClrScr();
+
+	return mpCharIODisp;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    	GetDispPtr()
+ * Purpose:   
+ * Arguments: 
+ * Returns:   	Pointer to Display object.
+ *--------------------------------------------------------------------
+ */
+Display *MemMapDev::GetDispPtr()
+{
+	return mpCharIODisp;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    	DeactivateCharIO()
+ * Purpose:   
+ * Arguments: 
+ * Returns:   
+ *--------------------------------------------------------------------
+ */
+void MemMapDev::DeactivateCharIO()
+{
+	if (NULL != mpCharIODisp) delete mpCharIODisp;
+	mpCharIODisp = NULL;
+	mCharIOActive = false;
 }
 
 /*
@@ -667,5 +801,21 @@ void MemMapDev::GraphDisp_Update()
 {
 	if (NULL != mpGraphDisp) mpGraphDisp->Update();
 }
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		SetCharIODispPtr()
+ * Purpose:		Set internal pointer to character I/O device object.
+ * Arguments:	p - pointer to Display object.
+ *            active - bool, true if character I/O is active
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+ /*
+void MemMapDev::SetCharIODispPtr(Display *p, bool active)
+{
+	mpCharIODisp = p;
+	mCharIOActive = active;
+}*/
 
 } // namespace MKBasic
