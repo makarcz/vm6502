@@ -43,6 +43,7 @@
 #include "VMachine.h"
 #include "GraphDisp.h"
 #include "MemMapDev.h"
+#include "ConsoleIO.h"
 #include "MKGenException.h"
 
 using namespace std;
@@ -60,6 +61,7 @@ char diss_buf[DISS_BUF_SIZE];		// last disassembled instruction buffer
 char curr_buf[DISS_BUF_SIZE];		// current disassembled instruction buffer
 
 VMachine *pvm = NULL;
+ConsoleIO *pconio = NULL;
 Regs *preg = NULL;
 bool ioecho = false, opbrk = false, needhelp = false;
 bool loadbin = false, loadhex = false, reset = false, execvm = false;
@@ -224,16 +226,34 @@ void trap_signal(int signum);
  */
 void trap_signal(int signum)
 {
-   cout << "Signal caught: " << dec << signum << endl;
-   if (NULL != pvm && NULL != preg) {
-  		pvm->SetOpInterrupt(true);
-  		opbrk = true;
-	 }
+	if (NULL != pconio) {
+    pconio->CloseCursesScr();
+  }
+  if (NULL != pvm && NULL != preg) {
+  	pvm->SetOpInterrupt(true);
+  	opbrk = true;
+	}
+  cout << "Signal caught: " << dec << signum << endl;
 
-   return;
+  return;
 }
 
-#endif
+/*
+ *--------------------------------------------------------------------
+ * Method:    reset_terminal_mode()
+ * Purpose:   Close curses window.
+ * Arguments:
+ * Returns:
+ *--------------------------------------------------------------------
+ */
+void reset_terminal_mode()
+{
+	if (NULL != pconio) pconio->CloseCursesScr();
+  cout << "Thank you for using VM65." << endl;
+}
+
+
+#endif 	// #if defined(LINUX)
 
 #if defined(WINDOWS)
 #include <windows.h>
@@ -842,10 +862,18 @@ int main(int argc, char *argv[]) {
 #if defined(LINUX)
 	signal(SIGINT, trap_signal);
   signal(SIGTERM, trap_signal);
+  if (atexit(reset_terminal_mode)) {
+    cout << "WARNING: Can't set exit function." << endl;
+    PressEnter2Cont("");
+  }
 #endif
 #if defined(WINDOWS)
 	SetConsoleCtrlHandler( (PHANDLER_ROUTINE) CtrlHandler, TRUE );
 #endif
+	pconio = new ConsoleIO();
+	if (NULL == pconio) throw MKGenException("Out of memory - ConsoleIO");
+  pconio->InitCursesScr();
+  pconio->CloseCursesScr();
 	string romfile("dummy.rom");
 	LoadArgs(argc, argv);
 	if (needhelp) { CmdArgHelp(argv[0]); exit(0); }
@@ -871,7 +899,7 @@ int main(int argc, char *argv[]) {
 			if (NULL != pvm && !reset) { reset = execvm = pvm->IsAutoReset(); }
 		}
 		if (NULL == pvm) {
-			throw MKGenException("Out of memory");
+			throw MKGenException("Out of memory - VMachine");
 		}
 		pvm->ClearScreen();
 		CopyrightBanner();
@@ -899,6 +927,8 @@ int main(int argc, char *argv[]) {
 					preg = ((step) ? RunSingleCurrInstr() : pvm->Run());
 					RUNSTEPS(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
 				}
+        pconio->InitCursesScr();
+        pconio->CloseCursesScr();
 				if (step)
 					cout << "\rExecuted " << dec << stct << ((stct == 1) ? " step." : " steps.") << "                 " << endl;				
 				nsteps = 0;
@@ -918,6 +948,8 @@ int main(int argc, char *argv[]) {
 				lrts = preg->LastRTS;
 				newaddr = 0x10000;
 			}
+      pconio->InitCursesScr();
+      pconio->CloseCursesScr();
 			if (brk || opbrk || stop || lrts) {
 				pvm->ClearScreen();
 				pvm->ShowIO();
@@ -1008,6 +1040,7 @@ int main(int argc, char *argv[]) {
 				anim = !anim;
 				cout << "Registers status animation " << ((anim) ? "enabled." : "disabled.") << endl;
 			}	else if (c == 'b') {	// clear screen
+				pconio->CloseCursesScr();
 				pvm->ClearScreen();
 			} else if (c == 'r') {	// show registers
 				stop = true;
@@ -1082,11 +1115,14 @@ int main(int argc, char *argv[]) {
 				cout << "ERROR: Unknown command." << endl;
 			}
 		}
+		if (NULL != pconio) pconio->CloseCursesScr();
 	}
 	catch (MKGenException& ex) {
+		if (NULL != pconio) pconio->CloseCursesScr();
 		cout << ex.GetCause() << endl;
 	}
 	catch (...) {
+		if (NULL != pconio) pconio->CloseCursesScr();
 		cout << "ERROR: Fatal." << endl;
 	}
 	return 0;

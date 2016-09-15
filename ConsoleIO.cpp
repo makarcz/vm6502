@@ -7,7 +7,8 @@
  *
  * Purpose:     Implementation of ConsoleIO class.
  *              The ConsoleIO class has methods helpful when
- *              UI is utilizing STDIO (DOS) console.
+ *              UI is utilizing STDIO (DOS) console OR curses on
+ *							Linux.
  *
  * Date:        8/26/2016
  *
@@ -42,6 +43,15 @@
 
 #if defined(WINDOWS)
 #include <conio.h>
+#endif
+
+#if defined(LINUX)
+#include <termios.h>
+#include <sys/ioctl.h>
+#include <asm-generic/ioctls.h>
+#include <ncurses.h>
+
+static WINDOW *g_pWin = NULL;
 #endif
 
 using namespace std;
@@ -141,7 +151,7 @@ void ConsoleIO::ScrHome()
   SetConsoleCursorPosition( hStdOut, homeCoords );
 }
 
-#endif
+#endif // WINDOWS
 
 #if defined(LINUX)
 
@@ -155,7 +165,12 @@ void ConsoleIO::ScrHome()
  */
 void ConsoleIO::ClearScreen()
 {
-   system("clear");
+	if (isendwin() || NULL == g_pWin) {
+		system("clear");
+	} else {
+		clear();
+		refresh();
+	}
 }
 
 /*
@@ -168,9 +183,184 @@ void ConsoleIO::ClearScreen()
  */
 void ConsoleIO::ScrHome()
 {
-   cout << "\033[1;1H";
+	if (!isendwin() && NULL != g_pWin) {
+		move(0, 0);
+		refresh();
+	} else {
+		cout << "\033[1;1H";
+	}
 }
 
-#endif // #devine LINUX
+#endif // #define LINUX
+
+/*
+ *--------------------------------------------------------------------
+ * Method:     GetChar()
+ * Purpose:    Get character from console.
+ * Arguments:  n/a
+ * Returns:    int - character code.
+ *--------------------------------------------------------------------
+ */
+int ConsoleIO::GetChar()
+{
+#if defined(LINUX)
+  if (!isendwin() && NULL != g_pWin)
+    return getch();
+  else
+    return getchar();
+#else
+  return getch();
+#endif
+}
+/*
+ *--------------------------------------------------------------------
+ * Method:     KbHit()
+ * Purpose:    Check if key has been pressed.
+ * Arguments:  n/a
+ * Returns:    bool - true if key pressed
+ *--------------------------------------------------------------------
+ */
+bool ConsoleIO::KbHit()
+{
+#if defined(LINUX)
+  if (!isendwin() && NULL != g_pWin) {
+    int ch = getch();
+
+    if (ch != ERR) {
+        ungetch(ch);
+        return true;
+    } else {
+        return false;
+    }
+  } else {
+    static const int STDIN = 0;
+    static bool initialized = false;
+
+    if (! initialized) {
+        // Use termios to turn off line buffering
+        termios term;
+        tcgetattr(STDIN, &term);
+        term.c_lflag &= ~(ICANON | ECHO);
+        tcsetattr(STDIN, TCSANOW, &term);
+        setbuf(stdin, NULL);
+        initialized = true;
+    }
+
+    int bytesWaiting;
+    ioctl(STDIN, FIONREAD, &bytesWaiting);
+    return (bytesWaiting > 0);
+
+  }
+#else
+  return (kbhit() != 0);
+#endif
+}
+
+
+/*
+ *--------------------------------------------------------------------
+ * Method:     InitCursesScr()
+ * Purpose:    Initialize nsurses screen.
+ * Arguments:  n/a
+ * Returns:    n/a
+ *--------------------------------------------------------------------
+ */
+void ConsoleIO::InitCursesScr()
+{
+  fflush(stdin);
+#if defined(LINUX)
+	if (NULL == g_pWin) {
+		g_pWin = initscr();
+		cbreak();
+    keypad(stdscr, TRUE);
+		noecho();
+		nodelay(stdscr, TRUE);
+		scrollok(stdscr, TRUE);
+	} else if (isendwin()) {
+    refresh();
+  }
+#endif
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:     closeCursesScr()
+ * Purpose:    Close nsurses screen.
+ * Arguments:  n/a
+ * Returns:    n/a
+ *--------------------------------------------------------------------
+ */
+void ConsoleIO::CloseCursesScr()
+{
+#if defined(LINUX)
+	if (!isendwin() && NULL != g_pWin) {
+		endwin();
+	}
+#endif
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:     PrintChar()
+ * Purpose:    Print character on the screen.
+ * Arguments:  char - character.
+ * Returns:    n/a
+ *--------------------------------------------------------------------
+ */
+void ConsoleIO::PrintChar(char c)
+{
+#if defined(LINUX)
+	if (!isendwin() && NULL != g_pWin) {
+    echochar(c);
+	} else {
+    cout << c << flush;
+	}
+#else
+  cout << c;
+#endif
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:     PrintString()
+ * Purpose:    Print string on the screen.
+ * Arguments:  char * - pointer to char array.
+ * Returns:    n/a
+ *--------------------------------------------------------------------
+ */
+void ConsoleIO::PrintString(string s)
+{
+#if defined(LINUX)
+	if (!isendwin() && NULL != g_pWin) {
+		addstr(s.c_str());
+		refresh();
+	} else {
+		cout << s;
+	}
+#else
+	cout << s;
+#endif
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:     Beep()
+ * Purpose:    
+ * Arguments:  
+ * Returns:    
+ *--------------------------------------------------------------------
+ */
+void ConsoleIO::Beep()
+{
+#if defined(LINUX)
+	if (!isendwin() && NULL != g_pWin) {
+		beep();
+	} else {
+		cout << "\a";
+	}
+#else
+	cout << "\a";
+#endif
+}
 
 }  // END namespace MKBasic 

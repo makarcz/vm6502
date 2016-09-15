@@ -42,25 +42,10 @@
 #include "VMachine.h"
 #include "MKGenException.h"
 
-/*
-#if defined(WINDOWS)
-#include <conio.h>
-#endif
-*/
-
 using namespace std;
 
 namespace MKBasic {
 
-/*
- *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
- *--------------------------------------------------------------------
- */
- 
 /*
  *--------------------------------------------------------------------
  * Method:		VMachine()
@@ -100,7 +85,6 @@ VMachine::VMachine(string romfname, string ramfname)
  */
 VMachine::~VMachine()
 {
-	//delete mpDisp;
 	delete mpCPU;
 	delete mpROM;
 	delete mpRAM;
@@ -145,11 +129,6 @@ void VMachine::InitVM()
 	if (NULL == mpCPU) {
 		throw MKGenException("Unable to initialize VM (CPU).");
 	}
-	/*
-	mpDisp = new Display();
-	if (NULL == mpDisp) {
-		throw MKGenException("Unable to initialize VM (Display).");
-	}	*/	
 	mpConIO = new ConsoleIO();
 	if (NULL == mpConIO) {
 		throw MKGenException("Unable to initialize VM (ConsoleIO)");
@@ -279,6 +258,7 @@ Regs *VMachine::Run()
 
 	AddDebugTrace("Running code at: $" + Addr2HexStr(mRunAddr));
 	mOpInterrupt = false;
+	mpConIO->InitCursesScr();
 	ClearScreen();
 	ShowDisp();
 	mPerfStats.cycles = 0;
@@ -293,6 +273,7 @@ Regs *VMachine::Run()
 	CalcCurrPerf();
 
 	ShowDisp();	
+	mpConIO->CloseCursesScr();
 	
 	return cpureg;
 }
@@ -327,6 +308,7 @@ Regs *VMachine::Exec()
 
 	AddDebugTrace("Executing code at: $" + Addr2HexStr(mRunAddr));
 	mOpInterrupt = false;
+	mpConIO->InitCursesScr();
 	ClearScreen();
 	ShowDisp();
 	mPerfStats.cycles = 0;
@@ -340,16 +322,17 @@ Regs *VMachine::Exec()
 	CalcCurrPerf();
 
 	ShowDisp();	
+	mpConIO->CloseCursesScr();
 	
 	return cpureg;
 }
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
+ * Method:		GetPerfStats()
+ * Purpose:		Get performance stats data.
  * Arguments:
- * Returns:
+ * Returns:		struct PerfStats
  *--------------------------------------------------------------------
  */
 PerfStats VMachine::GetPerfStats()
@@ -1526,7 +1509,7 @@ bool VMachine::IsAutoReset()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		EnableROM()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1540,7 +1523,7 @@ void VMachine::EnableROM()
 		
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		DisableROM()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1554,7 +1537,7 @@ void VMachine::DisableROM()
 		
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		SetROM()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1593,7 +1576,7 @@ void VMachine::EnableROM(unsigned short start, unsigned short end)
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		GetROMBegin()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1606,7 +1589,7 @@ unsigned short VMachine::GetROMBegin()
 		
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		GetROMEnd()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1619,7 +1602,7 @@ unsigned short VMachine::GetROMEnd()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		IsROMEnabled()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1632,7 +1615,7 @@ bool VMachine::IsROMEnabled()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		GetRunAddr()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1745,7 +1728,7 @@ int VMachine::GetLastError()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		EnableExecHistory()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1765,7 +1748,7 @@ void VMachine::EnableExecHistory(bool enexehist)
 		
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		IsExecHistoryActive()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1778,7 +1761,7 @@ bool VMachine::IsExecHistoryActive()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		EnableDebugTrace()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1794,7 +1777,7 @@ void VMachine::EnableDebugTrace()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		DisableDebugTrace()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1807,7 +1790,7 @@ void VMachine::DisableDebugTrace()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		IsDebugTraceActive()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1820,7 +1803,7 @@ bool VMachine::IsDebugTraceActive()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		GetDebugTraces()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1833,7 +1816,7 @@ queue<string> VMachine::GetDebugTraces()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		EnablePerfStats()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1852,7 +1835,7 @@ void VMachine::EnablePerfStats()
 }
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		DisablePerfStats()
  * Purpose:
  * Arguments:
  * Returns:
@@ -1866,7 +1849,7 @@ void VMachine::DisablePerfStats()
 
 /*
  *--------------------------------------------------------------------
- * Method:
+ * Method:		IsPerfStatsActive()
  * Purpose:
  * Arguments:
  * Returns:

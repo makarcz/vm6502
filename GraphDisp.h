@@ -40,6 +40,11 @@
 #include <thread>
 #include <SDL.h>
 
+// defaults
+#define GRDISP_VR_X	320
+#define GRDISP_VR_Y	200
+#define CHROM_8x8_SIZE	2048
+
 using namespace std; 
 
 namespace MKBasic {
@@ -51,8 +56,8 @@ class GraphDisp {
 
 	public:
 
-		bool mContLoop = true;
-		bool mMainLoopActive = false;		
+		bool mContLoop;	// = true;
+		bool mMainLoopActive;	// = false;		
 
 		GraphDisp();
 		GraphDisp(int width, int height);
@@ -70,32 +75,36 @@ class GraphDisp {
 		void ClearScreen();
 		//void MainLoop();
 		bool IsMainLoopActive();
+		void PrintChar8x8(int code, int col, int row, bool reversed);
+		void CopyCharRom8x8(unsigned char *pchrom);
 
 	private:
 
-		int	mWidth = 320;			// virtual display width
-		int mHeight = 200;		// virtual display height
-		int mPixelSizeX = 3;	// virtual pixel width
-		int mPixelSizeY = 3;	// virtual pixel height
-		int mWinPosX = 0;			// SDL window position coordinate X
-		int mWinPosY = 0;			// SDL window position coordinate Y
-		int mBgRgbR = 0;			// bg color, RGB red intensity
-		int mBgRgbG = 0;			// bg color, RGB green intensity
-		int mBgRgbB = 0;			// bg color, RGB blue intensity
-		int mFgRgbR = 0xFF;		// fg color, RGB red intensity
-		int mFgRgbG = 0xFF;		// fg color, RGB green intensity
-		int mFgRgbB = 0xFF;		// fg color, RGB blue intensity		
-		SDL_Window *mpWindow = NULL;
-		SDL_Surface *mpSurface = NULL;
-		SDL_Renderer *mpRenderer = NULL;
+		int	mWidth;								// virtual display width
+		int mHeight;							// virtual display height
+		int mPixelSizeX;					// virtual pixel width
+		int mPixelSizeY;					// virtual pixel height
+		int mWinPosX;							// SDL window position coordinate X
+		int mWinPosY;							// SDL window position coordinate Y
+		int mBgRgbR;							// bg color, RGB red intensity
+		int mBgRgbG;							// bg color, RGB green intensity
+		int mBgRgbB;							// bg color, RGB blue intensity
+		int mFgRgbR;							// fg color, RGB red intensity
+		int mFgRgbG;							// fg color, RGB green intensity
+		int mFgRgbB;							// fg color, RGB blue intensity		
+		SDL_Window *mpWindow;
+		SDL_Surface *mpSurface;
+		SDL_Renderer *mpRenderer;
 		thread mMainLoopThread;
+		unsigned char mCharROM8x8[CHROM_8x8_SIZE];
 
 		void Initialize();
 		void UpdateSurface();
 		void Clear();
 		void GetDesktopResolution(int& horizontal, int& vertical);
 		void DrawLine(int x1, int y1, int x2, int y2, bool draworerase);
-		void RenderPixel(int x, int y, bool set);		
+		void RenderPixel(int x, int y, bool set);
+		void RenderChar8x8(unsigned char chdef[8], int x, int y, bool reversed);
 
 }; // class GraphDisp
 

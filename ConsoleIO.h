@@ -35,6 +35,7 @@
 #include <string>
 #include <queue>
 #include <chrono>
+#include <string.h>
 #include "system.h"
 
 //#define WINDOWS 1
@@ -42,17 +43,26 @@
 #include <windows.h>
 #endif
 
+using namespace std;
+
 namespace MKBasic {
 
    class ConsoleIO
    {
       public:
 
-         ConsoleIO();
-         ~ConsoleIO();
+        ConsoleIO();
+        ~ConsoleIO();
 
-         void ClearScreen();
-         void ScrHome();
+        void ClearScreen();
+        void ScrHome();
+				void InitCursesScr();				
+				void CloseCursesScr();
+        void PrintChar(char c);
+        void PrintString(string s);
+        bool KbHit();
+        int  GetChar();
+				void Beep();
 
    };
 

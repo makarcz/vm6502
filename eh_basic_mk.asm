@@ -21,6 +21,16 @@
 ; 2.21	fixed IF .. THEN RETURN to not cause error
 ; 2.22	fixed RND() breaking the get byte routine
 
+;----------------------------------------------------------------------------
+; to assemble run Kowalski's 6502 emulator, assemble code and save as binary
+; with no header (65b), from $C000 to $FFFF. 
+; Then for VM65 emulator, perform conversion to memory image definition:
+; bin2hex -f ehbas.65b -o ehbas_xx.dat -w 49152 -x 49152
+; Add IO address and enable IO in DAT configuration part.
+; This version has RAM top at $B000-1, so the area from $B000 to $BFFF can
+; be used for binary code or data (e.g.: character ROM).
+;----------------------------------------------------------------------------
+
 ; zero page use ..
 
 LAB_WARM 		= $00		; BASIC warm start entry point
@@ -453,7 +463,7 @@ CHRIN
 	BCS DCHRIN		; yes, done
 	AND #$5F		; no, convert to upper case
 DCHRIN	
-	SEC 			; There is character waiting, set CARRY flag
+	SEC 			; These is character waiting, set CARRY flag
 	RTS
 ECHRIN	
 	CLC 			; no character in buffer, clear CARRY
@@ -466,7 +476,7 @@ CHROUT
 
 
 Ram_base	= $0300	; start of user RAM (set as needed, should be page aligned)
-Ram_top		= $C000	; end of user RAM+1 (set as needed, should be page aligned)
+Ram_top		= $B000	; end of user RAM+1 (set as needed, should be page aligned)
 
 ; This start can be changed to suit your system
 

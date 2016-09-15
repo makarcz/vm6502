@@ -111,8 +111,28 @@ void GraphDisp::Initialize()
 {
 	int desk_w, desk_h, winbd_top = 5, winbd_right = 5;
 
+	mContLoop = true;
+	mMainLoopActive = false;		
+
+	mWidth 	= GRDISP_VR_X;			// virtual display width
+	mHeight = GRDISP_VR_Y;		// virtual display height
+	
 	mPixelSizeX = GRAPHDISP_MAXW / mWidth;
 	mPixelSizeY = GRAPHDISP_MAXH / mHeight;
+
+	mWinPosX = 0;			// SDL window position coordinate X
+	mWinPosY = 0;			// SDL window position coordinate Y
+	mBgRgbR = 0;			// bg color, RGB red intensity
+	mBgRgbG = 0;			// bg color, RGB green intensity
+	mBgRgbB = 0;			// bg color, RGB blue intensity
+	mFgRgbR = 0xFF;		// fg color, RGB red intensity
+	mFgRgbG = 0xFF;		// fg color, RGB green intensity
+	mFgRgbB = 0xFF;		// fg color, RGB blue intensity		
+
+	mpWindow = NULL;
+	mpSurface = NULL;
+	mpRenderer = NULL;
+
 	GetDesktopResolution(desk_w, desk_h);
 	// Available in version > 2.0.4
 	//SDL_GetWindowBordersSize(mpWindow, &winbd_top, NULL, NULL, &winbd_right);
@@ -243,6 +263,82 @@ void GraphDisp::RenderPixel(int x, int y, bool set)
 
   //Update the surface
   SDL_UpdateWindowSurface(mpWindow);	
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    RendedChar8x8()
+ * Purpose:   Draw 8x8 character from its pixel definition.	
+ * Arguments: chdef - character definition in 8x8 bit matrix
+ *						x, y - coordinates
+ *						reversed - reversed (true) or normal (false)
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+void GraphDisp::RenderChar8x8(unsigned char chdef[8], int x, int y, bool reversed)
+{
+	SDL_Rect rtf;
+
+	int rgb_r = 0, rgb_g = 0, rgb_b = 0;	
+	for (int yy = y, j=0; j < 8; j++, yy++) {
+		unsigned char chd = chdef[j];
+		for (int xx = x, i=0; i < 8; i++, xx++) {
+			bool pixset = (chd & 0x80) == 0x80;
+			if (reversed) pixset = !pixset;
+			rtf.x = xx * mPixelSizeX; rtf.y = yy * mPixelSizeY;
+			rtf.w = mPixelSizeX;
+			rtf.h = mPixelSizeY;			
+			if (pixset) {
+				rgb_r = mFgRgbR;
+				rgb_g = mFgRgbG;
+				rgb_b = mFgRgbB;
+			} else {
+				rgb_r = mBgRgbR;
+				rgb_g = mBgRgbG;
+				rgb_b = mBgRgbB;
+			}
+			SDL_FillRect(mpSurface, &rtf, SDL_MapRGB(mpSurface->format, rgb_r, rgb_g, rgb_b));			
+			chd = chd << 1; chd &= 0xFE;
+		}
+	}
+	SDL_UpdateWindowSurface(mpWindow);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    CopyCharRom8x8()
+ * Purpose:   Copy provided 8x8 characters table to internal buffer.
+ * Arguments: pchrom - pointer to characters defintions table
+ * Returns:   
+ *--------------------------------------------------------------------
+ */
+void GraphDisp::CopyCharRom8x8(unsigned char *pchrom)
+{
+	for (int i=0; i<CHROM_8x8_SIZE; i++) {
+		mCharROM8x8[i] = pchrom[i];
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    PrintChar8x8()
+ * Purpose:   Print 8x8 character at specified row and column.
+ * Arguments: code - character code
+ *            col, row - character coordinates in 8 pixel intervals
+ *            reversed - color mode (reversed or nornal)
+ * Returns:   n/a
+ *--------------------------------------------------------------------
+ */
+void GraphDisp::PrintChar8x8(int code, int col, int row, bool reversed)
+{
+	int x = col * 8;
+	int y = row * 8;
+	int n = code * 8;
+	unsigned char chdef[8];
+	for (int i=0; i<8; i++) {
+		chdef[i] = mCharROM8x8[n+i];
+	}
+	RenderChar8x8(chdef, x, y, reversed);
 }
 
 /*

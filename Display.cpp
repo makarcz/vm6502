@@ -34,13 +34,22 @@
 
  *--------------------------------------------------------------------
  */
-#include "Display.h"
 #include <ctype.h>
 #include <cstdlib>
 #include <iostream>
 #include <string.h>
+#include "Display.h"
+#include "MKGenException.h"
 
 using namespace std;
+
+
+#if defined(LINUX)
+#include <ncurses.h>
+
+extern bool g_initialized;
+
+#endif
 
 /*
  *--------------------------------------------------------------------
@@ -88,6 +97,9 @@ Display::~Display()
  */
 void Display::InitScr()
 {
+	mpConIO = new ConsoleIO();
+	if (NULL == mpConIO)
+		throw MKGenException("Display::InitScr() : Out of memory - ConsoleIO");
 	mLastChar = 0;
 	mScrLines = SCREENDIM_ROW;
 	mScrColumns = SCREENDIM_COL;
@@ -248,7 +260,7 @@ void Display::PutChar(char c)
 			mCursorCoord.col = 0;
 		} else if (c == SCREENSPECCHARS_TB) {
 			mLastChar = SCREENSPECCHARS_TB;
-			mCursorCoord.col += TABSIZE;
+			mCursorCoord.col += DISP_TABSIZE;
 			if (mCursorCoord.col >= mScrColumns) {
 				mCursorCoord.col = mScrColumns-1; // must work on it some more
 			}
@@ -339,7 +351,7 @@ void Display::ShowScr()
 		if (mShellConsoleWidth > mScrColumns)	line = line + "\n";
 		scr = scr + line;
 	}
-	cout << scr;		
+  mpConIO->PrintString(scr);
 }
 
 /*

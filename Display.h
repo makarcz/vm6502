@@ -34,8 +34,9 @@
 #define DISPLAY_H
 
 #include "system.h"
+#include "ConsoleIO.h"
 
-#define TABSIZE 4
+#define DISP_TABSIZE 4
 
 namespace MKBasic {
 	
@@ -81,6 +82,7 @@ class Display
 		unsigned int mShellConsoleWidth;
 		unsigned int mScrLines;
 		unsigned int mScrColumns;
+		ConsoleIO *mpConIO;
 		
 		void InitScr();
 		void ScrollUp();

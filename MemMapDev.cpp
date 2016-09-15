@@ -47,6 +47,8 @@
 #include "MKGenException.h"
 
 #include <stdio.h>
+#include <iostream>
+#include <sstream>
 #include <ctype.h>
 #if defined(WINDOWS)
 #include <conio.h>
@@ -120,6 +122,9 @@ MemMapDev::~MemMapDev()
  */
 void MemMapDev::Initialize()
 {
+	mpConsoleIO = new ConsoleIO();
+	if (NULL == mpConsoleIO)
+		throw MKGenException("MemMapDev::Initialize() : Out of memory - ConsoleIO");
 	mInBufDataBegin = mInBufDataEnd = 0;	
 	mOutBufDataBegin = mOutBufDataEnd = 0;
 	mIOEcho = false;
@@ -127,6 +132,11 @@ void MemMapDev::Initialize()
 	mGraphDispAddr = GRDISP_ADDR;
 	mpGraphDisp = NULL;
 	mpCharIODisp = NULL;
+	mGrDevRegs.mGraphDispChrTbl = CHARTBL_BANK;
+	mCharTblAddr = CHARTBL_BANK * ((MAX_8BIT_ADDR+1) / 0x10);
+	mGrDevRegs.mGraphDispTxtCurX = 0;
+	mGrDevRegs.mGraphDispTxtCurY = 0;
+	mGrDevRegs.mGraphDispCrsMode = GRAPHDEVCRSMODE_BLOCK;
 	AddrRange addr_range(CHARIO_ADDR, CHARIO_ADDR+1);
 	DevPar dev_par("echo", "false");
 	MemAddrRanges addr_ranges_chario;
@@ -255,84 +265,28 @@ int MemMapDev::SetupDevice(int devnum,
 }
 
 #if defined(LINUX)
+
 #include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 
-struct termios orig_termios;
+#include <ncurses.h>
+#endif  // LINUX
 
 /*
  *--------------------------------------------------------------------
- * Method:
- * Purpose:
+ * Method:		SetCurses()
+ * Purpose:		Initialize curses screen.
  * Arguments:
  * Returns:
  *--------------------------------------------------------------------
  */
-void reset_terminal_mode()
+ /***
+void MemMapDev::SetCurses()
 {
-    tcsetattr(0, TCSANOW, &orig_termios);
+	mpConsoleIO->InitCursesScr();
 }
-
-/*
- *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
- *--------------------------------------------------------------------
- */
-void MemMapDev::set_conio_terminal_mode()
-{
-    struct termios new_termios;
-
-    /* take two copies - one for now, one for later */
-    tcgetattr(0, &orig_termios);
-    memcpy(&new_termios, &orig_termios, sizeof(new_termios));
-
-    /* register cleanup handler, and set the new terminal mode */
-    atexit(reset_terminal_mode);
-    cfmakeraw(&new_termios);
-    tcsetattr(0, TCSANOW, &new_termios);
-}
-
-/*
- *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
- *--------------------------------------------------------------------
- */
-int MemMapDev::kbhit()
-{
-    struct timeval tv = { 0L, 0L };
-    fd_set fds;
-    FD_ZERO(&fds);
-    FD_SET(0, &fds);
-    return select(1, &fds, NULL, NULL, &tv);
-}
-
-/*
- *--------------------------------------------------------------------
- * Method:
- * Purpose:
- * Arguments:
- * Returns:
- *--------------------------------------------------------------------
- */
-int MemMapDev::getch()
-{
-    int r;
-    unsigned char c;
-    if ((r = read(0, &c, sizeof(c))) < 0) {
-        return r;
-    } else {
-        return c;
-    }
-}
-
-#endif	// #define LINUX
+***/
 
 /*
  *--------------------------------------------------------------------
@@ -346,37 +300,36 @@ int MemMapDev::getch()
 unsigned char MemMapDev::ReadCharKb(bool nonblock)
 {
 	unsigned char ret = 0;
-#if defined(LINUX)
-    set_conio_terminal_mode();
-#endif
 		static int c = ' ';	// static, initializes once, remembers prev.
 												// value
-		// checking mCharIOActive may be too much of a precaution since
-		// this method will not be called unless char I/O is enabled
-		if (mCharIOActive && mIOEcho && isprint(c)) putchar(c);
+		if (mIOEcho && isprint(c)) mpConsoleIO->PrintChar(c);
 		if (nonblock) { 
+
 			// get a keystroke only if character is already in buffer	
-			if (kbhit()) c = getch();
+			if (mpConsoleIO->KbHit()) c = mpConsoleIO->GetChar();
 			else c = 0;			
 
 		}	else {
+
 			// wait for a keystroke, then get the character from buffer
-			while(!kbhit());
-			c = getch();
+			while(!mpConsoleIO->KbHit());
+			c = mpConsoleIO->GetChar();
 		}
 #if defined(LINUX)
 		if (c == 3) { // capture CTRL-C in CONIO mode
-			reset_terminal_mode();
+			mpConsoleIO->CloseCursesScr();
 			kill(getpid(),SIGINT);
-		}
+		} else if (c == 0x0A) {
+      c = 0x0D;	// without this conversion EhBasic won't work
+    } else if (c == KEY_BACKSPACE) {
+      c = 8;		// raw/cbreak modes do not pass the backspace
+    }
 #endif
 		mCharIOBufIn[mInBufDataEnd] = c;
 		mInBufDataEnd++;
 		if (mInBufDataEnd >= CHARIO_BUF_SIZE) mInBufDataEnd = 0;
 		ret = c;
-#if defined(LINUX)
-    reset_terminal_mode();
-#endif
+
 	return ret;
 }
 
@@ -456,7 +409,22 @@ void MemMapDev::PutCharIO(char c)
 	mOutBufDataEnd++;
 	if (mOutBufDataEnd >= CHARIO_BUF_SIZE) mOutBufDataEnd = 0;
 	if (mCharIOActive) {
-		putchar((int)c);
+#if defined(LINUX)
+    // because ncurses will remove characters if sequence is
+    // CR,NL, I convert CR,NL to NL,CR (NL=0x0A, CR=0x0D)
+    static char prevc = 0;
+		if (c == 7) mpConsoleIO->Beep();
+		else
+    if (c == 0x0D && prevc != 0x0A) { prevc = c; c = 0x0A; }
+    else if (c == 0x0A && prevc == 0x0D) { 
+      prevc = c; c = 0x0D;
+      mpConsoleIO->PrintChar(prevc);
+      mpConsoleIO->PrintChar(c);
+    }
+    else { prevc = c; mpConsoleIO->PrintChar(c); }
+#else
+    mpConsoleIO->PrintChar(c);
+#endif
 		CharIOFlush();
 	}
 }
@@ -471,7 +439,8 @@ void MemMapDev::PutCharIO(char c)
  */
 void MemMapDev::CharIODevice_Write(int addr, int val)
 {
-	if ((unsigned int)addr == mCharIOAddr) {
+	if ((unsigned int)addr == mCharIOAddr
+			|| (unsigned int)addr == mCharIOAddr+1) {
 		PutCharIO ((char) val);
 	}
 }
@@ -664,6 +633,44 @@ void MemMapDev::GraphDispDevice_Write(int addr, int val)
 		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_Y2) {
 			// setup Y coordinate of the end of line
 			mGrDevRegs.mGraphDispY2 = (unsigned char)val;
+		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_CHRTBL) {
+			// set new address of the character table, 2 kB bank #0-31
+			mGrDevRegs.mGraphDispChrTbl = (unsigned char)(val & 0x003F);
+			mCharTblAddr = mGrDevRegs.mGraphDispChrTbl * ((MAX_8BIT_ADDR+1) / 0x20);
+			unsigned char char_rom[CHROM_8x8_SIZE];
+			for (unsigned int i=0; i<CHROM_8x8_SIZE; i++) {
+				char_rom[i] = mpMem->Peek8bitImg((unsigned short)((mCharTblAddr + i) & 0xFFFF));
+			}
+			mpGraphDisp->CopyCharRom8x8(char_rom);
+		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_TXTCURX) {
+			if (val <= TXTCRSR_MAXCOL)
+				mGrDevRegs.mGraphDispTxtCurX = (unsigned char) (val & 0x007F);
+		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_TXTCURY) {
+			if (val <= TXTCRSR_MAXROW)
+				mGrDevRegs.mGraphDispTxtCurY = (unsigned char) (val & 0x001F);
+		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_CRSMODE) {
+			if (val < GRAPHDEVCRSMODE_END)
+				mGrDevRegs.mGraphDispCrsMode = (unsigned char) (val & 0x000F);
+		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_TXTMODE) {
+			if (val < GRAPHDEVTXTMODE_END)
+				mGrDevRegs.mGraphDispTxtMode = (unsigned char) (val & 0x000F);			
+		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_PUTC) {
+			if (val <= 0xFF) {
+				mpGraphDisp->PrintChar8x8(val, 
+																	mGrDevRegs.mGraphDispTxtCurX,
+																	mGrDevRegs.mGraphDispTxtCurY,
+																	(mGrDevRegs.mGraphDispTxtMode == GRAPHDEVTXTMODE_REVERSE));
+				/***
+				unsigned int n = val * 8;
+				int x = mGrDevRegs.mGraphDispTxtCurX * 8;
+				int y = mGrDevRegs.mGraphDispTxtCurY * 8;				
+				unsigned char chdef[8];
+				for (int i=0; i<8; i++, n++) {
+					chdef[i] = mpMem->Peek8bitImg((unsigned short)((mCharTblAddr + n) & 0xFFFF));
+				}
+				mpGraphDisp->RenderChar8x8(chdef, x, y, (mGrDevRegs.mGraphDispTxtMode == GRAPHDEVTXTMODE_REVERSE));
+				***/
+			}
 		} else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_CMD) {
 			// execute command
 			switch (val) {
@@ -721,7 +728,6 @@ void MemMapDev::GraphDispDevice_Write(int addr, int val)
 		}
 		GraphDisp_ReadEvents();
 		GraphDisp_Update();
-		//mpGraphDisp->Update();
 	}	// if (NULL != mpGraphDisp)
 }
 
@@ -752,7 +758,6 @@ void MemMapDev::ActivateGraphDisp()
 														mGrDevRegs.mGraphDispPixColG,
 														mGrDevRegs.mGraphDispPixColB);
 		GraphDisp_Update();
-		//mpGraphDisp->Start(mpGraphDisp);
 	}
 }
 
@@ -771,7 +776,6 @@ void MemMapDev::DeactivateGraphDisp()
 		cout << "DBG: ERROR: Main Loop is already inactive in Graphics Display." << endl;
 	}
 #endif	
-	//mpGraphDisp->Stop();
 	if (NULL != mpGraphDisp) delete mpGraphDisp;
 	mpGraphDisp = NULL;
 }
@@ -801,21 +805,5 @@ void MemMapDev::GraphDisp_Update()
 {
 	if (NULL != mpGraphDisp) mpGraphDisp->Update();
 }
-
-/*
- *--------------------------------------------------------------------
- * Method:		SetCharIODispPtr()
- * Purpose:		Set internal pointer to character I/O device object.
- * Arguments:	p - pointer to Display object.
- *            active - bool, true if character I/O is active
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
- /*
-void MemMapDev::SetCharIODispPtr(Display *p, bool active)
-{
-	mpCharIODisp = p;
-	mCharIOActive = active;
-}*/
 
 } // namespace MKBasic

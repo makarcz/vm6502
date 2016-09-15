@@ -39,6 +39,7 @@
 //#include "Memory.h"
 #include "GraphDisp.h"
 #include "Display.h"
+#include "ConsoleIO.h"
 
 #if defined(LINUX)
 #include <unistd.h>
@@ -50,6 +51,10 @@
 #define CHARIO_ADDR			0xE000
 #define GRDISP_ADDR			0xE002
 #define CHARIO_BUF_SIZE	256
+#define CHARTBL_BANK		0x0B		// $B000
+#define CHARTBL_LEN			0x1000	// 4 kB
+#define TXTCRSR_MAXCOL	79
+#define TXTCRSR_MAXROW	24
 
 using namespace std;
 
@@ -138,7 +143,7 @@ typedef vector<Device> MemMappedDevices;
 // currently supported devices
 enum DevNums {
 	DEVNUM_CHARIO = 0,	// character I/O device
-	DEVNUM_GRDISP = 1,	// raster graphics display device
+	DEVNUM_GRDISP = 1		// raster graphics display device
 };
 
 /*
@@ -174,9 +179,24 @@ enum GraphDevRegs {
 	GRAPHDEVREG_CMD 		= 9,
 	GRAPHDEVREG_X2			= 10,
 	GRAPHDEVREG_Y2			= 12,
+	GRAPHDEVREG_CHRTBL	= 13,	// set the 2 kB bank where char. table resides
+	GRAPHDEVREG_TXTCURX	=	14,	// set text cursor position (column)
+	GRAPHDEVREG_TXTCURY	= 15,	// set text cursor position (row)
+	GRAPHDEVREG_PUTC		= 16,	// output char. to current pos. and move cursor
+	GRAPHDEVREG_CRSMODE	= 17,	// set cursor mode (0 - not visible, 1 - block...)
+	GRAPHDEVREG_TXTMODE = 18,	// set text mode (0 - normal, 1 - reverse)
 	//---------------------------
 	GRAPHDEVREG_END
 };
+/*
+ * Note to GRAPHDEVREG_PUTC:
+ * value put to register is not an ASCII code of the character, but rather
+ * a screen code in order how character is positioned in character table.
+ * Each character definition takes 8 bytes. There is 4096 bytes which defines
+ * 512 characters. First 256 are normal color and next 256 are reverse color
+ * definitions.
+ */
+
 
 // graphics display commands
 enum GraphDevCmds {
@@ -187,6 +207,25 @@ enum GraphDevCmds {
 	GRAPHDEVCMD_SETFGC = 4,
 	GRAPHDEVCMD_DRAWLN = 5,
 	GRAPHDEVCMD_ERASLN = 6
+};
+
+// Cursor modes.
+// note: bit 7 will decide if cursor will blink (1)
+#define CRS_BLINK	0x80
+enum TextCursorModes {
+	GRAPHDEVCRSMODE_BLANK = 0,	// not visible
+	GRAPHDEVCRSMODE_BLOCK = 1,	// block
+	GRAPHDEVCRSMODE_UND		= 2,	// underscore
+	//------------------------------------------
+	GRAPHDEVCRSMODE_END
+};
+
+// Text modes.
+enum TextModes {
+	GRAPHDEVTXTMODE_NORMAL	= 0,	// normal mode
+	GRAPHDEVTXTMODE_REVERSE	=	1,	// reverse colors mode
+	//------------------------------------------
+	GRAPHDEVTXTMODE_END
 };
 
 struct GraphDeviceRegs {
@@ -202,6 +241,11 @@ struct GraphDeviceRegs {
 	unsigned char mGraphDispBgColR;
 	unsigned char mGraphDispBgColG;
 	unsigned char mGraphDispBgColB;	
+	unsigned char mGraphDispChrTbl;		// 2 kB char. table bank (0-31)
+	unsigned char mGraphDispTxtCurX;	// text cursor column
+	unsigned char mGraphDispTxtCurY;	// text cursor row
+	unsigned char mGraphDispCrsMode;	// cursor mode
+	unsigned char mGraphDispTxtMode;	// text mode
 };
 
 // Functionality of memory mapped devices
@@ -258,19 +302,14 @@ class MemMapDev {
 		Display   *mpCharIODisp;		// pointer to character I/O device object
 		bool			mCharIOActive;		// indicate if character I/O is active
 		GraphDeviceRegs mGrDevRegs;	// graphics display device registers
+		unsigned int mCharTblAddr;	// start address of characters table
+		ConsoleIO *mpConsoleIO;
 
 		void Initialize();
 
 		unsigned char ReadCharKb(bool nonblock);
 		void PutCharIO(char c);		
-
-#if defined(LINUX)
-
-		void set_conio_terminal_mode();
-		int kbhit();
-		int getch();		
-
-#endif		
+		//void SetCurses();
 
 };
 

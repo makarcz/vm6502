@@ -500,7 +500,7 @@ Op-code execute history: disabled.
 	 0       GRAPHDEVREG_X_LO       Least significant part of pixel's X (column)
 	                                coordinate or begin of line coord. (0-255)
 	 1       GRAPHDEVREG_X_HI       Most significant part of pixel's X (column)
-	                                coordinate or begin of line coord. (0-1)                                      
+	                                coordinate or begin of line coord. (0-1)
 	 2       GRAPHDEVREG_Y          Pixel's Y (row) coordinate (0-199)
 	 3       GRAPHDEVREG_PXCOL_R    Pixel's RGB color component - Red (0-255)
 	 4       GRAPHDEVREG_PXCOL_G    Pixel's RGB color component - Green (0-255)
@@ -514,6 +514,14 @@ Op-code execute history: disabled.
 	11       GRAPHDEVREG_X2_HI      Most significant part of end of line's X
 	                                coordinate                                
 	12       GRAPHDEVREG_Y2         End of line's Y (row) coordinate (0-199)
+	13       GRAPHDEVREG_CHRTBL     Set the 2 kB bank where char. table resides
+	14       GRAPHDEVREG_TXTCURX    Set text cursor position (column)
+	15       GRAPHDEVREG_TXTCURY    Set text cursor position (row)
+	16       GRAPHDEVREG_PUTC       Output char. to current pos. and move cursor
+	17       GRAPHDEVREG_CRSMODE    Set cursor mode : 0 - not visible, 1 - block
+	18       GRAPHDEVREG_TXTMODE    Set text mode : 0 - normal, 1 - reverse
+
+	NOTE: Functionality maintaining text cursor is not yet implemented.
 
 	Writing values to above memory locations when Graphics Device is enabled
 	allows to set the corresponding parameters of the device, while writing to
@@ -602,6 +610,33 @@ Op-code execute history: disabled.
 	1300 POKE GB+9,1
 	1310 NEXT Y
 	1320 RETURN
+
+And another one to show how to render characters.
+Before entering program below, load files c64_char.dat and ehbas_xx.dat to the
+emulator. The two 2 kB C64 character banks reside at $B000.
+The EhBasic version in file ehbas_xx.dat has top of RAM capped at $AFFF.
+
+	5 PRINT:PRINT "BITMAP TEXT DEMO. PRESS [SPACE] TO QUIT...":PRINT
+	10 C=0:M=0:N=22:B=65506:POKE B+9,0
+	12 PRINT "NORMAL MODE, CHAR BANK ";N*2048
+	15 POKE B+13,N:POKE B+17,0:POKE B+18,0
+	20 FOR Y=0 TO 24
+	30 FOR X=0 TO 39
+	40 POKE B+14,X:POKE B+15,Y
+	50 POKE B+16,C
+	60 C=C+1:IF C<256 THEN 120
+	70 IF N=22 THEN N=23:GOTO 100
+	80 N=22:IF M=0 THEN M=1:GOTO 100
+	90 M=0
+	100 POKE B+13,N:POKE B+18,M
+	110 Y=Y+1:X=-1:C=0
+	115 IF M=0 THEN PRINT "NORMAL"; ELSE PRINT "REVERSE";
+	116 PRINT " MODE, CHAR BANK ";N*2048
+	120 GET K$:IF K$=" " THEN END
+	130 NEXT X
+	140 NEXT Y
+	150 GOTO 5
+
 
 4.1. Adding new device implementation.
 
@@ -700,7 +735,7 @@ Op-code execute history: disabled.
 		in all read/write memory methods. Some local methods and flags specific
 		to the devices may be needed for implementation convenience.
 
-			Important relevant methods in Memory class:
+		Important relevant methods in Memory class:
 
 			int AddDevice(int devnum);
 			int DeleteDevice(int devnum);
@@ -765,4 +800,80 @@ Op-code execute history: disabled.
 				to produce the debug string. This way we don't execute code related
 				to creation of debug message unnecessarily if the debugging messages
 				are disabled.
+
+5. Linux port.
+
+	I don't pay as much attention to Linux version of this software, however
+I try my best to make the program work correctly on Linux and behave in the
+same manner on both Windows and Linux platforms.
+The most challenging part surprisingly was implementation of the character
+I/O emulation on Linux. Easy on Windows with its conio.h header and kbhit()
+and getch() functions that provide non-blocking keyboard input, Linux part
+required some research and implementing some known programming tricks to get
+this to work. I got it working but then lost touch with Linux version for
+a while. After I added graphics device and SDL2 library, I worked on Linux
+port to have these features working on Linux platform as well. To my surprise
+I discovered then that my implementation of character I/O (the non-blocking
+character input) stopped working. After many failed attempts and research
+I decided to rewrite the Linux character I/O part using ncurses library.
+This works although has its own problems. E.g.: ncurses getch() returns NL
+character (0x0A) when ENTER is pressed, while Windows conio equivalent returns
+CR (0x0D) and this is the code that 6502 programs, like Tiny Basic or EhBasic
+expect. Backspace also wasn't working. I enabled function keys during ncurses
+initialization and intercept backspace code for later conversion. This
+solved it, but there may be more issues discovered later which I didn't fully
+test.
+
+unsigned char MemMapDev::ReadCharKb(bool nonblock)
+{
+[...]
+
+#if defined(LINUX)
+		if (c == 3) { // capture CTRL-C in CONIO mode
+			mpConsoleIO->CloseCursesScr();
+			kill(getpid(),SIGINT);
+		} else if (c == 0x0A) {
+      c = 0x0D;	// without this conversion EhBasic won't work
+    } else if (c == KEY_BACKSPACE) {
+      c = 8;		// raw/cbreak modes do not pass the backspace
+    }
+#endif
+
+[...]
+
+Another issue was that when 6502 code sends CR/LF sequence, the CR code
+moves the cursor to the beginning of the line before applying NL (new line)
+and clears the characters on its path! Therefore I'd have the text removed
+from the screen (although my internal display device emulation in Display
+class has its own buffer and all characters were there, it was only a visual
+side effect). Therefore I have to convert CR/LF sequences to LF/CR.
+Also because of the way I output characters to nsurses screen, control
+characters don't work and must be intercepted and properly converted to
+appropriate action. Example - the bell (audible) code 7:
+
+void MemMapDev::PutCharIO(char c)
+{
+	mCharIOBufOut[mOutBufDataEnd] = c;
+	mOutBufDataEnd++;
+	if (mOutBufDataEnd >= CHARIO_BUF_SIZE) mOutBufDataEnd = 0;
+	if (mCharIOActive) {
+#if defined(LINUX)
+    // because ncurses will remove characters if sequence is
+    // CR,NL, I convert CR,NL to NL,CR (NL=0x0A, CR=0x0D)
+    static char prevc = 0;
+		if (c == 7) mpConsoleIO->Beep();
+		else
+    if (c == 0x0D && prevc != 0x0A) { prevc = c; c = 0x0A; }
+    else if (c == 0x0A && prevc == 0x0D) { 
+      prevc = c; c = 0x0D;
+      mpConsoleIO->PrintChar(prevc);
+      mpConsoleIO->PrintChar(c);
+    }
+    else { prevc = c; mpConsoleIO->PrintChar(c); }
+#else
+    mpConsoleIO->PrintChar(c);
+#endif
+		CharIOFlush();
+	}
+}
 
