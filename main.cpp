@@ -455,10 +455,9 @@ void ShowMenu()
 	cout << "------------------------------------+----------------------------------------" << endl;
 } 
 
-
 /*
  *--------------------------------------------------------------------
- * Method:		RUNSTEPS() - macro
+ * Method:		RunSteps()
  * Purpose:		Execute multiple steps of CPU emulation.
  * Arguments:
  *            step - boolean flag, true if step by step mode
@@ -470,34 +469,39 @@ void ShowMenu()
  *            lrts - status of last RTS flag
  *            anim - boolean flag, true - registers animation mode
  *            delay - delay for anim mode
- *            enrom - rom enabled/disabled flag
- *            rombegin - begin address of emulated ROM
- *            romend - end address of emulated ROM
  *            
  * Returns:   n/a
  *--------------------------------------------------------------------
  */
-#define RUNSTEPS(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay)             \
-{                                                                           \
-	bool cls = false;                                                         \
-	brk = preg->SoftIrq;                                                      \
-	lrts = preg->LastRTS;                                                     \
-	while(step && nsteps > 1 && !brk && !lrts && !opbrk) {                    \
-		preg = RunSingleCurrInstr();                                            \
-		cout << "addr: $" << hex << preg->PtrAddr << ", step: " << dec << stct; \
-		cout  << "    \r";                                                      \
-		if (anim) {                                                             \
-			if (cls & ClsIfDirty) { pvm->ClearScreen(); cls = false; }            \
-			pvm->ScrHome();                                                       \
-			cls = ShowRegs(preg,pvm,false,false);                                 \
-			cout << endl;                                                         \
-			this_thread::sleep_for(chrono::milliseconds(delay));                  \
-		}                                                                       \
-		brk = preg->SoftIrq;                                                    \
-		lrts = preg->LastRTS;                                                   \
-		nsteps--;                                                               \
-		stct++;                                                                 \
-	}                                                                         \
+inline void RunSteps(bool step, 
+										 int nsteps,
+										 bool brk,
+										 Regs *preg,
+										 int stct,
+										 VMachine *pvm,
+										 bool lrts,
+										 bool anim,
+										 int delay)
+{
+	bool cls = false;
+	brk = preg->SoftIrq;
+	lrts = preg->LastRTS;
+	while(step && nsteps > 1 && !brk && !lrts && !opbrk) {
+		preg = RunSingleCurrInstr();
+		cout << "addr: $" << hex << preg->PtrAddr << ", step: " << dec << stct;
+		cout  << "    \r";
+		if (anim) {
+			if (cls & ClsIfDirty) { pvm->ClearScreen(); cls = false; }
+			pvm->ScrHome();
+			cls = ShowRegs(preg,pvm,false,false);
+			cout << endl;
+			this_thread::sleep_for(chrono::milliseconds(delay));
+		}
+		brk = preg->SoftIrq;
+		lrts = preg->LastRTS;
+		nsteps--;
+		stct++;
+	}
 }
 
 /*
@@ -528,7 +532,8 @@ void ShowSpeedStats()
 /*
  *--------------------------------------------------------------------
  * Method:		ExecHistory()
- * Purpose:
+ * Purpose:		Display history of executed VM65 code in assembly
+ *						mnemonics format.
  * Arguments:
  * Returns:
  *--------------------------------------------------------------------
@@ -914,18 +919,19 @@ int main(int argc, char *argv[]) {
 			execvm = true;
 		}
 		if (newaddr == 0) newaddr = 0x10000;
-		while (true) {
+		bool bloop = true;
+		while (bloop) {
 			preg = pvm->GetRegs();
 			if (runvm) {
 				if (anim) pvm->ClearScreen();
 				int stct = 1;
 				if (execaddr) {
 					preg = ((step) ? RunSingleInstr(newaddr) : pvm->Run(newaddr));
-					RUNSTEPS(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
+					RunSteps(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
 					execaddr = false;
 				} else {
 					preg = ((step) ? RunSingleCurrInstr() : pvm->Run());
-					RUNSTEPS(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
+					RunSteps(step,nsteps,brk,preg,stct,pvm,lrts,anim,delay);
 				}
         pconio->InitCursesScr();
         pconio->CloseCursesScr();
@@ -984,136 +990,172 @@ int main(int argc, char *argv[]) {
 			cout << "> ";
 			cin >> cmd;
 			char c = tolower(cmd.c_str()[0]);
-			if (c == '?') {
-				show_menu = true;
+
+			// Interpret and execute user input / commands.
+			switch (c) {
+				
+				case '?':	show_menu = true;
+									break;
+				// display help
+				case 'h':	ShowHelp();
+									break;
+				// Interrupt ReQuest
+				case 'p':	pvm->Interrupt();
+									cout << "OK" << endl;
+									show_menu = true;
+									break;
+				// save snapshot of current CPU and memory in binary image
+				case 'y': {
+										string name;
+										cout << "Enter file name: ";
+										cin >> name;
+										cout << " [" << name << "]" << endl;
+										if (0 == pvm->SaveSnapshot(name)) {
+											cout << "OK" << endl;
+										} else {
+											cout << "ERROR!" << endl;
+											cout << "errno=" << errno << endl;
+										}
+									}
+									break;
+				// reset CPU
+				case '0':	reset = true;
+									execvm = true;
+									runvm = false;
+									show_menu = true;
+									break;
+
+				case 'o':	ExecHistory();
+									break;
+				// load memory image
+				case 'l':	newaddr = LoadImage(newaddr);
+									ioaddr = pvm->GetCharIOAddr();
+									break;
+				// toggle ROM emulation
+				case 'k':	if (!enrom) {
+										enrom = true;
+										do {
+											rombegin = PromptNewAddress("ROM begin     (0200..FFFF): ");
+										} while (rombegin < 0x0200);
+										cout << " [" << hex << rombegin << "]" << endl;
+										do {
+											romend   = PromptNewAddress("ROM end (ROMBEGIN+1..FFFF): ");
+										} while (romend <= rombegin);
+										cout << " [" << hex << romend << "]" << endl;
+										pvm->EnableROM(rombegin, romend);					
+										cout << "ROM activated." << endl;
+									} else {
+										enrom = false;
+										pvm->DisableROM();
+										cout << "ROM deactivated." << endl;					
+									}
+									break;
+				// set registers animation delay
+				case 'j':	cout << "Delay [ms]: ";
+									cin >> dec >> delay;
+									cout << " [" << dec << delay << "]" << endl;
+									break;
+				// toggle registers animation in step mode
+				case 'f':	anim = !anim;
+									cout << "Registers status animation " << ((anim) ? "enabled." : "disabled.") << endl;
+									break;
+				// clear screen
+				case 'b':	pconio->CloseCursesScr();
+									pvm->ClearScreen();
+									break;
+				// show registers
+				case 'r':	stop = true;
+									break;
+				// toggle local echo for I/O console
+				case 'e':	if (pvm->GetCharIOActive()) {
+										ioecho = !ioecho;
+										cout << "I/O echo is " << (ioecho ? "activated." : "deactivated.") << endl;
+										pvm->SetCharIO(ioaddr, ioecho);					
+									} else {
+										cout << "ERROR: I/O is deactivated." << endl;
+									}
+									break;
+				// show I/O console
+				case 't':	if (pvm->GetCharIOActive()) {
+										pvm->ShowIO();
+									} else {
+										cout << "ERROR: I/O is deactivated." << endl;
+									}
+									break;
+				// toggle I/O
+				case 'i':	ioaddr = ToggleIO(ioaddr);
+									break;
+				// toggle graphics display
+				case 'v':	graddr = ToggleGrDisp(graddr);
+									break;
+				// write to memory
+				case 'w':	WriteToMemory();
+									break;
+				// change run address
+				case 'a':	execaddr = stop = true;
+									newaddr = PromptNewAddress(PROMPT_ADDR);
+									cout << " [" << hex << newaddr << "]" << endl;
+									break;
+
+				case 's':	runvm = step = stop = true;
+									break;
+				// execute # of steps
+				case 'n':	nsteps = 0;
+									while (nsteps < 1) {
+										cout << "# of steps [n>1]: ";
+										cin >> dec >> nsteps;
+									}
+									cout << " [" << dec << nsteps << "]" << endl;
+									runvm = step = stop = true;				
+									show_menu = true;
+									break;
+				// continue running code
+				case 'c':	runvm = true;
+									show_menu = true;
+									break;
+				// run from new address until BRK
+				case 'g':	runvm = true;
+									execaddr = true;
+									newaddr = PromptNewAddress(PROMPT_ADDR);
+									cout << " [" << hex << newaddr << "]" << endl;
+									show_menu = true;
+									break;
+				// execute code at address
+				case 'x':	execvm = true;
+									execaddr = true;
+									newaddr = PromptNewAddress(PROMPT_ADDR);
+									cout << " [" << hex << newaddr << "]" << endl;
+									show_menu = true;
+									break;
+				// quit
+				case 'q':	bloop = false;
+									break;
+				// disassemble code in memory
+				case 'd':	DisassembleMemory();
+									break;
+				// dump memory
+				case 'm':	DumpMemory();
+									break;
+				// toggle enable/disable op-code exec. history
+				case 'u':	pvm->EnableExecHistory(!pvm->IsExecHistoryActive());
+									cout << "Op-code execute history has been ";
+									cout << (pvm->IsExecHistoryActive() ? "enabled" : "disabled") << ".";
+									cout << endl;
+									break;
+				// toggle enable/disable debug traces in VM
+				case 'z':	ToggleDebugTraces();
+									break;
+				// show debug traces
+				case '2':	DebugTraces();
+									break;
+				// toggle enable/disable perf. stats
+				case '1':	TogglePerfStats();
+									break;
+
+				default:	cout << "ERROR: Unknown command." << endl;
+									break;
 			}
-			else if (c == 'h') {	// display help
-				ShowHelp();
-			} else if (c == 'p') {	// Interrupt ReQuest
-				pvm->Interrupt();
-				cout << "OK" << endl;
-				show_menu = true;
-			} else if (c == 'y') {	// save snapshot of current CPU and memory in binary image
-				string name;
-				cout << "Enter file name: ";
-				cin >> name;
-				cout << " [" << name << "]" << endl;
-				if (0 == pvm->SaveSnapshot(name)) {
-					cout << "OK" << endl;
-				} else {
-					cout << "ERROR!" << endl;
-					cout << "errno=" << errno << endl;
-				}
-			} else if (c == '0') {	// reset CPU
-				reset = true;
-				execvm = true;
-				runvm = false;
-				show_menu = true;
-			} else if (c == 'o') {
-				ExecHistory();
-			} else if (c == 'l') {	// load memory image
-				newaddr = LoadImage(newaddr);
-				ioaddr = pvm->GetCharIOAddr();
-			} else if (c == 'k') {	// toggle ROM emulation
-				if (!enrom) {
-					enrom = true;
-					do {
-						rombegin = PromptNewAddress("ROM begin     (0200..FFFF): ");
-					} while (rombegin < 0x0200);
-					cout << " [" << hex << rombegin << "]" << endl;
-					do {
-						romend   = PromptNewAddress("ROM end (ROMBEGIN+1..FFFF): ");
-					} while (romend <= rombegin);
-					cout << " [" << hex << romend << "]" << endl;
-					pvm->EnableROM(rombegin, romend);					
-					cout << "ROM activated." << endl;
-				} else {
-					enrom = false;
-					pvm->DisableROM();
-					cout << "ROM deactivated." << endl;					
-				} 
-			}	else if (c == 'j') {	// set registers animation delay
-					cout << "Delay [ms]: ";
-					cin >> dec >> delay;
-					cout << " [" << dec << delay << "]" << endl;					
-			}	else if (c == 'f') {	// toggle registers animation in step mode
-				anim = !anim;
-				cout << "Registers status animation " << ((anim) ? "enabled." : "disabled.") << endl;
-			}	else if (c == 'b') {	// clear screen
-				pconio->CloseCursesScr();
-				pvm->ClearScreen();
-			} else if (c == 'r') {	// show registers
-				stop = true;
-			} else if (c == 'e') {	// toggle local echo for I/O console
-				if (pvm->GetCharIOActive()) {
-					ioecho = !ioecho;
-					cout << "I/O echo is " << (ioecho ? "activated." : "deactivated.") << endl;
-					pvm->SetCharIO(ioaddr, ioecho);					
-				} else {
-					cout << "ERROR: I/O is deactivated." << endl;
-				}
-			} else if (c == 't') {	// show I/O console
-				if (pvm->GetCharIOActive()) {
-					pvm->ShowIO();
-				} else {
-					cout << "ERROR: I/O is deactivated." << endl;
-				}
-			} else if (c == 'i') {	// toggle I/O
-				ioaddr = ToggleIO(ioaddr);
-			} else if (c == 'v') { // toggle graphics display
-				graddr = ToggleGrDisp(graddr);
-			} else if (c == 'w') {	// write to memory
-				WriteToMemory();
-			} else if (c == 'a') {	// change run address
-				execaddr = stop = true;
-				newaddr = PromptNewAddress(PROMPT_ADDR);
-				cout << " [" << hex << newaddr << "]" << endl;				
-			} else if (c == 's') {
-				runvm = step = stop = true;
-			} else if (c == 'n') {	// execute # of steps
-				nsteps = 0;
-				while (nsteps < 1) {
-					cout << "# of steps [n>1]: ";
-					cin >> dec >> nsteps;
-				}
-				cout << " [" << dec << nsteps << "]" << endl;
-				runvm = step = stop = true;				
-				show_menu = true;
-			} else if (c == 'c') {	// continue running code
-				runvm = true;
-				show_menu = true;
-			} else if (c == 'g') {	// run from new address until BRK
-				runvm = true;
-				execaddr = true;
-				newaddr = PromptNewAddress(PROMPT_ADDR);
-				cout << " [" << hex << newaddr << "]" << endl;
-				show_menu = true;
-			} else if (c == 'x') {	// execute code at address
-				execvm = true;
-				execaddr = true;
-				newaddr = PromptNewAddress(PROMPT_ADDR);
-				cout << " [" << hex << newaddr << "]" << endl;
-				show_menu = true;
-			} else if (c == 'q') {	// quit
-				break;
-			} else if (c == 'd') {	// disassemble code in memory
-				DisassembleMemory();
-			} else if (c == 'm') {	// dump memory
-				DumpMemory();
-			} else if (c == 'u') {	// toggle enable/disable op-code exec. history
-				pvm->EnableExecHistory(!pvm->IsExecHistoryActive());
-				cout << "Op-code execute history has been ";
-				cout << (pvm->IsExecHistoryActive() ? "enabled" : "disabled") << ".";
-				cout << endl;
-			} else if (c == 'z') {	// toggle enable/disable debug traces in VM
-				ToggleDebugTraces();
-			} else if (c == '2') {	// show debug traces
-				DebugTraces();
-			} else if (c == '1') {	// toggle enable/disable perf. stats
-				TogglePerfStats();
-			} else {
-				cout << "ERROR: Unknown command." << endl;
-			}
+
 		}
 		if (NULL != pconio) pconio->CloseCursesScr();
 	}

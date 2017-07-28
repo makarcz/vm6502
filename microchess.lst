@@ -30,11 +30,54 @@ Current file: microchess.asm
 000000r 1               ; please note that I acted with no malicious intent and will remove
 000000r 1               ; this file from my project if I receive such request.
 000000r 1               ;
+000000r 1               ; To build this program with CL65:
+000000r 1               ;
+000000r 1               ; cl65 -C microchess.cfg -l --start-addr 1024 -t none -o microchess.bin
+000000r 1               ; microchess.asm
+000000r 1               ;
+000000r 1               ; Binary image microchess.bin can be loaded to emulator with 'L'
+000000r 1               ; command in debug console. Start emulator: mkbasic, then issue
+000000r 1               ; command in debug console:
+000000r 1               ; L B MICROCHESS.BIN
+000000r 1               ;
+000000r 1               ; Memory image definition file can be generated which can be loaded
+000000r 1               ; to emulator via command line argument and automatically executed.
+000000r 1               ; To create that file, build microchess.bin image, then execute:
+000000r 1               ;
+000000r 1               ; bin2hex -f microchess.bin -o microchess.dat -w 0 -x 1024 -z
+000000r 1               ;
+000000r 1               ; and add following lines at the end of microchess.dat file:
+000000r 1               ;
+000000r 1               ; IOADDR
+000000r 1               ; $E000
+000000r 1               ; ENIO
+000000r 1               ;
+000000r 1               ; Instructions to play:
+000000r 1               ;
+000000r 1               ; Load the game to emulator and auto-execute with command:
+000000r 1               ;    mkbasic microchess.dat
+000000r 1               ; then perform following steps:
+000000r 1               ; 1. Press 'C' to setup board.
+000000r 1               ; 2. Enter your move: 4 digits - BBEE, BB - piece coordinates,
+000000r 1               ;    EE - destination coordinates and press ENTER
+000000r 1               ; 3. After board is updated, press 'P' to make program make the move.
+000000r 1               ; 4. Repeat steps 2 and 3 until the game is finished.
+000000r 1               ;
+000000r 1               ;
 000000r 1               ; 1/14/2012
-000000r 1               ; 	Modified by Marek Karcz to run on MKHBC-8-R1 under MKHBCOS
-000000r 1               ;       (derivative of M.O.S. by Scott Chidester)
+000000r 1               ; 	Modified Daryl Rictor's port to run on MKHBC-8-R1 homebrew
+000000r 1               ;       computer under MKHBCOS (derivative of M.O.S. by Scott
+000000r 1               ;       Chidester).
+000000r 1               ;
 000000r 1               ; 3/11/2016
 000000r 1               ;       Adapted to run in MKBASIC (V65) emulator.
+000000r 1               ;
+000000r 1               ; 3/12/2016
+000000r 1               ;       Modified UI behavior:
+000000r 1               ;       - chess board is only printed after move, not after each
+000000r 1               ;         keystroke
+000000r 1               ;       - copyright banner is only printed once at the start
+000000r 1               ;         of the program
 000000r 1               ;
 000000r 1               ; 6551 I/O Port Addresses
 000000r 1               ;

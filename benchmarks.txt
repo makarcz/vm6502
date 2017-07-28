@@ -1,0 +1,166 @@
+BM1
+
+10 S=0
+20 X=0
+30 FOR I=1 TO 1000
+40   S=S+X*X
+50   X=X+0.00123
+60 NEXT I
+70 PRINT S,X
+80 END
+
+3.9 seconds on Z80 BBC BASIC (CP/M), 10MHz Z80
+32 seconds in C64 WinVice emulator.
+29 sec in C64 FrodoSC emulator.
+4 seconds on VM65 with GD OFF, on PC1 (*)
+4.5 seconds on VM65 with GD ON, on PC1 (*)
+5 seconds on VM65 with GD OFF, on PC2 (*)
+5 seconds on VM65 with GD ON, on PC2 (*)
+
+*) See NOTES.
+
+------------------------------------------------------
+
+BM2
+
+130 PRINT "BM2"
+140 FOR N=1 TO 1000
+150   FOR K=2 TO 500
+160     M=N/K
+170     L=INT(M)
+180     IF L=0 THEN 230
+190     IF L=1 THEN 220
+200     IF M>L THEN 220
+210     IF M=L THEN 240
+220   NEXT K
+230   PRINT N
+240 NEXT N
+250 PRINT "E"
+260 END
+
+5 min 20 sec on Z80 BBC BASIC (CP/M), 10MHz Z80
+19 min 52 sec on C64 WinVice emulator
+2 min 44 sec on VM65 with GD OFF on PC1 (*) at ??? % (**)
+3 min 15 sec on VM65 with GD ON on PC1 at ??? %
+3 min 18 sec on VM65 with GD OFF on PC2 (*) at 486 %
+3 min 33 sec on VM65 with GD ON on PC2 at 478 % (**)
+
+*), **) See NOTES.
+
+------------------------------------------------------
+
+BM3
+
+10 LET W=500:DIM F(W):LET P=1:LET A=3
+20 LET F(P)=A:LET P=P+1:IF P>W THEN STOP
+30 LET A=A+2:LET X=1
+40 LET S=A/F(X):IF S=INT(S) THEN 30
+50 LET X=X+1:IF X<P AND F(X)*F(X)<=A THEN 40
+60 GOTO 20
+
+System 										CPU 						Time [sec]
+----------------------------------------------------
+Acorn Electron 						2.0MHz 6502 		138
+Amstrad CPC464 						4.0MHz Z80A 		140
+Commodore C64 						1.0MHz 6510 		254
+Commodore Plus/4 					1.0 MHz 8501 		267
+Tandy 64K CoCo 2 					0.895MHz 6809E 	271
+Atari 800XL 							1.8MHz 6502 		316
+Sinclair Spectrum +3 			3.55MHz Z80A		388
+VM65 GD OFF  							Emulated 6502		42
+VM65 GD ON   							Emulated 6502   46
+
+------------------------------------------------------
+
+BM4
+Primes generator, BASIC benchmark - original code from BYTE Volume 6
+Issue 9.
+
+1 SIZE=8190
+2 DIM FLAGS(8191)
+3 PRINT "Only 1 iteration"
+5 COUNT=0
+6 FOR I=0 TO SIZE
+7 FLAGS(I)=1
+8 NEXT I
+9 FOR I=0 TO SIZE
+10 IF FLAGS(I)=0 THEN 18
+11 PRIME=I+I+3
+12 K=I+PRIME
+13 IF K>SIZE THEN 17
+14 FLAGS(K)=0
+15 K=K+PRIME
+16 GOTO 13
+17 COUNT=COUNT+1
+18 NEXT I
+19 PRINT COUNT," PRIMES"
+
+Results:
+VM65 - 57 seconds with GD OFF
+VM65 - 62 seconds with GD ON
+
+------------------------------------------------------
+
+BM5
+Primes generator, BASIC benchmark, based on above code.
+
+10 S=8190: DIM F(8191): N=0
+20 FOR I=0 TO S: F(I)=1: NEXT I
+30 FOR I=0 TO S: IF F(I)=0 THEN 80
+40 P=I+I+3: K=I+P
+50 IF K>S THEN 70
+60 F(K)=0: K=K+P: GOTO 50
+70 N=N+1: PRINT P;" ";
+80 NEXT I
+90 PRINT: PRINT N;" PRIMES": END
+
+Results:
+VM65 - 55 seconds with GD OFF
+VM65 - 60 seconds with GD ON
+
+------------------------------------------------------
+
+NOTES:
+
+*)
+
+PC1 stats:
+Type:						Desktop
+CPU:            2.49 GHz (64-bit Quad-core Q8300)
+RAM:            4,060 MB
+OS:             Windows 10 Pro (no SP) [6.2.9200]
+
+PC2 stats:
+Type:						Laptop
+CPU:						2.3 GHz (64-bit Quad-core i5-6300HQ)
+RAM:						15.9 GB
+OS:							Win 10 Home.
+
+**)
+
+Emulation speed is measured inside emulator with 1 MHz CPU as a reference.
+In other words 100% speed is achieved when emulator executes 1,000,000 cycles
+in 1 second. Measurements are taken at the end of execution. Each time the
+average of previous measurements and current speed measurement result are
+summed together and divided by 2 to provide continuous calculation of average
+emulation speed in a single session.
+
+Executing 6502 code with no memory mapped devices enabled shows emulation
+speed ~645 % (PC1) or ~470 % (PC2).
+
+Emulation speed will likely decrease with # of enabled I/O devices and
+with # of enabled debugging facilities (e.g.: op-code execute history),
+but this depens on the PC specs and the current load on the system.
+With a graphics demo program modified to run in a continuous loop with char
+I/O enabled, graphics device enabled and actively used, op-code execute
+history disabled, I'm getting a decent performance of 407% on PC1.
+
+Note that all above benchmarks were ran with op-code execute history
+disabled and character I/O emulation enabled unless specified otherwise.
+
+**)
+
+Each place where results are preceeded with ??? they are outdated and
+tests must be repeated due to changes in code.
+
+

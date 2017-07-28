@@ -615,14 +615,14 @@ NOTE:
 
 7. Command line usage.
 
-C:\src\devcppprj\mkbasic>mkbasic -h
+D:\src\wrk\mkbasic>vm65 -h
 Virtual Machine/CPU Emulator (MOS 6502) and Debugger.
 Copyright (C) by Marek Karcz 2016. All rights reserved.
 
 
 Usage:
 
-        mkbasic [-h] | [ramdeffile] [-b | -x] [-r]
+        vm65 [-h] | [ramdeffile] [-b | -x] [-r]
 
 
 Where:
@@ -707,24 +707,32 @@ If we assume that GRDEVBASE is the base address of the Graphics Device, there
 are following registers:
 
 Offset   Register               Description
-------------------------------------------------------------------------------    
+----------------------------------------------------------------------------
  0       GRAPHDEVREG_X_LO       Least significant part of pixel's X (column)
                                 coordinate or begin of line coord. (0-255)
  1       GRAPHDEVREG_X_HI       Most significant part of pixel's X (column)
-                                coordinate or begin of line coord. (0-1)                                      
+                                coordinate or begin of line coord. (0-1)
  2       GRAPHDEVREG_Y          Pixel's Y (row) coordinate (0-199)
  3       GRAPHDEVREG_PXCOL_R    Pixel's RGB color component - Red (0-255)
  4       GRAPHDEVREG_PXCOL_G    Pixel's RGB color component - Green (0-255)
  5       GRAPHDEVREG_PXCOL_B    Pixel's RGB color component - Blue (0-255)
- 6       GRAPHDEVREG_BGCOL_R    Background RGB color component - Red (0-255)
- 7       GRAPHDEVREG_BGCOL_G    Background RGB color component - Green (0-255)
- 8       GRAPHDEVREG_BGCOL_B    Background RGB color component - Blue (0-255)
+ 6       GRAPHDEVREG_BGCOL_R    Backgr. RGB color component - Red (0-255)
+ 7       GRAPHDEVREG_BGCOL_G    Backgr. RGB color component - Green (0-255)
+ 8       GRAPHDEVREG_BGCOL_B    Backgr. RGB color component - Blue (0-255)
  9       GRAPHDEVREG_CMD        Command code
 10       GRAPHDEVREG_X2_LO      Least significant part of end of line's X
                                 coordinate
 11       GRAPHDEVREG_X2_HI      Most significant part of end of line's X
                                 coordinate                                
 12       GRAPHDEVREG_Y2         End of line's Y (row) coordinate (0-199)
+13       GRAPHDEVREG_CHRTBL     Set the 2 kB bank where char. table resides
+14       GRAPHDEVREG_TXTCURX    Set text cursor position (column)
+15       GRAPHDEVREG_TXTCURY    Set text cursor position (row)
+16       GRAPHDEVREG_PUTC       Output char. to current pos. and move cursor
+17       GRAPHDEVREG_CRSMODE    Set cursor mode : 0 - not visible, 1 - block
+18       GRAPHDEVREG_TXTMODE    Set text mode : 0 - normal, 1 - reverse
+
+NOTE: Functionality maintaining text cursor is not yet implemented.
 
 Writing values to above memory locations when Graphics Device is enabled
 allows to set the corresponding parameters of the device, while writing to
@@ -764,11 +772,12 @@ end of the run. Captured speed is summed with previous result and divided by 2
 to produce average emulation speed during single session.
 
 This emulator has been optimized for performance. I had issues with
-emulation speed in previous version, but I took a good look at all the
-critical parts of code and fixed the problems. I am sure there is still
-space for improvement, but now the emulation speed leaves good margin
-for expansion with new emulated peripherals and still should compare
-well to the model 1 MHz CPU.
+emulation speed in previous version, mostly because it was a prototype with
+many debugging aids enabled by default and not yet optimized for speed.
+I took a good look at all the critical parts of code and fixed the problems.
+I am sure there is still space for improvement, but now the emulation speed
+leaves good margin for expansion with new emulated peripherals and still
+should compare well to the model 1 MHz CPU.
 Emulating of pure 6502 machine code with all peripherals (memory mapped
 devices, I/O etc.) emulation disabled and time critical debugging facility,
 the op-codes execute history also disabled, returns performance in range of

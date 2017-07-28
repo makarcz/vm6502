@@ -1,0 +1,945 @@
+
+-------------------------------------------- TO DO:
+
+* Implement all 6502 opcodes.
+STATUS: DONE. Testing passed.
+
+* Implement memory write in external machine code monitor/control program.
+STATUS: DONE.
+
+* Implement extended opcodes to make VM easier for BASIC language implementation.
+STATUS: Not started.
+
+* Write BASIC compiler for my VM.
+STATUS: Not started.
+
+* Step by step debugging (do not rely on BRK).
+STATUS: Done.
+
+* In debugger, under Stack pointer display, display the contents of the stack from 
+  the top (*SP) to bottom ($1FF).
+  Something like:
+STOPPED at 46b
+Registers:
+   Acc: $38     (%00111000)
+     X: $0
+     Y: $1
+  Addr: $46b
+ Acc16: $0
+ Ptr16: $0
+ Stack: $fd
+        [$34 $04]
+ Flags: NV-BDIZC
+        00101000
+----------------------------------------
+
+STATUS: DONE.
+
+* In debugger add displaying of the decimal values.
+STATUS: Not started.
+
+* Add ability to set breakpoints.
+  This will also need a new execute or continue command variation that will stop
+  at the next breakpoint.
+STATUS: Not started.
+
+* Add basic character I/O emulation.
+STATUS: DONE.
+
+* Add displaying last executed op-code and argument.
+STATUS: DONE.
+
+* Implement disassembler in the debug console.
+STATUS: DONE.
+
+* Add "animation" mode, where in multi-step debugging mode the registers will
+  be displayed continuously at the fixed area of the screen.
+STATUS: DONE.
+
+* Implement time-scale and cycles emulation.
+  Note that the opcodes map contains only base # of cycles per opcode.
+  For accurate emulation, add 1 cycle if page boundary is crossed for select
+  opcodes and 1 cycle on branches taken.
+  Reference: http://www.oxyron.de/html/opcodes02.html
+STATUS: IN PROGRESS.
+        Since cycle-accurate emulation was introduced, a step in debugger is
+        no longer a step but a cycle. It should be updated in documentation or
+        corrected in code so the step calls the MKCpu::Step until the # of
+        cycles left is 0. - DONE, Step() method is called until # of cycles
+                            is 0.
+        VMachine::Run – correct so the virtual display is shown only at the
+        end of each instruction, not after each cycle. - DONE.
+
+* Add ability to load binary 6502 code and hex formats.
+  Should be able to load from command line or debug console.
+STATUS: DONE.
+
+* Add fixed size header to binary image with emulator
+*    configuration data. Presence of the header will be detected
+*    by magic key at the beginning. Header should also include
+*    snapshot info, so the program can continue from the place
+*    where it was frozen/saved.
+* Add hot-key to create snapshot/save memory image in binary file
+*    with header data including next execute address in memory.
+STATUS: DONE.
+        The hot-key was not added. User must interrupt program 
+        (CTRL-C, CTRL-Pause/Break) and then save snapshot from debugger console
+        menu (Y filename).
+
+* Add ability to configure ROM range and I/O address as well as turn on/off
+  features in the memory image definition file.
+  Add keywords:
+  IOADDR for setting up I/O emulation address.
+  ENIO for I/O enabling.
+  ROMBEGIN, ROMEND for setting up ROM address range.
+  ENROM to enable ROM.
+  EXEC to automatically execute code at address.
+STATUS: DONE.
+
+* Refactor - MKCpu::ExecOpcode()
+  Replace huge switch/case statement with array of functions.
+STATUS: DONE.  
+
+* Display emulation - method Display::ShowScr() works well only when console/DOS
+  window width matches exactly the emulated display width (currently hardcoded
+  80 characters). Make it work when console is wider. Automatically decrease
+  emulated display size when console is smaller.
+STATUS: COMPLETED.
+
+* Add Reset option in debug console, which will send the processor through its
+  initialization/reset procedure.
+STATUS: DONE.
+
+* Add public API methods to MKCpu class that will trigger IRQ, NMI and RESET.
+  
+  According to MOS 6502 specs, when the ORQ signal comes, the execution of
+  current opcode is allowed to finished and then 7-cycle interrupt sequence
+  is executed.
+
+STATUS: IN PROGRESS.
+        Reset() added to VMachine and MKCpu.
+        Interrupt() (IRQ) added to VMachine and MKCpu. Need to make it cycle
+        accurate.
+        Need to implement NMI.
+
+* Add automatic recognition of memory image file format.
+STATUS: DONE.        
+
+* Add graphical display device emulator.
+STATUS: In progress.
+
+        Abstraction layer for memory mapped devices. - OK
+        Activate/deactivate graphics display from debugger console. - OK
+        Activate/deactivate graphics display in memory definition file
+        and binary header. - DONE.
+           NOTE: I did not reserve space for future
+                 expansion in header section, therefore I have to recognize the older
+                 version of header by old magic keyword: HDRMAGICKEY_OLD
+                 New header is recognized by HDRMAGICKEY and this one has space for
+                 future expansion (128 bytes of data vs 15 in older format) so there
+                 will be no need to change header format if data are added up to 128
+                 total bytes (currently only 18 bytes used).
+        Add line draw function/command. - DONE
+        Add line erase function/command. - DONE
+        Add rectangle draw/erase function/command. - NOT DONE
+        Add closed shape fill function/command. - NOT DONE
+        Add sprites. - NOT DONE.
+        Add text mode. - IN PROGRESS.
+        Add VM65 memory mapped raster buffer - NOT DONE.
+        Review all load/save methods in VMachine.cpp and correct where needed. - DONE.
+          [Either disable devices emulation facilities for the time of accessing memory 
+           during load/save or skip the memory ranges assigned to active devices.
+           I can also introduce and use Peek8BitImg/Poke8BitImg methods that ignore memory 
+           mapped devices.]
+          [Methods to review:
+           VMachine::SaveSnapshot,
+           VMachine::LoadRAMBin,
+           VMachine::LoadRAMHex,
+           VMachine::LoadMEM]
+
+        Implementing with SDL2.
+        I have a rudimentary graphical display class now which can clear
+        the screen, set bg/fg colors, set/unset pixel etc.
+        Now what is needed is some fake VIC chip emulation class
+        and some elegant way of introducing the device's registers into the 
+        memory address space.
+        I designed an abstract layer between the memory and memory
+        mapped device. Any read/write operation on memory checks
+        the list of memory mapped devices. If the address falls in to the
+        range of any of these devices, the r/w operation is
+        redirected to appropriate class entry/handler method.
+        The devices implementations: MemMapDev.h/MemMapDev.cpp.
+        Text mode will require:
+        - the characters table base address (one of the 16 4 KB banks)
+        - characters table
+        - cursor and cursor position control/movement/mode
+
+---------------------------------------------- TEXT TEMPLATES:
+
+/*
+ *--------------------------------------------------------------------
+ * Method:    
+ * Purpose:   
+ * Arguments: 
+ * Returns:   
+ *--------------------------------------------------------------------
+ */
+
+/*
+ *--------------------------------------------------------------------
+ * Project:     VM65 - Virtual Machine/CPU emulator programming
+ *                     framework.  
+ *
+ * File:   
+ *
+ * Purpose: 
+ *
+ * Date:      
+ *
+ * Copyright:  (C) by Marek Karcz 2016. All rights reserved.
+ *
+ * Contact:    makarcz@yahoo.com
+ *
+ * License Agreement and Warranty:
+
+   This software is provided with No Warranty.
+   I (Marek Karcz) will not be held responsible for any damage to
+   computer systems, data or user's health resulting from use.
+   Please proceed responsibly and apply common sense.
+   This software is provided in hope that it will be useful.
+   It is free of charge for non-commercial and educational use.
+   Distribution of this software in non-commercial and educational
+   derivative work is permitted under condition that original
+   copyright notices and comments are preserved. Some 3-rd party work
+   included with this project may require separate application for
+   permission from their respective authors/copyright owners.
+
+ *--------------------------------------------------------------------
+ */
+
+---------------------------------------------- LOG:
+
+1/13/2016
+Implemented ORA and ASL.
+Need to test and verify proper functioning of ORA opcodes.
+
+1/14/2016
+Tested ORA opcodes.
+Corrected bug in addressing mode: izy = ($00),Y
+
+1/15/2016
+Corrected problems with relative jump computation.
+Implemented some new opcodes (PHP, JSR, CLC).
+Optimized some code.
+I rely on Piotr Kowalski's 6502 emulator/debugger to figure out some opcodes implementation.
+This way I found I implemented incorrectly relative jump and also figured out how PC should
+be pushed to stack during JSR.
+
+1/18/2016
+Implemented opcodes:
+BIT, ROL, PLP, BMI, SEC, RTI, EOR, LSR.
+
+1/21/2016
+Implemented opcodes:
+PHA, BVC, CLI.
+Tested JSR, corrected bugs in JSR, RTI, RTS.
+In process of implementing ADC opcodes (most difficult so far and must consider decimal
+mode as well).
+ADC opcodes implemented, not optimized, not tested.
+
+1/22/2016
+ADC being tested and optimized.
+Still unsure how Overflow flag (V) should work.
+I used this algorithm:
+Logic:
+  t = A + M + P.C
+  P.V = (A.7!=t.7) ? 1:0
+  P.N = A.7
+  P.Z = (t==0) ? 1:0
+  IF (P.D)
+    t = bcd(A) + bcd(M) + P.C
+    P.C = (t>99) ? 1:0
+  ELSE
+    P.C = (t>255) ? 1:0
+  A = t & 0xFF 
+But Kowalski's emulator works differently.
+ADC tested in IMM mode.
+Implemented opcodes today:
+ROR, BVS, BCC, BCS.
+Improvements to debugger (step-by-step added, no need to rely on BRK only).
+
+1/25/2016
+Implemented opcodes:
+CLV, TSX, CPY, CMP, DEC, DEX, CLD, CPX.
+Created method MKCpu::SubWithCarry() (helper for SBC implementation).
+To do:
+Implement SBC and re-test ADC and SBC - compare to Kowalski's emulator results and
+also to real MOS 6502 results.
+
+
+2/2/2016
+Finished implementing opcodes.
+
+2/7/2016
+Worknig on multiple steps function in debugger.
+Testing opcodes.
+
+2/9/2016
+Testing opcodes, testing BCD mode.
+I use Kowalski's emulator as my reference.
+I fixed many bugs, but still something doesn't work near the end of the procedure (4k+ cycles in).
+Code: testbcd.dat (TestBCD.65s).
+
+2/10/2016
+There is still problem with SBC opcode.
+I get different results than Kowalski's emulator.
+Around cycle 4969, address $04b7.
+
+17:00
+Still working on SBC opcode.
+I may need to re-invent the whole BCD arithmetic thing and implement full internal BCD arithmetics
+emulation.
+
+2/12/2016
+I finally gave up and shamelessly ripped ADC code from frodo emulator.
+It almost works.
+I still get unexpected sign flag result in one of the operations.
+
+Frodo code:
+
+/*
+ *  Adc instruction
+ */
+
+inline void MOS6502_1541::do_adc(uint8 byte)
+{
+	if (!d_flag) {
+		uint16 tmp;
+
+		// Binary mode
+		tmp = a + byte + (c_flag ? 1 : 0);
+		c_flag = tmp > 0xff;
+		v_flag = !((a ^ byte) & 0x80) && ((a ^ tmp) & 0x80);
+		z_flag = n_flag = a = tmp;
+
+	} else {
+		uint16 al, ah;
+
+		// Decimal mode
+		al = (a & 0x0f) + (byte & 0x0f) + (c_flag ? 1 : 0);		// Calculate lower nybble
+		if (al > 9) al += 6;									// BCD fixup for lower nybble
+
+		ah = (a >> 4) + (byte >> 4);							// Calculate upper nybble
+		if (al > 0x0f) ah++;
+
+		z_flag = a + byte + (c_flag ? 1 : 0);					// Set flags
+		n_flag = ah << 4;	// Only highest bit used
+		v_flag = (((ah << 4) ^ a) & 0x80) && !((a ^ byte) & 0x80);
+
+		if (ah > 9) ah += 6;									// BCD fixup for upper nybble
+		c_flag = ah > 0x0f;										// Set carry flag
+		a = (ah << 4) | (al & 0x0f);							// Compose result
+	}
+}
+
+
+/*
+ * Sbc instruction
+ */
+
+inline void MOS6502_1541::do_sbc(uint8 byte)
+{
+	uint16 tmp = a - byte - (c_flag ? 0 : 1);
+
+	if (!d_flag) {
+
+		// Binary mode
+		c_flag = tmp < 0x100;
+		v_flag = ((a ^ tmp) & 0x80) && ((a ^ byte) & 0x80);
+		z_flag = n_flag = a = tmp;
+
+	} else {
+		uint16 al, ah;
+
+		// Decimal mode
+		al = (a & 0x0f) - (byte & 0x0f) - (c_flag ? 0 : 1);		// Calculate lower nybble
+		ah = (a >> 4) - (byte >> 4);							// Calculate upper nybble
+		if (al & 0x10) {
+			al -= 6;											// BCD fixup for lower nybble
+			ah--;
+		}
+		if (ah & 0x10) ah -= 6;									// BCD fixup for upper nybble
+
+		c_flag = tmp < 0x100;									// Set flags
+		v_flag = ((a ^ tmp) & 0x80) && ((a ^ byte) & 0x80);
+		z_flag = n_flag = tmp;
+
+		a = (ah << 4) | (al & 0x0f);							// Compose result
+	}
+}
+
+I guess I am going to rip off the Frodo's code for now for ADC and SBC.
+See what tests results will be.
+
+OK, I ripped Frodo code for ADC/SBC and the results are good.
+There is only one inconsistency compared to real 6502, where N-flag returned is wrong.
+
+I fixed some minor issues and added help and memory write command.
+
+I started to implement emulated console Display, class implementation for now.
+
+2/15/2016
+
+I/O emulation somewhat works.
+Needs more testing.
+NOTE:
+* Fix BRK opcode (it is really 2-byte opcode, one padding by te must be added, also it alters the stack! - I didn't implement that).
+* I compiled Tiny Basic for my emulator, but it doesn't work.
+* Update help function (new commands were added).
+
+17:40
+I fixed BRK opcode.
+I updated help function.
+Corrected bug in I/O emulation (actually it was in memory, the array was too short).
+
+Tiny BASIC - I think it doesn't work because it performs RAM test at the beginning to determine
+where RAM ends by writing the memory and reading it back.
+I must implement memory protection scheme so I can define addresses where writing is prohibited.
+I think I will add keywords ROM_BEGIN and ROM_END to the memory definition file, which will define it at startup for now.
+
+I also need to eliminate separate ROM image from VM. I will invent a different scheme, perhaps MMU-like.
+
+18:25
+Some success with Tiny Basic, but still some issues.
+
+2/16/2016
+
+0:10
+TB works except it does not print numbers.
+E.g.: program listing shows no line numbers, also unable to print integers.
+This seems to be a problem with my emulator, because the same code works in Kowalski's emulator.
+
+19:40
+Some improvements to I/O (display) emulation.
+Still no luck with emulation issue.
+
+02/17/2016
+
+
+$0F2C - RCCHR
+$0F31 - SNDCHR
+
+
+
+LBL010:  sta $BD
+         stx $BC
+         jmp LBL069
+JUMP22:  ldx $C1	; entry point to TBIL PN (print number) $07A7
+         lda $01,X
+         bpl LBL070
+         jsr LBL071
+         lda #$2D
+         jsr LBL042
+LBL070:  jsr LBL035
+LBL069:  lda #$1F
+         sta $B8
+         sta $BA
+         lda #$2A
+         sta $B9
+         sta $BB
+         ldx $BC
+         ldy $BD
+         sec
+LBL072:  inc $B8
+         txa
+         sbc #$10
+         tax
+         tya
+         sbc #$27
+         tay
+         bcs LBL072
+LBL073:  dec $B9
+         txa
+         adc #$E8
+         tax
+         tya
+         adc #$03
+         tay
+         bcc LBL073
+         txa
+LBL074:  sec
+         inc $BA
+         sbc #$64
+         bcs LBL074
+         dey
+         bpl LBL074
+LBL075:  dec $BB
+         adc #$0A
+         bcc LBL075
+         ora #$30
+         sta $BC
+         lda #$20
+         sta $BD
+         ldx #$FB
+LBL199:  stx $C3
+         lda $BD,X
+         ora $BD
+         cmp #$20
+         beq LBL076
+         ldy #$30
+         sty $BD
+         ora $BD
+         jsr LBL042
+LBL076:  ldx $C3
+         inx
+         bne LBL199
+         rts
+
+
+4:50
+
+Testing reveals that my addressing mode IZX (also called IDX), mnemonic (zpg,X) works incorrectly.
+
+05:25
+I corrected IZX addressing mode, the TESTALL.DAT now passes, but Tiny Basic still has issue with printing numbers.
+
+17:05
+I corrected addressing modes ZPX and ZPY and Tiny Basic issue with printing integers is corrected. Yeeey!
+
+2/19/2016
+
+I did some refactoring.
+I still can't decide if I should set SoftIrq flag during BRK in RTI.
+
+2/22/2016
+Settled with SoftIrq set while emulating RTI opcode. This way user is returned to debugger console
+when address counter is at address just after return from soft brk instead of in the IRQ routine.
+I also made changes to Tiny Basic source code.
+
+2/25/2016
+Started implementing opcodes disassembler.
+
+2/26/2016
+Implemented animation for registers status when in multi-step mode.
+Implementing disassembler.
+
+2/27/2016
+LINUX port.
+Cont. disassembler implementation.
+Displaying last executed opcode with argument (disassembled) in regs status - completed.
+Added stack display to regs status.
+Trapped all unidentified opcodes (illegal opcodes with undefined behavior).
+
+2/28/2016
+Added CTRL-Y key combination trap in I/O input mode.
+Added new keywords to memory image definition file.
+Created tbe.dat image that automatically enables character I/O at $E000 and auto-executes Tiny Basic.
+
+2/29/2016
+Added ROm emulation toggle switch to menu and ability to setup ROM address range.
+Added new keywords to memory image definition file.
+Corrected start/run address initialization, tb.dat and tbe.dat files.
+Cosmetic changes to character input.
+
+3/1/2016
+Code refactoring.
+Added signal handling to Windows version.
+OPerator can interrupt running program from console (CTRL-C, CTRL-Break) and not only during
+character input - it is not an interrupt/signal handled by OS and customized in code.
+Needs testing on Linux.
+
+3/2/2016
+Added non-blocking mode to char I/O input.
+
+3/7/2016
+Corrected bugs in BRK, RTI and BIT opcodes.
+EhBasic works!
+The functional 6502 test now fails on ADC/SBC test at $35b5:
+                        ; binary ADC / SBC zp
+3594 : 08                       php             ;save carry for subtract
+3595 : a50d                     lda ad1
+3597 : 650e                     adc ad2         ;perform add
+3599 : 08                       php          
+359a : c50f                     cmp adrl        ;check result
+                                trap_ne         ;bad result
+359c : d0fe            >        bne *           ;failed not equal (non zero)
+                        
+359e : 68                       pla             ;check flags
+359f : 29c3                     and #$c3        ;mask NV----ZC
+35a1 : c511                     cmp adrf
+                                trap_ne         ;bad flags
+35a3 : d0fe            >        bne *           ;failed not equal (non zero)
+                        
+35a5 : 28                       plp
+35a6 : 08                       php             ;save carry for next add
+35a7 : a50d                     lda ad1
+35a9 : e512                     sbc sb2         ;perform subtract
+35ab : 08                       php          
+35ac : c50f                     cmp adrl        ;check result
+                                trap_ne         ;bad result
+35ae : d0fe            >        bne *           ;failed not equal (non zero)
+                        
+35b0 : 68                       pla             ;check flags
+35b1 : 29c3                     and #$c3        ;mask NV----ZC
+35b3 : c511                     cmp adrf
+                                trap_ne         ;bad flags
+35b5 : d0fe            >        bne *           ;failed not equal (non zero)
+
+18:05
+Corrected ADC/SBC (setting flags).
+Implemented execute/op-codes history.
+Functional opcodes test passed!
+
+3/8/2016
+Added disassembler.
+Refactored code.
+
+3/9/2016
+Fixed bugs in memory definition loading function.
+Created tool hex2bin to convert binary file to memory definition.
+Created configuration file for CL65 (CC65 package linker) and modified testall.asm
+to be compiled by CL65/CA65.
+
+Improvements to disassembler (now also see opcodes and arguments in hex, not only symbolic form).
+Changes to registers UI appearance (more compact form, better readibility).
+Added date/time to bin2hex tool.
+
+3/10/2016
+Improved Display/char IO emulation under Windows (DOS console) - now if the DOS console window
+is wider than emulated display, extra NL is added so the lines are properly aligned.
+Need to implement Linux port and also I need to implement what to do if the DOS/Linux shell
+console width is too narrow for char IO emulated console width.
+Added mingw makefile to compile project with standalone mingw (gcc for Windows) installation
+outside Dev C++ IDE.
+NOTE: I must install mingw at my home PC.
+
+3/11/2016
+Added microchess port to my emulator - need to contact Peter Jennings for permission to distribute
+derivative work.
+
+3/12/2016
+Received permission from Peter Jennings.
+Improved the Microchess port:
+- the chessboard is not printed after each key press now but only after move
+- echo entered characters
+- copyright banner printed only once at the program start
+Update ReadMe.txt file.
+
+3/13/2016
+Improvements to char I/O console emulation.
+Now the width of the terminal/DOS session is detected at startup and the emulated console width
+is adjusted accordingly:
+- For terminal width < 80, the emulated console width is reduced.
+- For terminal width > 80, extra NL character is added while showing the emulated console
+  contents (this was added already earlier).
+Above was also implemented for Linux port.
+Operator Interrupt flag - bug corrected.
+
+3/14/2016
+Improved performance of char I/O emulation (Display::ShowScr()).
+Changed the way character I/O is emulated a bit.
+In the execute mode now the char I/O from 6502 program is directly translated to stdio
+of the user's DOS/shell console. Shadow copy of text screen is kept in Display device
+so it has the same data. In the step-by-step mode, program is emulating the Display
+by refreshing it on the user's console. Like before user can always call the contents
+of the text display device in debug console by issuing 'T' command.
+
+3/17/2016
+Added reset option in debugger console and RESET sequence to the emulation.
+Added RESET keyword to memory definition file.
+Added command line arguments to the emulator. Now can load binary image from command line,
+can also initialize CPU reset from command line.
+Modified ReadMe file. Also added Debugger Console Command Reference section to ReadMe file.
+
+4/4/2016
+Implemented VM snapshot save.
+
+4/10/2016
+Refactoring (replace huge switch/case with array of pointers to methods).
+
+4/11/2016
+Refactoring (replace huge switch/case with array of pointers to methods) - completed.
+IRQ added to API (MKCpu, VMachine).
+
+4/12/2016
+Working on cycle accurate emulation - DONE.
+
+4/17/2016
+Finished implementing various memory image formats.
+Now program can load binary image, binary image with a header, Intel HEX format,
+my own plain text memory image definition format and save binary snapshot (with header).
+Also, bin2hex utility can now convert binary image (must have no VM65 header) to Intel HEX.
+
+4/21/2016
+Minor bug fixed.
+
+4/22/2016
+Automatic detection of input memory image file added.
+
+5/23/2016
+Adding SDL2 to project.
+
+5/24/2016
+Working on Graphic Display emulation.
+
+5/26/2016
+Memory mapped device.
+
+5/27/2016
+Separate class MemMapDev was a wrong idea.
+Cross references between Memory and MemMapDev make it impractical to use.
+Also it will be difficult to manipulate memory image directly.
+I will move everything to Memory class.
+
+5/31/2016
+Working on memory mapped devices implementation.
+
+6/1/2016
+I got the memory mapped devices implementation working.
+I fixed the cross references between Memory and MemMapDev classes.
+Right now it is only one device - character I/O.
+Shortly I will add raster display.
+
+14:45 - raster display added. I am yet to write a test 6502 program using it
+and also update the memory definition file format with new keywords to enable
+or disable graphics display, setup base address etc. and also the binary
+header format.
+Also I need to create programmers reference guide how to program the device.
+
+6/2/2016
+I wrote a short BASIC demo program for graphics display which just draws the
+diagonal line pixel by pixel.
+The graphics display works somewhat, but there are problems.
+The SDL window needs to be continuously refreshed and events need to be read
+in a continuous loop. But the loop of my program stops when in debug
+console and waits for input.
+I cannot run it in a separate thread because I lose the event stream from the
+main application thread. So I read events and update SDL window in handler
+function for the display in MemMapDev class and I only read events in VMachine 
+in each step when op-code is executed.
+But if no op-code is executed, the window becomes unresponsive.
+When window becomes unresponsive, killing it kills my emulator.
+A bit messy, I must improve upon this.
+E.g: perhaps I should disable system icons on SDL window (minimize, close).
+
+6/6/2016
+Demo program now draws sinusoid and some horizontal and vertical lines.
+I disabled DSL windows's title and system icons.
+
+Tried to fix loosing alread drawn pixels when SDL window is resized, but
+I failed (I tried blitting (copying) surface to temporary surface and back).
+
+6/8/2016
+Added line drawing capability to Graphics Device emulator.
+
+6/9/2016
+Added line erasing capability. Corrected scaling.
+
+7/22/2016
+Minor bug fixed.
+Changes related to devices and saved images format.
+
+7/24/2016
+Finished code related to new header format, new keywords added to image 
+definition file (graphics display device).
+
+7/27/2016
+Correction to method VMachine::GetMemoryImageType() (not a bug, just match
+additional keywords in file during file format detection process).
+
+8/12/2016
+Experimenting with code performance.
+It turns out the SDL graphics device reduces performance of the emulator
+significantly.
+
+8/15/2016
+Concerned about performance I added code measuring the speed of CPU emulation
+using 1 MHz CPU as a reference point.
+In the process I discovered that my Char I/O non-blocking input is not, well
+quite non-blocking. It doesn't require CR, sure, but is still waiting for the
+character to be entered from keyboard.
+Reproducing:
+Start EhBasic interpreter.
+Interrupt to return to Debug Console.
+Resume code (x addr).
+Do not perform any keyboard action or run programs inside EhBasic.
+Interrupt to return to Debug Console.
+
+Note # of cycles when no keyboard actions are performed in EhBasic
+is very low and always the same.
+Debugging step by step shows the code stops at $FFC0 (LDA $FFE1).
+
+Thus my performance measuring routine shows very low emulation speed.
+
+8/16/2016
+I fixed the problem with blocking/non-blocking char I/O.
+Turns out I had a bug in MemMapDev::ReadCharKb() method.
+Slightly optimized memory access methods (specifically memory mapped devices 
+iteration). Got a bit of performance boost when emmory mapped devices are
+enabled (still a bottleneck though).
+
+8/17/2016
+Further performance optimizations in memory access routines.
+Devices are synchronized (cached) locally to vector member in Memory class.
+It turns out iterating through devices in MemMapDev class and creating
+device object copy locally on stack (in the loop context) was slow.
+Device object is not small enough structure to ignore cost associated with
+object creation.
+I also added an integer array of size equal to number of memory pages (256).
+That array keeps device numbers under the indexes of memory page numbers
+where there is any memory mapped device. Under the indexes of memory page
+numbers where no device is present, the array has -1 value.
+That value is used during memory access to decide if the memory mapped device
+needs to be found and handled or not.
+Note that the device number kept for given page is only one number, but
+there may be more devices on given page. Therefore the values in this array
+can only be used as a Y/N flag (is there device? - value >= 0
+or not - value < 0) rather than the device number to obtain device handler.
+If the value on given memory page is >= 0, then we know we need to query
+devices and call corresponding methods that handle given device register
+access.
+
+8/18/2016
+Updating benchmark results, documentation.
+Major optimization in MKCpu::ExecOpcode(). The code disassembling previous
+instruction to history was really slow, because I have been disassembling
+to symbolic form at each op-code execution. I changed the code now in such
+a way that:
+- op-code execute history can be enabled/disabled
+- during op-code execute I only add the last instruction op-code and other
+  parameters of the instruction and CPU status to the history, but I do not
+  parse/disassemble at this point.
+- the history of op-codes execute is disassembled only when history is
+  requested via MKCpu::GetExecHistory().
+The code is now 3 times faster with op-code execute history enabled and
+about 4 times faster with op-code execute history disabled (crude estimate).
+
+8/19/2016
+Found and corrected bugs in Memory::AddDevice() and Memory::DeleteDevice().
+Cosmetic changes: removed obsolete code and changes towards better code
+readability.
+
+8/22/2016
+Experimenting with performance measuring code.
+Added debug traces and ability to enable/disable perf. stats and debug traces.
+Now the perf. stats are measured in time intervals but not more often than
+predefined number of internal cycles (CPU clock ticks).
+Also added proper PressEnter2Cont() function.
+
+8/23/2016
+After recent changes, the 'Last instr.' feature in Debug Console stopped
+working. Since real-time disassembling is not performed now in
+MKCpu::ExecOpcode() method, I have to explicitly call MKCpu::Disassemble()
+to produce data for this feature.
+
+8/26/2016
+I want to move Display object from VMachine to MemMapDev. I started
+coding but it is not all done.
+There is experimental code that needs testing.
+11:28
+I almost finished this refactoring. Now Display object is maintained
+inside MemMapDev. VMachine still keeps the pointer to Display object locally
+since it is needed to perform few screen actions in Debug Console.
+Also I found a bug in main.cpp where the ioaddr was not refreshed after
+new memory image was loaded with 'L' command.
+Added multitude of debug messages.
+Removed 'cout' statements from memory image loading LoadMEM() and replaced
+then with debug messages.
+Moved Console IO specific functions from VMachine to a separate class
+ConsoleIO.
+Some testing done, but more testing recommended and pending for these changes.
+Interesting idea: 
+ - dump the debug log to file each time it is updated DBG_TRACE_SIZE times.
+
+8/28/2016
+Found and fixed few bugs in main.cpp (step-by-step execute).
+Few cosmetic changes.
+Documentation updates.
+
+9/6/2016
+Cosmetic changes. Documentation updates.
+
+9/7/2016
+Final touches before commit.
+
+9/8/2016
+I started a little research project if I will be able to do character I/O
+on graphics device. I downloaded c64 character ROM and converted it to
+c654_char.dat. This loads from $B000. I created new version of EhBasic
+eh_basic_mk.asm which has RAM top at $AFFF, so I can use it with the
+character ROM in $B000-$BFFF. EhBasic starts at $C000 as before.
+I compile eh_basic_mk.asm with Kowalski's 6502 emulator built-in assembler
+to pure binary ehbas.65b then convert with bin2hex to ehbas_xx.dat:
+bin2hex -f ehbas.65b -o ehbas_xx.dat -w 49152 -x 49152
+and modify to enable I/O.
+
+What needs to happen:
+- graphics device need to support memory mapped character data and text
+  mode
+- character I/O routines in EhBasic must point to new char I/O device address.
+
+9/9/2016
+OK, the Linux portability (and older pre c++11 compiler compatibility)
+was neglected for a long time, not to mention that I added SDL2 library
+in the meantime. So I started to work on Linux. Code compiles now, but my
+recent changes to character I/O left the char I/O not working on Linux.
+I made some additional changes and hopefully when at home in the evening
+char I/O will work on my Linux box.
+
+21:39
+Implemented 1-st working version of bitmap text mode in graphics device.
+Now I am going to check the code to SVN, see if it works in Linux.
+
+Tested on Linux - char I/O still not working. And there is a bug in local
+echo mode.
+
+9/13/2016
+Wow! Many many hours to finally get it working on Linux.
+I use ncurses for text and SDL2 for graphics.
+Performance on Linux over XWindows is poor, but at least it works.
+Huge refactoring, but better layering as a result.
+Now I need to finish text mode in graphics device and update documentation.
+
+9/14/2016
+Working on a text mode in graphics display device.
+To improve performance I added method
+  void GraphDisp::RenderChar8x8(unsigned char chdef[8], int x, int y, bool reversed);
+Instead of rendering the 8x8 character definition pixel by pixel (and refreshing
+the SDL surface each time) I now paint the whole character and then refresh the
+surface. The performance boost is significant (at least 3-4 times faster).
+Next step - copy the entire character ROM to the internal buffer of GraphDisp class
+each time the address of character table changes. This way, there will be no more
+VM RAM accesses when character is to be rendered.
+Currently each time I render the character I copy the 8 bytes of character definition
+from memory to internal 8 bytes buffer and then pass it to RenderChar8x8() method.
+20:30 - I have done the internal buffer optimization. Performance was further improved
+by nearly 2 times. Now method GraphDisp::RenderChar8x8() is private.
+I added:
+    void PrintChar8x8(int code, int col, int row, bool reversed);
+    void CopyCharRom8x8(unsigned char *pchrom);
+The 2-nd one copies characters table to internal buffer in GraphDisp class.
+The 1-st one renders the character using data from internal buffer.
+CopyCharRom8x8() must be called each time when address of character ROM changes.
+Code snippet from MemMapDev class shows how its done:
+[...]
+    } else if ((unsigned int)addr == mGraphDispAddr + GRAPHDEVREG_CHRTBL) {
+      // set new address of the character table, 2 kB bank #0-31
+      mGrDevRegs.mGraphDispChrTbl = (unsigned char)(val & 0x003F);
+      mCharTblAddr = mGrDevRegs.mGraphDispChrTbl * ((MAX_8BIT_ADDR+1) / 0x20);
+      unsigned char char_rom[CHROM_8x8_SIZE];
+      for (unsigned int i=0; i<CHROM_8x8_SIZE; i++) {
+        char_rom[i] = mpMem->Peek8bitImg((unsigned short)((mCharTblAddr + i) & 0xFFFF));
+      }
+      mpGraphDisp->CopyCharRom8x8(char_rom);
+[...]
+
+3/21/2017
+Reactivated from long break.
+I just studied the project to refresh my memory.
+Replaced one macro with inline function.
+
+3/22/2017
+A small refactoring in main.cpp (replaced big if/else branch statement with switch/case).
+
+7/28/2017
+Update github repository.
