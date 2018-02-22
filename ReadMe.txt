@@ -888,8 +888,9 @@ superposition along various axes of rotation. (The exceptions to this are "R1A" 
 "R1X," which rotate each bit in the register one quarter turn around the |1> axis.
 This is purely an effect on phase and not on probability, for |0> and |1> bits.)
 Hence, with the exception of R1 rotations, these gates have the classical effect of
-performing an operation like (reg = (reg + 127) & 0xFF) on the accumulator or X
-register.
+performing an operation like (reg = (reg + (127.5)) & 0xFF) on the accumulator or X
+register, where 127.5 is actually either 128/127 depending on whether the sign bit
+is clear/set.
 
 If the x register is in superposition, in can also address memory in superposition!
 All memory besides the accumulator, X register, and four flags is assumed to be
