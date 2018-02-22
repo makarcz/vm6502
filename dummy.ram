@@ -315,3 +315,22 @@ $00 $00
 $90 $FB
 $00 $00
 ;
+
+ORG
+$0a00
+;
+; test program #9
+; address: $0a00
+; load Acc with value 63
+; perform four Hadamard operations on Acc
+; (should return Acc to 63 by break,
+; or any input to its original value)
+;
+; lda #$3f
+; haa
+; haa
+; haa
+; haa
+; brk
+;
+$A9 $3f $02 $02 $02 $02 $00 
