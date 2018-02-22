@@ -892,12 +892,28 @@ performing an operation like (reg = (reg + (127.5)) & 0xFF) on the accumulator o
 register, where 127.5 is actually either 128/127 depending on whether the sign bit
 is clear/set.
 
-If the x register is in superposition, in can also address memory in superposition!
+If the x register is in superposition, it can also address memory in superposition!
 All memory besides the accumulator, X register, and four flags is assumed to be
 classical. If the X register addresses classical memory from a state of superposition,
-it superposes the values in classical memory by the probability and phases of the
+it superposes the values in classical memory by the probabilities and phases of the
 superposition of the X register. This might be a realistic access model for true
 quantum hardware, since superconducting quantum interference devices ("SQUIDs") have
 already been observed to pass currents in superposition. With a super-cooled small
 cache of classical RAM, a QCPU could be capable of addressing classical memory in
-superposition, this way.  
+superposition, this way.
+
+Addressing via the X register loads a superposition of up to 256 bytes at once.
+(Zeropage access wraps around on the zero page, but zeropage access argument acts
+as an offset for wrap-around. Page boundaries are observed similar to the MOS 6502,
+with an extra cycle if access crosses a page boundary, i.e. if the zeropage or
+absolute address is not the first byte on a page, for offset by the X register.)
+The contribution of an addressed byte to the superposition is to add the value
+in memory at that address with the probability and phase of the X register
+permutation state corresponding with that address. If the X register is not
+superposed in the permutation basis, then this behavior emulates classical
+addressing. (If the X register only has nonzero probability in 16 permutations,
+then only sixteen addresses contribute to the superposition, etc..)
+
+For a good reference and introductory text, see also:
+Nielson, Michael A. and Isaac L. Chuang, Quantum Computation and Quantum Information
+

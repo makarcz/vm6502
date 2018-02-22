@@ -409,6 +409,25 @@ void MKCpu::InitCpu()
 
 /*
  *--------------------------------------------------------------------
+ * Method:		RotateClassical()
+ * Purpose:		Perform classical equivalent of quantum rotation
+ * Arguments:		reg - input classical value of register
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+unsigned char MKCpu::RotateClassical(unsigned char reg) {
+	unsigned char offset = reg & 0x7F;
+	bool sign = reg & 0x80;
+	if (sign && offset >= 0x40) reg = 0x80 | ((~offset) & 0x7F); 
+	else if (sign && offset < 0x40) reg = offset;
+	else if ((!sign) && offset >= 0x40) reg |= 0x80;
+	else if ((!sign) && offset < 0x40) reg = ((~offset) & 0x7F);
+
+	return reg;
+}	
+
+/*
+ *--------------------------------------------------------------------
  * Method:		SetFlags()
  * Purpose:		Set CPU status flags ZERO and SIGN based on Acc, X or Y
  * Arguments:	n/a
@@ -4225,8 +4244,7 @@ void MKCpu::OpCodeDud()
 void MKCpu::OpCodeHadA()
 {
 	qRegs.H(0, 8);
-	if (mReg.Acc < 128) mReg.Acc++;
-	mReg.Acc = (mReg.Acc + 127) & 0xFF;
+	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(0);
 	SetFlags(mReg.Acc);
 }
@@ -4242,8 +4260,7 @@ void MKCpu::OpCodeHadA()
 void MKCpu::OpCodeHadX()
 {
 	qRegs.H(8, 8);
-	if (mReg.IndX < 128) mReg.IndX++;
-	mReg.IndX = (mReg.IndX + 127) & 0xFF;
+	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(8);
 	SetFlags(mReg.IndX);
 }
@@ -4371,8 +4388,7 @@ void MKCpu::OpCodeR1X()
 void MKCpu::OpCodeRXA()
 {
 	qRegs.RX(M_PI / 2.0, 0, 8);
-	if (mReg.Acc < 128) mReg.Acc++;
-	mReg.Acc = (mReg.Acc + 127) & 0xFF;
+	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(0);
 	SetFlags(mReg.Acc);
 }
@@ -4388,8 +4404,7 @@ void MKCpu::OpCodeRXA()
 void MKCpu::OpCodeRXX()
 {
 	qRegs.RX(M_PI / 2.0, 8, 8);
-	if (mReg.IndX < 128) mReg.IndX++;
-	mReg.IndX = (mReg.IndX + 127) & 0xFF;
+	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(8);
 	SetFlags(mReg.IndX);
 }
@@ -4405,8 +4420,7 @@ void MKCpu::OpCodeRXX()
 void MKCpu::OpCodeRYA()
 {
 	qRegs.RY(M_PI / 2.0, 0, 8);
-	if (mReg.Acc < 128) mReg.Acc++;
-	mReg.Acc = (mReg.Acc + 127) & 0xFF;
+	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(0);
 	SetFlags(mReg.Acc);
 }
@@ -4422,8 +4436,7 @@ void MKCpu::OpCodeRYA()
 void MKCpu::OpCodeRYX()
 {
 	qRegs.RY(M_PI / 2.0, 8, 8);
-	if (mReg.IndX < 128) mReg.IndX++;
-	mReg.IndX = (mReg.IndX + 127) & 0xFF;
+	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(8);
 	SetFlags(mReg.IndX);
 }
@@ -4439,8 +4452,7 @@ void MKCpu::OpCodeRYX()
 void MKCpu::OpCodeRZA()
 {
 	qRegs.RZ(M_PI / 2.0, 0, 8);
-	if (mReg.Acc < 128) mReg.Acc++;
-	mReg.Acc = (mReg.Acc + 127) & 0xFF;
+	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(0);
 	SetFlags(mReg.Acc);
 }
@@ -4456,8 +4468,7 @@ void MKCpu::OpCodeRZA()
 void MKCpu::OpCodeRZX()
 {
 	qRegs.RZ(M_PI / 2.0, 8, 8);
-	if (mReg.IndX < 128) mReg.IndX++;
-	mReg.IndX = (mReg.IndX + 127) & 0xFF;
+	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(8);
 	SetFlags(mReg.IndX);
 }
