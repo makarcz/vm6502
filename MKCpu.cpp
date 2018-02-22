@@ -4225,7 +4225,9 @@ void MKCpu::OpCodeDud()
 void MKCpu::OpCodeHadA()
 {
 	qRegs.H(0, 8);
+	mReg.Acc = (mReg.Acc + 127) & 0xFF;
 	SetFlagsRegQ(0);
+	SetFlags(mReg.Acc);
 }
 
 /*
@@ -4239,7 +4241,9 @@ void MKCpu::OpCodeHadA()
 void MKCpu::OpCodeHadX()
 {
 	qRegs.H(8, 8);
+	mReg.IndX = (mReg.IndX + 127) & 0xFF;
 	SetFlagsRegQ(8);
+	SetFlags(mReg.IndX);
 }
 
 /*
@@ -4365,7 +4369,9 @@ void MKCpu::OpCodeR1X()
 void MKCpu::OpCodeRXA()
 {
 	qRegs.RX(M_PI / 2.0, 0, 8);
+	mReg.Acc = (mReg.Acc + 127) & 0xFF;
 	SetFlagsRegQ(0);
+	SetFlags(mReg.Acc);
 }
 
 /*
@@ -4379,7 +4385,9 @@ void MKCpu::OpCodeRXA()
 void MKCpu::OpCodeRXX()
 {
 	qRegs.RX(M_PI / 2.0, 8, 8);
+	mReg.IndX = (mReg.IndX + 127) & 0xFF;
 	SetFlagsRegQ(8);
+	SetFlags(mReg.IndX);
 }
 
 /*
@@ -4393,7 +4401,9 @@ void MKCpu::OpCodeRXX()
 void MKCpu::OpCodeRYA()
 {
 	qRegs.RY(M_PI / 2.0, 0, 8);
+	mReg.Acc = (mReg.Acc + 127) & 0xFF;
 	SetFlagsRegQ(0);
+	SetFlags(mReg.Acc);
 }
 
 /*
@@ -4407,7 +4417,9 @@ void MKCpu::OpCodeRYA()
 void MKCpu::OpCodeRYX()
 {
 	qRegs.RY(M_PI / 2.0, 8, 8);
+	mReg.IndX = (mReg.IndX + 127) & 0xFF;
 	SetFlagsRegQ(8);
+	SetFlags(mReg.IndX);
 }
 
 /*
@@ -4421,7 +4433,9 @@ void MKCpu::OpCodeRYX()
 void MKCpu::OpCodeRZA()
 {
 	qRegs.RZ(M_PI / 2.0, 0, 8);
+	mReg.Acc = (mReg.Acc + 127) & 0xFF;
 	SetFlagsRegQ(0);
+	SetFlags(mReg.Acc);
 }
 
 /*
@@ -4435,7 +4449,9 @@ void MKCpu::OpCodeRZA()
 void MKCpu::OpCodeRZX()
 {
 	qRegs.RZ(M_PI / 2.0, 8, 8);
+	mReg.IndX = (mReg.IndX + 127) & 0xFF;
 	SetFlagsRegQ(8);
+	SetFlags(mReg.IndX);
 }
 
 /*
@@ -4450,6 +4466,7 @@ void MKCpu::OpCodeFTA()
 {
 	qRegs.QFT(0, 8);
 	SetFlagsRegQ(0);
+	//TODO: Implement classical Fourier transform, here.
 }
 
 /*
@@ -4464,6 +4481,7 @@ void MKCpu::OpCodeFTX()
 {
 	qRegs.QFT(8, 8);
 	SetFlagsRegQ(8);
+	//TODO: Implement classical Fourier transform, here.
 }
 
 /*

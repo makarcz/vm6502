@@ -23,7 +23,7 @@ RM       = rm -f
 all: all-before $(BIN) bin2hex all-after
 
 clean: clean-custom
-	${RM} $(OBJ) $(BIN) bin2hex
+	${RM} $(OBJ) testall.o $(BIN) bin2hex
 
 $(BIN): $(OBJ)
 	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(SDLLIBS)

@@ -9,9 +9,13 @@ Quantum computational superset of Marek Karcz's MOS 6502 emulator. (Thank you, M
 The accumulator, X register, and sign, zero, carry, and overflow flags become qubit-based.
 Generalized quantum register behavior is provided by the "Qrack" project, Copyright (C) Daniel Strano 2018.
 More documentation on quantum functionality is to follow. (Quantum opcodes are available in MKCpu.cpp and MKCpu.h.)
+
+See end of this file for a brief overview of quantum functionality.
  
 
 --Derived from:
+
+/////////////////////////////BEGIN ORIGINAL README//////////////////////////////
 
 Project: MKBasic (a.k.a. VM6502, a.k.a. VM65, I just can't decide
                   how to name it :-)).
@@ -860,4 +864,39 @@ may require separate application for permission from their respective
 authors/copyright owners.
 
 
+//////////////////////////////END ORIGINAL README///////////////////////////////
 
+13. Quantum functionality overview
+
+This version of VM6502 (or MKBasic, or VM65) mirrors the state of the accumulator,
+X register, and sign, zero, carry, and overflow flags in qubits and qubytes.
+
+By a result well known to physicists called "Ehrenfest's theorem," the expectation
+for the quantum trajectory of the processor should match that of the classical
+equivalent of the QCPU. Hence, qubits are mirrored here with classical bits for
+debugging. Qubit measurements take precedence, in the case that quantum uncertainty
+and superposition lead to a deviation from the classical trajectory of the QCPU.
+
+New opcodes have been added to leverage quantum functionality. (These can be looked
+up in the reference table in MKCpu.cpp.) Two opcodes are quantum Fourier transforms
+of the accumulator and X register. ("FTA," "FTX.") The rest of the new opcodes are
+quarter rotations along various qubit axes. These are quarter turns, in that four
+applications of the same new opcode should return any register to its original state.
+
+The quarter rotation opcodes have the effects of putting |0> and |1> bits into 50/50
+superposition along various axes of rotation. (The exceptions to this are "R1A" and
+"R1X," which rotate each bit in the register one quarter turn around the |1> axis.
+This is purely an effect on phase and not on probability, for |0> and |1> bits.)
+Hence, with the exception of R1 rotations, these gates have the classical effect of
+performing an operation like (reg = (reg + 127) & 0xFF) on the accumulator or X
+register.
+
+If the x register is in superposition, in can also address memory in superposition!
+All memory besides the accumulator, X register, and four flags is assumed to be
+classical. If the X register addresses classical memory from a state of superposition,
+it superposes the values in classical memory by the probability and phases of the
+superposition of the X register. This might be a realistic access model for true
+quantum hardware, since superconducting quantum interference devices ("SQUIDs") have
+already been observed to pass currents in superposition. With a super-cooled small
+cache of classical RAM, a QCPU could be capable of addressing classical memory in
+superposition, this way.  
