@@ -38,15 +38,22 @@
 #include <queue>
 #include "system.h"
 #include "Memory.h"
+#include "qrack.hpp"
 
 using namespace std;
 
 namespace MKBasic {
 	
 #define DISS_BUF_SIZE 60	// disassembled instruction buffer size	
-#define OPCO_HIS_SIZE 20	// size of op-code execute history queue	
+#define OPCO_HIS_SIZE 20	// size of op-code execute history queue
 
 struct Regs {
+	//qubit index 0: accumulator
+	//qubit index 8: x register
+	//qubit index 16: carry flag
+	//qubit index 17: zero flag
+	//qubit index 18: overflow flag
+	//qubit index 19: negative flag
 	unsigned char 	Acc;					// 8-bit accumulator
 	unsigned short 	Acc16;				// 16-bit accumulator
 	unsigned char 	IndX;					// 8-bit index register X
@@ -65,7 +72,13 @@ struct Regs {
 	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
 	int  						CyclesLeft;		// # of cycles left to complete current opcode
 	bool						PageBoundary;	// true if page boundary was crossed
+
 };
+
+#define FLAGS_CARRY_Q		16
+#define FLAGS_ZERO_Q		17
+#define FLAGS_OVERFLOW_Q	18
+#define FLAGS_SIGN_Q		19
 
 /*
  * Virtual CPU, 6502 addressing modes:
@@ -120,6 +133,7 @@ enum eAddrModes {
 	ADDRMODE_REL,
 	ADDRMODE_ACC,
 	ADDRMODE_UND,		// undetermined (for some illegal codes)
+	ADDRMODE_NON,
 	ADDRMODE_LENGTH	// should be always last
 }; 
 // assumed little-endian order of bytes (start with least significant)
@@ -497,9 +511,15 @@ class MKCpu
 		
 		void	InitCpu();
 		void	SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on Acc, X or Y
+		void	SetFlagsRegQ(unsigned char reg);								// set quantum flags based on quantum register
+		void	SetFlagsQ(unsigned char reg);									// set quantum flags based on input
+		void ShiftLeftQ(bitLenInt start);
 		unsigned char ShiftLeft(unsigned char arg8);				// Arithmetic Shift Left, set Carry flag
+		void ShiftRightQ(bitLenInt start);
 		unsigned char ShiftRight(unsigned char arg8);				// Logical Shift Right, update flags NZC.
+		void RotateLeftQ();
 		unsigned char RotateLeft(unsigned char arg8);				// Rotate left, Carry to bit 0, bit 7 to Carry, update flags N and Z.
+		void RotateRightQ();
 		unsigned char RotateRight(unsigned char arg8);			// Rotate left, Carry to bit 7, bit 0 to Carry, update flags N and Z.
 		unsigned short GetArg16(unsigned char offs);				// Get 2-byte argument, add offset, increase PC.
 		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory location and Acc.
@@ -510,9 +530,13 @@ class MKCpu
 		unsigned char Conv2Bcd(unsigned short v);						// Convert number to BCD representation.
 		unsigned short Bcd2Num(unsigned char v);						// Convert BCD code to number.
 		bool CheckFlag(unsigned char flag);									// Return true if given CPU status flag is set, false otherwise.
+		bool CheckFlagQ(unsigned char flag);									// Return true if given quantum CPU status flag is set, false otherwise.
 		void SetFlag(bool set, unsigned char flag);					// Set or unset processor status flag.
+		void SetFlagQ(bool set, unsigned char flag);
 		unsigned char AddWithCarry(unsigned char mem8);			// Add With Carry, update flags and Acc.
+		void AddWithCarryQ(unsigned char mem8);
 		unsigned char SubWithCarry(unsigned char mem8);			// Subtract With Carry, update flags and Acc.
+		void SubWithCarryQ(unsigned char mem8);	
 		unsigned short GetAddrWithMode(int mode);						// Get address of the byte argument with specified addr. mode
 		unsigned short GetArgWithMode(unsigned short opcaddr,
 																	int mode);						// Get argument from address with specified addr. mode
@@ -675,6 +699,25 @@ class MKCpu
 		void OpCodeSbcAbx();
 		void OpCodeSbcImm();
 		void OpCodeDud();
+//Quantum Opcodes
+		void OpCodeHadA();
+		void OpCodeHadX();
+		void OpCodeXA();
+		void OpCodeXX();
+		void OpCodeYA();
+		void OpCodeYX();
+		void OpCodeZA();
+		void OpCodeZX();
+		void OpCodeR1A();
+		void OpCodeR1X();
+		void OpCodeRXA();
+		void OpCodeRXX();
+		void OpCodeRYA();
+		void OpCodeRYX();
+		void OpCodeRZA();
+		void OpCodeRZX();
+		void OpCodeFTA();
+		void OpCodeFTX();
 
 };
 

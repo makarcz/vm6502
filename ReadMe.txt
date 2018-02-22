@@ -1,4 +1,18 @@
 
+Project: (Working codename:) VM6502Q (but I'm open to good suggestions).
+
+Author: Derivative work by Daniel Strano, (c) 2018
+
+Purpose:
+
+Quantum computational superset of Marek Karcz's MOS 6502 emulator. (Thank you, Marek!)
+The accumulator, X register, and sign, zero, carry, and overflow flags become qubit-based.
+Generalized quantum register behavior is provided by the "Qrack" project, Copyright (C) Daniel Strano 2018.
+More documentation on quantum functionality is to follow. (Quantum opcodes are available in MKCpu.cpp and MKCpu.h.)
+ 
+
+--Derived from:
+
 Project: MKBasic (a.k.a. VM6502, a.k.a. VM65, I just can't decide
                   how to name it :-)).
 

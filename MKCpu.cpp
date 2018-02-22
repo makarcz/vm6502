@@ -37,6 +37,8 @@
 #include "MKCpu.h"
 #include "MKGenException.h"
 
+Qrack::CoherentUnit qRegs = Qrack::CoherentUnit(20, 0);
+
 namespace MKBasic {
 
 /*
@@ -113,261 +115,261 @@ void MKCpu::InitCpu()
 	OpCodesMap myOpCodesMap {
 		//opcode					opcode						addr. mode		time		symb.		pointer to exec. function
 		//------------------------------------------------------------------------------------------
-		{OPCODE_BRK,			{OPCODE_BRK,			ADDRMODE_IMP,		7,		"BRK",	&MKCpu::OpCodeBrk 			}},
-		{OPCODE_ORA_IZX,	{OPCODE_ORA_IZX,	ADDRMODE_IZX,		6,		"ORA",	&MKCpu::OpCodeOraIzx		}},
-		{OPCODE_ILL_02,		{OPCODE_ILL_02,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud				}},
-		{OPCODE_ILL_03,		{OPCODE_ILL_03,		ADDRMODE_IZX,		8,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_04,		{OPCODE_ILL_04,		ADDRMODE_ZP,		3,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ORA_ZP,		{OPCODE_ORA_ZP,		ADDRMODE_ZP,		3,		"ORA", 	&MKCpu::OpCodeOraZp 		}},
-		{OPCODE_ASL_ZP,		{OPCODE_ASL_ZP,		ADDRMODE_ZP,		5,		"ASL",	&MKCpu::OpCodeAslZp 		}},
-		{OPCODE_ILL_07,		{OPCODE_ILL_07,		ADDRMODE_ZP,		5,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_PHP,			{OPCODE_PHP,			ADDRMODE_IMP,		3,		"PHP",	&MKCpu::OpCodePhp 			}},
-		{OPCODE_ORA_IMM,	{OPCODE_ORA_IMM,	ADDRMODE_IMM,		2,		"ORA",	&MKCpu::OpCodeOraImm 		}},
-		{OPCODE_ASL,			{OPCODE_ASL,			ADDRMODE_ACC,		2,		"ASL",	&MKCpu::OpCodeAslAcc 		}},
+		{OPCODE_BRK,		{OPCODE_BRK,		ADDRMODE_IMP,		7,		"BRK",	&MKCpu::OpCodeBrk 			}},
+		{OPCODE_ORA_IZX,	{OPCODE_ORA_IZX,	ADDRMODE_IZX,		6,		"ORA",	&MKCpu::OpCodeOraIzx			}},
+		{OPCODE_ILL_02,		{OPCODE_ILL_02,		ADDRMODE_ACC,		3,		"HAC",	&MKCpu::OpCodeHadA			}},
+		{OPCODE_ILL_03,		{OPCODE_ILL_03,		ADDRMODE_ACC,		3,		"HAX",	&MKCpu::OpCodeHadX			}},
+		{OPCODE_ILL_04,		{OPCODE_ILL_04,		ADDRMODE_ACC,		3,		"HAY",	&MKCpu::OpCodeDud			}},
+		{OPCODE_ORA_ZP,		{OPCODE_ORA_ZP,		ADDRMODE_ZP,		3,		"ORA", 	&MKCpu::OpCodeOraZp			}},
+		{OPCODE_ASL_ZP,		{OPCODE_ASL_ZP,		ADDRMODE_ZP,		5,		"ASL",	&MKCpu::OpCodeAslZp			}},
+		{OPCODE_ILL_07,		{OPCODE_ILL_07,		ADDRMODE_ZP,		4,		"QFT",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_PHP,		{OPCODE_PHP,		ADDRMODE_IMP,		3,		"PHP",	&MKCpu::OpCodePhp			}},
+		{OPCODE_ORA_IMM,	{OPCODE_ORA_IMM,	ADDRMODE_IMM,		2,		"ORA",	&MKCpu::OpCodeOraImm 			}},
+		{OPCODE_ASL,		{OPCODE_ASL,		ADDRMODE_ACC,		2,		"ASL",	&MKCpu::OpCodeAslAcc			}},
 		{OPCODE_ILL_0B,		{OPCODE_ILL_0B,		ADDRMODE_IMM,		2,		"ANC",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_ABS,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 		}},
-		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 		}},
+		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 			}},
+		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 			}},
 		{OPCODE_ILL_0F,		{OPCODE_ILL_0F,		ADDRMODE_ABS,		6,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BPL_REL,	{OPCODE_BPL_REL,	ADDRMODE_REL,		2,		"BPL",	&MKCpu::OpCodeBplRel 		}},
-		{OPCODE_ORA_IZY,	{OPCODE_ORA_IZY,	ADDRMODE_IZY,		5,		"ORA",	&MKCpu::OpCodeOraIzy 		}},
-		{OPCODE_ILL_12,		{OPCODE_ILL_12,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_13,		{OPCODE_ILL_13,		ADDRMODE_IZY,		8,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_14,		{OPCODE_ILL_14,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ORA_ZPX,	{OPCODE_ORA_ZPX,	ADDRMODE_ZPX,		4,		"ORA",	&MKCpu::OpCodeOraZpx 		}},
-		{OPCODE_ASL_ZPX,	{OPCODE_ASL_ZPX,	ADDRMODE_ZPX,		6,		"ASL",	&MKCpu::OpCodeAslZpx 		}},
+		{OPCODE_BPL_REL,	{OPCODE_BPL_REL,	ADDRMODE_REL,		2,		"BPL",	&MKCpu::OpCodeBplRel 			}},
+		{OPCODE_ORA_IZY,	{OPCODE_ORA_IZY,	ADDRMODE_IZY,		5,		"ORA",	&MKCpu::OpCodeOraIzy 			}},
+		{OPCODE_ILL_12,		{OPCODE_ILL_12,		ADDRMODE_ACC,		3,		"PXA",	&MKCpu::OpCodeXA 			}},
+		{OPCODE_ILL_13,		{OPCODE_ILL_13,		ADDRMODE_ACC,		3,		"PXX",	&MKCpu::OpCodeXX 			}},
+		{OPCODE_ILL_14,		{OPCODE_ILL_14,		ADDRMODE_ACC,		3,		"NOP",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_ORA_ZPX,	{OPCODE_ORA_ZPX,	ADDRMODE_ZPX,		4,		"ORA",	&MKCpu::OpCodeOraZpx 			}},
+		{OPCODE_ASL_ZPX,	{OPCODE_ASL_ZPX,	ADDRMODE_ZPX,		6,		"ASL",	&MKCpu::OpCodeAslZpx 			}},
 		{OPCODE_ILL_17,		{OPCODE_ILL_17,		ADDRMODE_ZPX,		6,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CLC,			{OPCODE_CLC,			ADDRMODE_IMP,		2,		"CLC",	&MKCpu::OpCodeClc 			}},
-		{OPCODE_ORA_ABY,	{OPCODE_ORA_ABY,	ADDRMODE_ABY,		4,		"ORA",	&MKCpu::OpCodeOraAby 		}},
-		{OPCODE_ILL_1A,		{OPCODE_ILL_1A,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_1B,		{OPCODE_ILL_1B,		ADDRMODE_ABY,		7,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_1C,		{OPCODE_ILL_1C,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ORA_ABX,	{OPCODE_ORA_ABX,	ADDRMODE_ABX,		4,		"ORA",	&MKCpu::OpCodeOraAbx 		}},
-		{OPCODE_ASL_ABX,	{OPCODE_ASL_ABX,	ADDRMODE_ABX,		7,		"ASL",	&MKCpu::OpCodeAslAbx 		}},
+		{OPCODE_CLC,		{OPCODE_CLC,		ADDRMODE_IMP,		2,		"CLC",	&MKCpu::OpCodeClc 			}},
+		{OPCODE_ORA_ABY,	{OPCODE_ORA_ABY,	ADDRMODE_ABY,		4,		"ORA",	&MKCpu::OpCodeOraAby 			}},
+		{OPCODE_ILL_1A,		{OPCODE_ILL_1A,		ADDRMODE_ACC,		2,		"PYA",	&MKCpu::OpCodeYA 			}},
+		{OPCODE_ILL_1B,		{OPCODE_ILL_1B,		ADDRMODE_ACC,		7,		"PYX",	&MKCpu::OpCodeYX 			}},
+		{OPCODE_ILL_1C,		{OPCODE_ILL_1C,		ADDRMODE_ACC,		4,		"PYY",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_ORA_ABX,	{OPCODE_ORA_ABX,	ADDRMODE_ABX,		4,		"ORA",	&MKCpu::OpCodeOraAbx 			}},
+		{OPCODE_ASL_ABX,	{OPCODE_ASL_ABX,	ADDRMODE_ABX,		7,		"ASL",	&MKCpu::OpCodeAslAbx 			}},
 		{OPCODE_ILL_1F,		{OPCODE_ILL_1F,		ADDRMODE_ABX,		7,		"SLO",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_JSR_ABS,	{OPCODE_JSR_ABS,	ADDRMODE_ABS,		6,		"JSR",	&MKCpu::OpCodeJsrAbs 		}},
-		{OPCODE_AND_IZX,	{OPCODE_AND_IZX,	ADDRMODE_IZX,		6,		"AND",	&MKCpu::OpCodeAndIzx 		}},
+		{OPCODE_JSR_ABS,	{OPCODE_JSR_ABS,	ADDRMODE_ABS,		6,		"JSR",	&MKCpu::OpCodeJsrAbs 			}},
+		{OPCODE_AND_IZX,	{OPCODE_AND_IZX,	ADDRMODE_IZX,		6,		"AND",	&MKCpu::OpCodeAndIzx 			}},
 		{OPCODE_ILL_22,		{OPCODE_ILL_22,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_23,		{OPCODE_ILL_23,		ADDRMODE_IZX,		8,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BIT_ZP,		{OPCODE_BIT_ZP,		ADDRMODE_ZP,		3,		"BIT",	&MKCpu::OpCodeBitZp 		}},
-		{OPCODE_AND_ZP,		{OPCODE_AND_ZP,		ADDRMODE_ZP,		3,		"AND",	&MKCpu::OpCodeAndZp 		}},
-		{OPCODE_ROL_ZP,		{OPCODE_ROL_ZP,		ADDRMODE_ZP,		5,		"ROL",	&MKCpu::OpCodeRolZp 		}},
+		{OPCODE_BIT_ZP,		{OPCODE_BIT_ZP,		ADDRMODE_ZP,		3,		"BIT",	&MKCpu::OpCodeBitZp 			}},
+		{OPCODE_AND_ZP,		{OPCODE_AND_ZP,		ADDRMODE_ZP,		3,		"AND",	&MKCpu::OpCodeAndZp 			}},
+		{OPCODE_ROL_ZP,		{OPCODE_ROL_ZP,		ADDRMODE_ZP,		5,		"ROL",	&MKCpu::OpCodeRolZp 			}},
 		{OPCODE_ILL_27,		{OPCODE_ILL_27,		ADDRMODE_ZP,		5,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_PLP,			{OPCODE_PLP,			ADDRMODE_IMP,		4,		"PLP",	&MKCpu::OpCodePlp 			}},
-		{OPCODE_AND_IMM,	{OPCODE_AND_IMM,	ADDRMODE_IMM,		2,		"AND",	&MKCpu::OpCodeAndImm 		}},
-		{OPCODE_ROL,			{OPCODE_ROL,			ADDRMODE_ACC,		2,		"ROL",	&MKCpu::OpCodeRolAcc 		}},
+		{OPCODE_PLP,		{OPCODE_PLP,		ADDRMODE_IMP,		4,		"PLP",	&MKCpu::OpCodePlp			}},
+		{OPCODE_AND_IMM,	{OPCODE_AND_IMM,	ADDRMODE_IMM,		2,		"AND",	&MKCpu::OpCodeAndImm 			}},
+		{OPCODE_ROL,		{OPCODE_ROL,		ADDRMODE_ACC,		2,		"ROL",	&MKCpu::OpCodeRolAcc			}},
 		{OPCODE_ILL_2B,		{OPCODE_ILL_2B,		ADDRMODE_IMM,		2,		"ANC",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BIT_ABS,	{OPCODE_BIT_ABS,	ADDRMODE_ABS,		4,		"BIT",	&MKCpu::OpCodeBitAbs 		}},
-		{OPCODE_AND_ABS,	{OPCODE_AND_ABS,	ADDRMODE_ABS,		4,		"AND",	&MKCpu::OpCodeAndAbs 		}},
-		{OPCODE_ROL_ABS,	{OPCODE_ROL_ABS,	ADDRMODE_ABS,		6,		"ROL",	&MKCpu::OpCodeRolAbs 		}},
+		{OPCODE_BIT_ABS,	{OPCODE_BIT_ABS,	ADDRMODE_ABS,		4,		"BIT",	&MKCpu::OpCodeBitAbs 			}},
+		{OPCODE_AND_ABS,	{OPCODE_AND_ABS,	ADDRMODE_ABS,		4,		"AND",	&MKCpu::OpCodeAndAbs 			}},
+		{OPCODE_ROL_ABS,	{OPCODE_ROL_ABS,	ADDRMODE_ABS,		6,		"ROL",	&MKCpu::OpCodeRolAbs 			}},
 		{OPCODE_ILL_2F,		{OPCODE_ILL_2F,		ADDRMODE_ABS,		6,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BMI_REL,	{OPCODE_BMI_REL,	ADDRMODE_REL,		2,		"BMI",	&MKCpu::OpCodeBmiRel 		}},
-		{OPCODE_AND_IZY,	{OPCODE_AND_IZY,	ADDRMODE_IZY,		5,		"AND",	&MKCpu::OpCodeAndIzy 		}},
-		{OPCODE_ILL_32,		{OPCODE_ILL_32,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_33,		{OPCODE_ILL_33,		ADDRMODE_IZY,		8,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_34,		{OPCODE_ILL_34,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_AND_ZPX,	{OPCODE_AND_ZPX,	ADDRMODE_ZPX,		4,		"AND",	&MKCpu::OpCodeAndZpx 		}},
-		{OPCODE_ROL_ZPX,	{OPCODE_ROL_ZPX,	ADDRMODE_ZPX,		6,		"ROL",	&MKCpu::OpCodeRolZpx 		}},
+		{OPCODE_BMI_REL,	{OPCODE_BMI_REL,	ADDRMODE_REL,		2,		"BMI",	&MKCpu::OpCodeBmiRel 			}},
+		{OPCODE_AND_IZY,	{OPCODE_AND_IZY,	ADDRMODE_IZY,		5,		"AND",	&MKCpu::OpCodeAndIzy 			}},
+		{OPCODE_ILL_32,		{OPCODE_ILL_32,		ADDRMODE_ACC,		3,		"PZA",	&MKCpu::OpCodeZA 			}},
+		{OPCODE_ILL_33,		{OPCODE_ILL_33,		ADDRMODE_ACC,		3,		"PZX",	&MKCpu::OpCodeZX 			}},
+		{OPCODE_ILL_34,		{OPCODE_ILL_34,		ADDRMODE_ACC,		3,		"PZY",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_AND_ZPX,	{OPCODE_AND_ZPX,	ADDRMODE_ZPX,		4,		"AND",	&MKCpu::OpCodeAndZpx 			}},
+		{OPCODE_ROL_ZPX,	{OPCODE_ROL_ZPX,	ADDRMODE_ZPX,		6,		"ROL",	&MKCpu::OpCodeRolZpx 			}},
 		{OPCODE_ILL_37,		{OPCODE_ILL_37,		ADDRMODE_ZPX,		6,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_SEC,			{OPCODE_SEC,			ADDRMODE_IMP,		2,		"SEC",	&MKCpu::OpCodeSec 			}},
-		{OPCODE_AND_ABY,	{OPCODE_AND_ABY,	ADDRMODE_ABY,		4,		"AND",	&MKCpu::OpCodeAndAby 		}},
-		{OPCODE_ILL_3A,		{OPCODE_ILL_3A,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_3B,		{OPCODE_ILL_3B,		ADDRMODE_ABY,		7,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_3C,		{OPCODE_ILL_3C,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_AND_ABX,	{OPCODE_AND_ABX,	ADDRMODE_ABX,		4,		"AND",	&MKCpu::OpCodeAndAbx 		}},
-		{OPCODE_ROL_ABX,	{OPCODE_ROL_ABX,	ADDRMODE_ABX,		7,		"ROL",	&MKCpu::OpCodeRolAbx 		}},
+		{OPCODE_SEC,		{OPCODE_SEC,		ADDRMODE_IMP,		2,		"SEC",	&MKCpu::OpCodeSec			}},
+		{OPCODE_AND_ABY,	{OPCODE_AND_ABY,	ADDRMODE_ABY,		4,		"AND",	&MKCpu::OpCodeAndAby 			}},
+		{OPCODE_ILL_3A,		{OPCODE_ILL_3A,		ADDRMODE_ACC,		2,		"R1A",	&MKCpu::OpCodeR1A 			}},
+		{OPCODE_ILL_3B,		{OPCODE_ILL_3B,		ADDRMODE_ACC,		7,		"R1X",	&MKCpu::OpCodeR1X 			}},
+		{OPCODE_ILL_3C,		{OPCODE_ILL_3C,		ADDRMODE_ACC,		4,		"R1Y",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_AND_ABX,	{OPCODE_AND_ABX,	ADDRMODE_ABX,		4,		"AND",	&MKCpu::OpCodeAndAbx 			}},
+		{OPCODE_ROL_ABX,	{OPCODE_ROL_ABX,	ADDRMODE_ABX,		7,		"ROL",	&MKCpu::OpCodeRolAbx 			}},
 		{OPCODE_ILL_3F,		{OPCODE_ILL_3F,		ADDRMODE_ABX,		7,		"RLA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_RTI,			{OPCODE_RTI,			ADDRMODE_IMP,		6,		"RTI",	&MKCpu::OpCodeRti 			}},
-		{OPCODE_EOR_IZX,	{OPCODE_EOR_IZX,	ADDRMODE_IZX,		6,		"EOR",	&MKCpu::OpCodeEorIzx 		}},
-		{OPCODE_ILL_42,		{OPCODE_ILL_42,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_43,		{OPCODE_ILL_43,		ADDRMODE_IZX,		8,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_44,		{OPCODE_ILL_44,		ADDRMODE_ZP,		3,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_EOR_ZP,		{OPCODE_EOR_ZP,		ADDRMODE_ZP,		3,		"EOR",	&MKCpu::OpCodeEorZp 		}},
-		{OPCODE_LSR_ZP,		{OPCODE_LSR_ZP,		ADDRMODE_ZP,		5,		"LSR",	&MKCpu::OpCodeLsrZp 		}},
+		{OPCODE_RTI,		{OPCODE_RTI,		ADDRMODE_IMP,		6,		"RTI",	&MKCpu::OpCodeRti			}},
+		{OPCODE_EOR_IZX,	{OPCODE_EOR_IZX,	ADDRMODE_IZX,		6,		"EOR",	&MKCpu::OpCodeEorIzx 			}},
+		{OPCODE_ILL_42,		{OPCODE_ILL_42,		ADDRMODE_ACC,		3,		"RXA",	&MKCpu::OpCodeRXA 			}},
+		{OPCODE_ILL_43,		{OPCODE_ILL_43,		ADDRMODE_ACC,		3,		"RXX",	&MKCpu::OpCodeRXX 			}},
+		{OPCODE_ILL_44,		{OPCODE_ILL_44,		ADDRMODE_ACC,		3,		"RXY",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_EOR_ZP,		{OPCODE_EOR_ZP,		ADDRMODE_ZP,		3,		"EOR",	&MKCpu::OpCodeEorZp 			}},
+		{OPCODE_LSR_ZP,		{OPCODE_LSR_ZP,		ADDRMODE_ZP,		5,		"LSR",	&MKCpu::OpCodeLsrZp 			}},
 		{OPCODE_ILL_47,		{OPCODE_ILL_47,		ADDRMODE_ZP,		5,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_PHA,			{OPCODE_PHA,			ADDRMODE_IMP,		3,		"PHA",	&MKCpu::OpCodePha 			}},
-		{OPCODE_EOR_IMM,	{OPCODE_EOR_IMM,	ADDRMODE_IMM,		2,		"EOR",	&MKCpu::OpCodeEorImm 		}},
-		{OPCODE_LSR,			{OPCODE_LSR,			ADDRMODE_ACC,		2,		"LSR",	&MKCpu::OpCodeLsrAcc 		}},
+		{OPCODE_PHA,		{OPCODE_PHA,		ADDRMODE_IMP,		3,		"PHA",	&MKCpu::OpCodePha 			}},
+		{OPCODE_EOR_IMM,	{OPCODE_EOR_IMM,	ADDRMODE_IMM,		2,		"EOR",	&MKCpu::OpCodeEorImm 			}},
+		{OPCODE_LSR,		{OPCODE_LSR,		ADDRMODE_ACC,		2,		"LSR",	&MKCpu::OpCodeLsrAcc			}},
 		{OPCODE_ILL_4B,		{OPCODE_ILL_4B,		ADDRMODE_IMM,		2,		"ALR",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_JMP_ABS,	{OPCODE_JMP_ABS,	ADDRMODE_ABS,		3,		"JMP",	&MKCpu::OpCodeJmpAbs 		}},
-		{OPCODE_EOR_ABS,	{OPCODE_EOR_ABS,	ADDRMODE_ABS,		4,		"EOR",	&MKCpu::OpCodeEorAbs 		}},
-		{OPCODE_LSR_ABS,	{OPCODE_LSR_ABS,	ADDRMODE_ABS,		6,		"LSR",	&MKCpu::OpCodeLsrAbs 		}},
+		{OPCODE_JMP_ABS,	{OPCODE_JMP_ABS,	ADDRMODE_ABS,		3,		"JMP",	&MKCpu::OpCodeJmpAbs 			}},
+		{OPCODE_EOR_ABS,	{OPCODE_EOR_ABS,	ADDRMODE_ABS,		4,		"EOR",	&MKCpu::OpCodeEorAbs 			}},
+		{OPCODE_LSR_ABS,	{OPCODE_LSR_ABS,	ADDRMODE_ABS,		6,		"LSR",	&MKCpu::OpCodeLsrAbs 			}},
 		{OPCODE_ILL_4F,		{OPCODE_ILL_4F,		ADDRMODE_ABS,		6,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BVC_REL,	{OPCODE_BVC_REL,	ADDRMODE_REL,		2,		"BVC",	&MKCpu::OpCodeBvcRel 		}},
-		{OPCODE_EOR_IZY,	{OPCODE_EOR_IZY,	ADDRMODE_IZY,		5,		"EOR",	&MKCpu::OpCodeEorIzy 		}},
-		{OPCODE_ILL_52,		{OPCODE_ILL_52,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_53,		{OPCODE_ILL_53,		ADDRMODE_IZY,		8,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_54,		{OPCODE_ILL_54,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_EOR_ZPX,	{OPCODE_EOR_ZPX,	ADDRMODE_ZPX,		4,		"EOR",	&MKCpu::OpCodeEorZpx 		}},
-		{OPCODE_LSR_ZPX,	{OPCODE_LSR_ZPX,	ADDRMODE_ZPX,		6,		"LSR",	&MKCpu::OpCodeLsrZpx 		}},
+		{OPCODE_BVC_REL,	{OPCODE_BVC_REL,	ADDRMODE_REL,		2,		"BVC",	&MKCpu::OpCodeBvcRel 			}},
+		{OPCODE_EOR_IZY,	{OPCODE_EOR_IZY,	ADDRMODE_IZY,		5,		"EOR",	&MKCpu::OpCodeEorIzy 			}},
+		{OPCODE_ILL_52,		{OPCODE_ILL_52,		ADDRMODE_ACC,		3,		"RYA",	&MKCpu::OpCodeRYA 			}},
+		{OPCODE_ILL_53,		{OPCODE_ILL_53,		ADDRMODE_ACC,		3,		"RYX",	&MKCpu::OpCodeRYX 			}},
+		{OPCODE_ILL_54,		{OPCODE_ILL_54,		ADDRMODE_ACC,		3,		"RYY",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_EOR_ZPX,	{OPCODE_EOR_ZPX,	ADDRMODE_ZPX,		4,		"EOR",	&MKCpu::OpCodeEorZpx 			}},
+		{OPCODE_LSR_ZPX,	{OPCODE_LSR_ZPX,	ADDRMODE_ZPX,		6,		"LSR",	&MKCpu::OpCodeLsrZpx 			}},
 		{OPCODE_ILL_57,		{OPCODE_ILL_57,		ADDRMODE_ZPX,		6,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CLI,			{OPCODE_CLI,			ADDRMODE_IMP,		2,		"CLI",	&MKCpu::OpCodeCli 			}},
-		{OPCODE_EOR_ABY,	{OPCODE_EOR_ABY,	ADDRMODE_ABY,		4,		"EOR",	&MKCpu::OpCodeEorAby 		}},
-		{OPCODE_ILL_5A,		{OPCODE_ILL_5A,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_5B,		{OPCODE_ILL_5B,		ADDRMODE_ABY,		7,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_5C,		{OPCODE_ILL_5C,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_EOR_ABX,	{OPCODE_EOR_ABX,	ADDRMODE_ABX,		4,		"EOR",	&MKCpu::OpCodeEorAbx 		}},
-		{OPCODE_LSR_ABX,	{OPCODE_LSR_ABX,	ADDRMODE_ABX,		7,		"LSR",	&MKCpu::OpCodeLsrAbx 		}},
+		{OPCODE_CLI,		{OPCODE_CLI,		ADDRMODE_IMP,		2,		"CLI",	&MKCpu::OpCodeCli			}},
+		{OPCODE_EOR_ABY,	{OPCODE_EOR_ABY,	ADDRMODE_ABY,		4,		"EOR",	&MKCpu::OpCodeEorAby 			}},
+		{OPCODE_ILL_5A,		{OPCODE_ILL_5A,		ADDRMODE_ACC,		2,		"RZA",	&MKCpu::OpCodeRZA 			}},
+		{OPCODE_ILL_5B,		{OPCODE_ILL_5B,		ADDRMODE_ACC,		7,		"RZX",	&MKCpu::OpCodeRZX 			}},
+		{OPCODE_ILL_5C,		{OPCODE_ILL_5C,		ADDRMODE_ACC,		4,		"RZY",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_EOR_ABX,	{OPCODE_EOR_ABX,	ADDRMODE_ABX,		4,		"EOR",	&MKCpu::OpCodeEorAbx 			}},
+		{OPCODE_LSR_ABX,	{OPCODE_LSR_ABX,	ADDRMODE_ABX,		7,		"LSR",	&MKCpu::OpCodeLsrAbx 			}},
 		{OPCODE_ILL_5F,		{OPCODE_ILL_5F,		ADDRMODE_ABX,		7,		"SRE",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_RTS,			{OPCODE_RTS,			ADDRMODE_IMP,		6,		"RTS",	&MKCpu::OpCodeRts 			}},
-		{OPCODE_ADC_IZX,	{OPCODE_ADC_IZX,	ADDRMODE_IZX,		6,		"ADC",	&MKCpu::OpCodeAdcIzx 		}},
-		{OPCODE_ILL_62,		{OPCODE_ILL_62,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_63,		{OPCODE_ILL_63,		ADDRMODE_IZX,		8,		"RRA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ILL_64,		{OPCODE_ILL_64,		ADDRMODE_ZP,		3,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ADC_ZP,		{OPCODE_ADC_ZP,		ADDRMODE_ZP,		3,		"ADC",	&MKCpu::OpCodeAdcZp 		}},
-		{OPCODE_ROR_ZP,		{OPCODE_ROR_ZP,		ADDRMODE_ZP,		5,		"ROR",	&MKCpu::OpCodeRorZp 		}},
+		{OPCODE_RTS,		{OPCODE_RTS,		ADDRMODE_IMP,		6,		"RTS",	&MKCpu::OpCodeRts			}},
+		{OPCODE_ADC_IZX,	{OPCODE_ADC_IZX,	ADDRMODE_IZX,		6,		"ADC",	&MKCpu::OpCodeAdcIzx 			}},
+		{OPCODE_ILL_62,		{OPCODE_ILL_62,		ADDRMODE_ACC,		4,		"FTA",	&MKCpu::OpCodeFTA 			}},
+		{OPCODE_ILL_63,		{OPCODE_ILL_63,		ADDRMODE_ACC,		4,		"FTX",	&MKCpu::OpCodeFTX 			}},
+		{OPCODE_ILL_64,		{OPCODE_ILL_64,		ADDRMODE_ACC,		4,		"FTY",	&MKCpu::OpCodeDud 			}},
+		{OPCODE_ADC_ZP,		{OPCODE_ADC_ZP,		ADDRMODE_ZP,		3,		"ADC",	&MKCpu::OpCodeAdcZp 			}},
+		{OPCODE_ROR_ZP,		{OPCODE_ROR_ZP,		ADDRMODE_ZP,		5,		"ROR",	&MKCpu::OpCodeRorZp 			}},
 		{OPCODE_ILL_67,		{OPCODE_ILL_67,		ADDRMODE_ZP,		5,		"RRA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_PLA,			{OPCODE_PLA,			ADDRMODE_IMP,		4,		"PLA",	&MKCpu::OpCodePla 			}},
-		{OPCODE_ADC_IMM,	{OPCODE_ADC_IMM,	ADDRMODE_IMM,		2,		"ADC",	&MKCpu::OpCodeAdcImm 		}},
-		{OPCODE_ROR,			{OPCODE_ROR,			ADDRMODE_ACC,		2,		"ROR",	&MKCpu::OpCodeRorAcc		}},
+		{OPCODE_PLA,		{OPCODE_PLA,		ADDRMODE_IMP,		4,		"PLA",	&MKCpu::OpCodePla			}},
+		{OPCODE_ADC_IMM,	{OPCODE_ADC_IMM,	ADDRMODE_IMM,		2,		"ADC",	&MKCpu::OpCodeAdcImm 			}},
+		{OPCODE_ROR,		{OPCODE_ROR,		ADDRMODE_ACC,		2,		"ROR",	&MKCpu::OpCodeRorAcc			}},
 		{OPCODE_ILL_6B,		{OPCODE_ILL_6B,		ADDRMODE_IMM,		2,		"ARR",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_JMP_IND,	{OPCODE_JMP_IND,	ADDRMODE_IND,		5,		"JMP",	&MKCpu::OpCodeJmpInd 		}},
-		{OPCODE_ADC_ABS,	{OPCODE_ADC_ABS,	ADDRMODE_ABS,		4,		"ADC",	&MKCpu::OpCodeAdcAbs 		}},
-		{OPCODE_ROR_ABS,	{OPCODE_ROR_ABS,	ADDRMODE_ABS,		6,		"ROR",	&MKCpu::OpCodeRorAbs 		}},
+		{OPCODE_JMP_IND,	{OPCODE_JMP_IND,	ADDRMODE_IND,		5,		"JMP",	&MKCpu::OpCodeJmpInd 			}},
+		{OPCODE_ADC_ABS,	{OPCODE_ADC_ABS,	ADDRMODE_ABS,		4,		"ADC",	&MKCpu::OpCodeAdcAbs 			}},
+		{OPCODE_ROR_ABS,	{OPCODE_ROR_ABS,	ADDRMODE_ABS,		6,		"ROR",	&MKCpu::OpCodeRorAbs 			}},
 		{OPCODE_ILL_6F,		{OPCODE_ILL_6F,		ADDRMODE_ABS,		6,		"RRA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BVS_REL,	{OPCODE_BVS_REL,	ADDRMODE_REL,		2,		"BVS",	&MKCpu::OpCodeBvsRel 		}},
-		{OPCODE_ADC_IZY,	{OPCODE_ADC_IZY,	ADDRMODE_IZY,		5,		"ADC",	&MKCpu::OpCodeAdcIzy 		}},
+		{OPCODE_BVS_REL,	{OPCODE_BVS_REL,	ADDRMODE_REL,		2,		"BVS",	&MKCpu::OpCodeBvsRel 			}},
+		{OPCODE_ADC_IZY,	{OPCODE_ADC_IZY,	ADDRMODE_IZY,		5,		"ADC",	&MKCpu::OpCodeAdcIzy 			}},
 		{OPCODE_ILL_72,		{OPCODE_ILL_72,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_73,		{OPCODE_ILL_73,		ADDRMODE_IZY,		8,		"RRA",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_74,		{OPCODE_ILL_74,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ADC_ZPX,	{OPCODE_ADC_ZPX,	ADDRMODE_ZPX,		4,		"ADC",	&MKCpu::OpCodeAdcZpx 		}},
-		{OPCODE_ROR_ZPX,	{OPCODE_ROR_ZPX,	ADDRMODE_ZPX,		6,		"ROR",	&MKCpu::OpCodeRorZpx 		}},
+		{OPCODE_ADC_ZPX,	{OPCODE_ADC_ZPX,	ADDRMODE_ZPX,		4,		"ADC",	&MKCpu::OpCodeAdcZpx 			}},
+		{OPCODE_ROR_ZPX,	{OPCODE_ROR_ZPX,	ADDRMODE_ZPX,		6,		"ROR",	&MKCpu::OpCodeRorZpx 			}},
 		{OPCODE_ILL_77,		{OPCODE_ILL_77,		ADDRMODE_ZPX,		6,		"RRA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_SEI,			{OPCODE_SEI,			ADDRMODE_IMP,		2,		"SEI",	&MKCpu::OpCodeSei 			}},
-		{OPCODE_ADC_ABY,	{OPCODE_ADC_ABY,	ADDRMODE_ABY,		4,		"ADC",	&MKCpu::OpCodeAdcAby 		}},
+		{OPCODE_SEI,		{OPCODE_SEI,		ADDRMODE_IMP,		2,		"SEI",	&MKCpu::OpCodeSei			}},
+		{OPCODE_ADC_ABY,	{OPCODE_ADC_ABY,	ADDRMODE_ABY,		4,		"ADC",	&MKCpu::OpCodeAdcAby 			}},
 		{OPCODE_ILL_7A,		{OPCODE_ILL_7A,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_7B,		{OPCODE_ILL_7B,		ADDRMODE_ABY,		7,		"RRA",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_7C,		{OPCODE_ILL_7C,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_ADC_ABX,	{OPCODE_ADC_ABX,	ADDRMODE_ABX,		4,		"ADC",	&MKCpu::OpCodeAdcAbx 		}},
-		{OPCODE_ROR_ABX,	{OPCODE_ROR_ABX,	ADDRMODE_ABX,		7,		"ROR",	&MKCpu::OpCodeRorAbx 		}},
+		{OPCODE_ADC_ABX,	{OPCODE_ADC_ABX,	ADDRMODE_ABX,		4,		"ADC",	&MKCpu::OpCodeAdcAbx 			}},
+		{OPCODE_ROR_ABX,	{OPCODE_ROR_ABX,	ADDRMODE_ABX,		7,		"ROR",	&MKCpu::OpCodeRorAbx 			}},
 		{OPCODE_ILL_7F,		{OPCODE_ILL_7F,		ADDRMODE_ABX,		7,		"RRA",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_80,		{OPCODE_ILL_80,		ADDRMODE_IMM,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_STA_IZX,	{OPCODE_STA_IZX,	ADDRMODE_IZX,		6,		"STA",	&MKCpu::OpCodeStaIzx 		}},
+		{OPCODE_STA_IZX,	{OPCODE_STA_IZX,	ADDRMODE_IZX,		6,		"STA",	&MKCpu::OpCodeStaIzx 			}},
 		{OPCODE_ILL_82,		{OPCODE_ILL_82,		ADDRMODE_IMM,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_83,		{OPCODE_ILL_83,		ADDRMODE_IZX,		6,		"SAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_STY_ZP,		{OPCODE_STY_ZP,		ADDRMODE_ZP,		3,		"STY",	&MKCpu::OpCodeStyZp 		}},
-		{OPCODE_STA_ZP,		{OPCODE_STA_ZP,		ADDRMODE_ZP,		3,		"STA",	&MKCpu::OpCodeStaZp 		}},
-		{OPCODE_STX_ZP,		{OPCODE_STX_ZP,		ADDRMODE_ZP,		3,		"STX",	&MKCpu::OpCodeStxZp 		}},
+		{OPCODE_STY_ZP,		{OPCODE_STY_ZP,		ADDRMODE_ZP,		3,		"STY",	&MKCpu::OpCodeStyZp 			}},
+		{OPCODE_STA_ZP,		{OPCODE_STA_ZP,		ADDRMODE_ZP,		3,		"STA",	&MKCpu::OpCodeStaZp 			}},
+		{OPCODE_STX_ZP,		{OPCODE_STX_ZP,		ADDRMODE_ZP,		3,		"STX",	&MKCpu::OpCodeStxZp 			}},
 		{OPCODE_ILL_87,		{OPCODE_ILL_87,		ADDRMODE_ZP,		3,		"SAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_DEY,			{OPCODE_DEY,			ADDRMODE_IMP,		2,		"DEY",	&MKCpu::OpCodeDey 			}},
+		{OPCODE_DEY,		{OPCODE_DEY,		ADDRMODE_IMP,		2,		"DEY",	&MKCpu::OpCodeDey 			}},
 		{OPCODE_ILL_89,		{OPCODE_ILL_89,		ADDRMODE_IMM,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_TXA,			{OPCODE_TXA,			ADDRMODE_IMP,		2,		"TXA",	&MKCpu::OpCodeTxa 			}},
+		{OPCODE_TXA,		{OPCODE_TXA,		ADDRMODE_IMP,		2,		"TXA",	&MKCpu::OpCodeTxa 			}},
 		{OPCODE_ILL_8B,		{OPCODE_ILL_8B,		ADDRMODE_IMM,		2,		"XAA",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_STY_ABS,	{OPCODE_STY_ABS,	ADDRMODE_ABS,		4,		"STY",	&MKCpu::OpCodeStyAbs 		}},
-		{OPCODE_STA_ABS,	{OPCODE_STA_ABS,	ADDRMODE_ABS,		4,		"STA",	&MKCpu::OpCodeStaAbs 		}},
-		{OPCODE_STX_ABS,	{OPCODE_STX_ABS,	ADDRMODE_ABS,		4,		"STX",	&MKCpu::OpCodeStxAbs 		}},
+		{OPCODE_STY_ABS,	{OPCODE_STY_ABS,	ADDRMODE_ABS,		4,		"STY",	&MKCpu::OpCodeStyAbs 			}},
+		{OPCODE_STA_ABS,	{OPCODE_STA_ABS,	ADDRMODE_ABS,		4,		"STA",	&MKCpu::OpCodeStaAbs 			}},
+		{OPCODE_STX_ABS,	{OPCODE_STX_ABS,	ADDRMODE_ABS,		4,		"STX",	&MKCpu::OpCodeStxAbs 			}},
 		{OPCODE_ILL_8F,		{OPCODE_ILL_8F,		ADDRMODE_ABS,		4,		"SAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BCC_REL,	{OPCODE_BCC_REL,	ADDRMODE_REL,		2,		"BCC",	&MKCpu::OpCodeBccRel 		}},
-		{OPCODE_STA_IZY,	{OPCODE_STA_IZY,	ADDRMODE_IZY,		6,		"STA",	&MKCpu::OpCodeStaIzy 		}},
+		{OPCODE_BCC_REL,	{OPCODE_BCC_REL,	ADDRMODE_REL,		2,		"BCC",	&MKCpu::OpCodeBccRel 			}},
+		{OPCODE_STA_IZY,	{OPCODE_STA_IZY,	ADDRMODE_IZY,		6,		"STA",	&MKCpu::OpCodeStaIzy 			}},
 		{OPCODE_ILL_92,		{OPCODE_ILL_92,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_93,		{OPCODE_ILL_93,		ADDRMODE_IZY,		6,		"AHX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_STY_ZPX,	{OPCODE_STY_ZPX,	ADDRMODE_ZPX,		4,		"STY",	&MKCpu::OpCodeStyZpx 		}},
-		{OPCODE_STA_ZPX,	{OPCODE_STA_ZPX,	ADDRMODE_ZPX,		4,		"STA",	&MKCpu::OpCodeStaZpx 		}},
-		{OPCODE_STX_ZPY,	{OPCODE_STX_ZPY,	ADDRMODE_ZPY,		4,		"STX",	&MKCpu::OpCodeStxZpy 		}},
+		{OPCODE_STY_ZPX,	{OPCODE_STY_ZPX,	ADDRMODE_ZPX,		4,		"STY",	&MKCpu::OpCodeStyZpx 			}},
+		{OPCODE_STA_ZPX,	{OPCODE_STA_ZPX,	ADDRMODE_ZPX,		4,		"STA",	&MKCpu::OpCodeStaZpx 			}},
+		{OPCODE_STX_ZPY,	{OPCODE_STX_ZPY,	ADDRMODE_ZPY,		4,		"STX",	&MKCpu::OpCodeStxZpy 			}},
 		{OPCODE_ILL_97,		{OPCODE_ILL_97,		ADDRMODE_ZPY,		4,		"SAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_TYA,			{OPCODE_TYA,			ADDRMODE_IMP,		2,		"TYA",	&MKCpu::OpCodeTya 			}},
-		{OPCODE_STA_ABY,	{OPCODE_STA_ABY,	ADDRMODE_ABY,		5,		"STA",	&MKCpu::OpCodeStaAby 		}},
-		{OPCODE_TXS,			{OPCODE_TXS,			ADDRMODE_IMP,		2,		"TXS",	&MKCpu::OpCodeTxs 			}},
+		{OPCODE_TYA,		{OPCODE_TYA,		ADDRMODE_IMP,		2,		"TYA",	&MKCpu::OpCodeTya 			}},
+		{OPCODE_STA_ABY,	{OPCODE_STA_ABY,	ADDRMODE_ABY,		5,		"STA",	&MKCpu::OpCodeStaAby 			}},
+		{OPCODE_TXS,		{OPCODE_TXS,		ADDRMODE_IMP,		2,		"TXS",	&MKCpu::OpCodeTxs 			}},
 		{OPCODE_ILL_9B,		{OPCODE_ILL_9B,		ADDRMODE_ABY,		5,		"TAS",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_9C,		{OPCODE_ILL_9C,		ADDRMODE_ABX,		5,		"SHY",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_STA_ABX,	{OPCODE_STA_ABX,	ADDRMODE_ABX,		5,		"STA",	&MKCpu::OpCodeStaAbx 		}},
+		{OPCODE_STA_ABX,	{OPCODE_STA_ABX,	ADDRMODE_ABX,		5,		"STA",	&MKCpu::OpCodeStaAbx 			}},
 		{OPCODE_ILL_9E,		{OPCODE_ILL_9E,		ADDRMODE_ABY,		5,		"SHX",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_9F,		{OPCODE_ILL_9F,		ADDRMODE_ABY,		5,		"AHX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_LDY_IMM,	{OPCODE_LDY_IMM,	ADDRMODE_IMM,		2,		"LDY",	&MKCpu::OpCodeLdyImm 		}},
-		{OPCODE_LDA_IZX,	{OPCODE_LDA_IZX,	ADDRMODE_IZX,		6,		"LDA",	&MKCpu::OpCodeLdaIzx 		}},
-		{OPCODE_LDX_IMM,	{OPCODE_LDX_IMM,	ADDRMODE_IMM,		2,		"LDX",	&MKCpu::OpCodeLdxImm 		}},
+		{OPCODE_LDY_IMM,	{OPCODE_LDY_IMM,	ADDRMODE_IMM,		2,		"LDY",	&MKCpu::OpCodeLdyImm 			}},
+		{OPCODE_LDA_IZX,	{OPCODE_LDA_IZX,	ADDRMODE_IZX,		6,		"LDA",	&MKCpu::OpCodeLdaIzx 			}},
+		{OPCODE_LDX_IMM,	{OPCODE_LDX_IMM,	ADDRMODE_IMM,		2,		"LDX",	&MKCpu::OpCodeLdxImm 			}},
 		{OPCODE_ILL_A3,		{OPCODE_ILL_A3,		ADDRMODE_IZX,		6,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_LDY_ZP,		{OPCODE_LDY_ZP,		ADDRMODE_ZP,		3,		"LDY",	&MKCpu::OpCodeLdyZp 		}},
-		{OPCODE_LDA_ZP,		{OPCODE_LDA_ZP,		ADDRMODE_ZP,		3,		"LDA",	&MKCpu::OpCodeLdaZp 		}},
-		{OPCODE_LDX_ZP,		{OPCODE_LDX_ZP,		ADDRMODE_ZP,		3,		"LDX",	&MKCpu::OpCodeLdxZp 		}},
+		{OPCODE_LDY_ZP,		{OPCODE_LDY_ZP,		ADDRMODE_ZP,		3,		"LDY",	&MKCpu::OpCodeLdyZp 			}},
+		{OPCODE_LDA_ZP,		{OPCODE_LDA_ZP,		ADDRMODE_ZP,		3,		"LDA",	&MKCpu::OpCodeLdaZp 			}},
+		{OPCODE_LDX_ZP,		{OPCODE_LDX_ZP,		ADDRMODE_ZP,		3,		"LDX",	&MKCpu::OpCodeLdxZp 			}},
 		{OPCODE_ILL_A7,		{OPCODE_ILL_A7,		ADDRMODE_ZP,		3,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_TAY,			{OPCODE_TAY,			ADDRMODE_IMP,		2,		"TAY",	&MKCpu::OpCodeTay 			}},
-		{OPCODE_LDA_IMM,	{OPCODE_LDA_IMM,	ADDRMODE_IMM,		2,		"LDA",	&MKCpu::OpCodeLdaImm 		}},
-		{OPCODE_TAX,			{OPCODE_TAX,			ADDRMODE_IMP,		2,		"TAX",	&MKCpu::OpCodeTax 			}},
+		{OPCODE_TAY,		{OPCODE_TAY,		ADDRMODE_IMP,		2,		"TAY",	&MKCpu::OpCodeTay 			}},
+		{OPCODE_LDA_IMM,	{OPCODE_LDA_IMM,	ADDRMODE_IMM,		2,		"LDA",	&MKCpu::OpCodeLdaImm 			}},
+		{OPCODE_TAX,		{OPCODE_TAX,		ADDRMODE_IMP,		2,		"TAX",	&MKCpu::OpCodeTax 			}},
 		{OPCODE_ILL_AB,		{OPCODE_ILL_AB,		ADDRMODE_IMM,		2,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_LDY_ABS,	{OPCODE_LDY_ABS,	ADDRMODE_ABS,		4,		"LDY",	&MKCpu::OpCodeLdyAbs 		}},
-		{OPCODE_LDA_ABS,	{OPCODE_LDA_ABS,	ADDRMODE_ABS,		4,		"LDA",	&MKCpu::OpCodeLdaAbs 		}},
-		{OPCODE_LDX_ABS,	{OPCODE_LDX_ABS,	ADDRMODE_ABS,		4,		"LDX",	&MKCpu::OpCodeLdxAbs 		}},
+		{OPCODE_LDY_ABS,	{OPCODE_LDY_ABS,	ADDRMODE_ABS,		4,		"LDY",	&MKCpu::OpCodeLdyAbs 			}},
+		{OPCODE_LDA_ABS,	{OPCODE_LDA_ABS,	ADDRMODE_ABS,		4,		"LDA",	&MKCpu::OpCodeLdaAbs 			}},
+		{OPCODE_LDX_ABS,	{OPCODE_LDX_ABS,	ADDRMODE_ABS,		4,		"LDX",	&MKCpu::OpCodeLdxAbs 			}},
 		{OPCODE_ILL_AF,		{OPCODE_ILL_AF,		ADDRMODE_ABS,		4,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BCS_REL,	{OPCODE_BCS_REL,	ADDRMODE_REL,		2,		"BCS",	&MKCpu::OpCodeBcsRel 		}},
-		{OPCODE_LDA_IZY,	{OPCODE_LDA_IZY,	ADDRMODE_IZY,		5,		"LDA",	&MKCpu::OpCodeLdaIzy 		}},
+		{OPCODE_BCS_REL,	{OPCODE_BCS_REL,	ADDRMODE_REL,		2,		"BCS",	&MKCpu::OpCodeBcsRel 			}},
+		{OPCODE_LDA_IZY,	{OPCODE_LDA_IZY,	ADDRMODE_IZY,		5,		"LDA",	&MKCpu::OpCodeLdaIzy 			}},
 		{OPCODE_ILL_B2,		{OPCODE_ILL_B2,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_B3,		{OPCODE_ILL_B3,		ADDRMODE_IZY,		5,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_LDY_ZPX,	{OPCODE_LDY_ZPX,	ADDRMODE_ZPX,		4,		"LDY",	&MKCpu::OpCodeLdyZpx 		}},
-		{OPCODE_LDA_ZPX,	{OPCODE_LDA_ZPX,	ADDRMODE_ZPX,		4,		"LDA",	&MKCpu::OpCodeLdaZpx 		}},
-		{OPCODE_LDX_ZPY,	{OPCODE_LDX_ZPY,	ADDRMODE_ZPY,		4,		"LDX",	&MKCpu::OpCodeLdxZpy 		}},
+		{OPCODE_LDY_ZPX,	{OPCODE_LDY_ZPX,	ADDRMODE_ZPX,		4,		"LDY",	&MKCpu::OpCodeLdyZpx 			}},
+		{OPCODE_LDA_ZPX,	{OPCODE_LDA_ZPX,	ADDRMODE_ZPX,		4,		"LDA",	&MKCpu::OpCodeLdaZpx 			}},
+		{OPCODE_LDX_ZPY,	{OPCODE_LDX_ZPY,	ADDRMODE_ZPY,		4,		"LDX",	&MKCpu::OpCodeLdxZpy 			}},
 		{OPCODE_ILL_B7,		{OPCODE_ILL_B7,		ADDRMODE_ZPY,		4,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CLV,			{OPCODE_CLV,			ADDRMODE_IMP,		2,		"CLV",	&MKCpu::OpCodeClv 			}},
-		{OPCODE_LDA_ABY,	{OPCODE_LDA_ABY,	ADDRMODE_ABY,		4,		"LDA",	&MKCpu::OpCodeLdaAby 		}},
-		{OPCODE_TSX,			{OPCODE_TSX,			ADDRMODE_IMP,		2,		"TSX",	&MKCpu::OpCodeTsx 			}},
+		{OPCODE_CLV,		{OPCODE_CLV,		ADDRMODE_IMP,		2,		"CLV",	&MKCpu::OpCodeClv 			}},
+		{OPCODE_LDA_ABY,	{OPCODE_LDA_ABY,	ADDRMODE_ABY,		4,		"LDA",	&MKCpu::OpCodeLdaAby 			}},
+		{OPCODE_TSX,		{OPCODE_TSX,		ADDRMODE_IMP,		2,		"TSX",	&MKCpu::OpCodeTsx 			}},
 		{OPCODE_ILL_BB,		{OPCODE_ILL_BB,		ADDRMODE_ABY,		4,		"LAS",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_LDY_ABX,	{OPCODE_LDY_ABX,	ADDRMODE_ABX,		4,		"LDY",	&MKCpu::OpCodeLdyAbx 		}},
-		{OPCODE_LDA_ABX,	{OPCODE_LDA_ABX,	ADDRMODE_ABX,		4,		"LDA",	&MKCpu::OpCodeLdaAbx 		}},
-		{OPCODE_LDX_ABY,	{OPCODE_LDX_ABY,	ADDRMODE_ABY,		4,		"LDX",	&MKCpu::OpCodeLdxAby 		}},
+		{OPCODE_LDY_ABX,	{OPCODE_LDY_ABX,	ADDRMODE_ABX,		4,		"LDY",	&MKCpu::OpCodeLdyAbx 			}},
+		{OPCODE_LDA_ABX,	{OPCODE_LDA_ABX,	ADDRMODE_ABX,		4,		"LDA",	&MKCpu::OpCodeLdaAbx 			}},
+		{OPCODE_LDX_ABY,	{OPCODE_LDX_ABY,	ADDRMODE_ABY,		4,		"LDX",	&MKCpu::OpCodeLdxAby 			}},
 		{OPCODE_ILL_BF,		{OPCODE_ILL_BF,		ADDRMODE_ABY,		4,		"LAX",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CPY_IMM,	{OPCODE_CPY_IMM,	ADDRMODE_IMM,		2,		"CPY",	&MKCpu::OpCodeCpyImm 		}},
-		{OPCODE_CMP_IZX,	{OPCODE_CMP_IZX,	ADDRMODE_IZX,		6,		"CMP",	&MKCpu::OpCodeCmpIzx 		}},
+		{OPCODE_CPY_IMM,	{OPCODE_CPY_IMM,	ADDRMODE_IMM,		2,		"CPY",	&MKCpu::OpCodeCpyImm 			}},
+		{OPCODE_CMP_IZX,	{OPCODE_CMP_IZX,	ADDRMODE_IZX,		6,		"CMP",	&MKCpu::OpCodeCmpIzx 			}},
 		{OPCODE_ILL_C2,		{OPCODE_ILL_C2,		ADDRMODE_IMM,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_C3,		{OPCODE_ILL_C3,		ADDRMODE_IZX,		8,		"DCP",	&MKCpu::OpCodeDud,			}},
-		{OPCODE_CPY_ZP,		{OPCODE_CPY_ZP,		ADDRMODE_ZP,		3,		"CPY",	&MKCpu::OpCodeCpyZp 		}},
-		{OPCODE_CMP_ZP,		{OPCODE_CMP_ZP,		ADDRMODE_ZP,		3,		"CMP",	&MKCpu::OpCodeCmpZp 		}},
-		{OPCODE_DEC_ZP,		{OPCODE_DEC_ZP,		ADDRMODE_ZP,		5,		"DEC",	&MKCpu::OpCodeDecZp 		}},
+		{OPCODE_CPY_ZP,		{OPCODE_CPY_ZP,		ADDRMODE_ZP,		3,		"CPY",	&MKCpu::OpCodeCpyZp 			}},
+		{OPCODE_CMP_ZP,		{OPCODE_CMP_ZP,		ADDRMODE_ZP,		3,		"CMP",	&MKCpu::OpCodeCmpZp 			}},
+		{OPCODE_DEC_ZP,		{OPCODE_DEC_ZP,		ADDRMODE_ZP,		5,		"DEC",	&MKCpu::OpCodeDecZp 			}},
 		{OPCODE_ILL_C7,		{OPCODE_ILL_C7,		ADDRMODE_ZP,		5,		"DCP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_INY,			{OPCODE_INY,			ADDRMODE_IMP,		2,		"INY",	&MKCpu::OpCodeIny 			}},
-		{OPCODE_CMP_IMM,	{OPCODE_CMP_IMM,	ADDRMODE_IMM,		2,		"CMP",	&MKCpu::OpCodeCmpImm 		}},
-		{OPCODE_DEX,			{OPCODE_DEX,			ADDRMODE_IMP,		2,		"DEX",	&MKCpu::OpCodeDex 			}},
+		{OPCODE_INY,		{OPCODE_INY,		ADDRMODE_IMP,		2,		"INY",	&MKCpu::OpCodeIny 			}},
+		{OPCODE_CMP_IMM,	{OPCODE_CMP_IMM,	ADDRMODE_IMM,		2,		"CMP",	&MKCpu::OpCodeCmpImm 			}},
+		{OPCODE_DEX,		{OPCODE_DEX,		ADDRMODE_IMP,		2,		"DEX",	&MKCpu::OpCodeDex 			}},
 		{OPCODE_ILL_CB,		{OPCODE_ILL_CB,		ADDRMODE_IMM,		2,		"AXS",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CPY_ABS,	{OPCODE_CPY_ABS,	ADDRMODE_ABS,		4,		"CPY",	&MKCpu::OpCodeCpyAbs 		}},
-		{OPCODE_CMP_ABS,	{OPCODE_CMP_ABS,	ADDRMODE_ABS,		4,		"CMP",	&MKCpu::OpCodeCmpAbs 		}},
-		{OPCODE_DEC_ABS,	{OPCODE_DEC_ABS,	ADDRMODE_ABS,		6,		"DEC",	&MKCpu::OpCodeDecAbs 		}},
+		{OPCODE_CPY_ABS,	{OPCODE_CPY_ABS,	ADDRMODE_ABS,		4,		"CPY",	&MKCpu::OpCodeCpyAbs	 		}},
+		{OPCODE_CMP_ABS,	{OPCODE_CMP_ABS,	ADDRMODE_ABS,		4,		"CMP",	&MKCpu::OpCodeCmpAbs 			}},
+		{OPCODE_DEC_ABS,	{OPCODE_DEC_ABS,	ADDRMODE_ABS,		6,		"DEC",	&MKCpu::OpCodeDecAbs 			}},
 		{OPCODE_ILL_CF,		{OPCODE_ILL_CF,		ADDRMODE_ABS,		6,		"DCP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BNE_REL,	{OPCODE_BNE_REL,	ADDRMODE_REL,		2,		"BNE",	&MKCpu::OpCodeBneRel 		}},
-		{OPCODE_CMP_IZY,	{OPCODE_CMP_IZY,	ADDRMODE_IZY,		5,		"CMP",	&MKCpu::OpCodeCmpIzy 		}},
+		{OPCODE_BNE_REL,	{OPCODE_BNE_REL,	ADDRMODE_REL,		2,		"BNE",	&MKCpu::OpCodeBneRel 			}},
+		{OPCODE_CMP_IZY,	{OPCODE_CMP_IZY,	ADDRMODE_IZY,		5,		"CMP",	&MKCpu::OpCodeCmpIzy 			}},
 		{OPCODE_ILL_D2,		{OPCODE_ILL_D2,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_D3,		{OPCODE_ILL_D3,		ADDRMODE_IZY,		8,		"DCP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_D4,		{OPCODE_ILL_D4,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CMP_ZPX,	{OPCODE_CMP_ZPX,	ADDRMODE_ZPX,		4,		"CMP",	&MKCpu::OpCodeCmpZpx 		}},
-		{OPCODE_DEC_ZPX,	{OPCODE_DEC_ZPX,	ADDRMODE_ZPX,		6,		"DEC",	&MKCpu::OpCodeDecZpx 		}},
+		{OPCODE_CMP_ZPX,	{OPCODE_CMP_ZPX,	ADDRMODE_ZPX,		4,		"CMP",	&MKCpu::OpCodeCmpZpx 			}},
+		{OPCODE_DEC_ZPX,	{OPCODE_DEC_ZPX,	ADDRMODE_ZPX,		6,		"DEC",	&MKCpu::OpCodeDecZpx 			}},
 		{OPCODE_ILL_D7,		{OPCODE_ILL_D7,		ADDRMODE_ZPX,		6,		"DCP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CLD,			{OPCODE_CLD,			ADDRMODE_IMP,		2,		"CLD",	&MKCpu::OpCodeCld 			}},
-		{OPCODE_CMP_ABY,	{OPCODE_CMP_ABY,	ADDRMODE_ABY,		4,		"CMP",	&MKCpu::OpCodeCmpAby 		}},
+		{OPCODE_CLD,		{OPCODE_CLD,		ADDRMODE_IMP,		2,		"CLD",	&MKCpu::OpCodeCld 			}},
+		{OPCODE_CMP_ABY,	{OPCODE_CMP_ABY,	ADDRMODE_ABY,		4,		"CMP",	&MKCpu::OpCodeCmpAby 			}},
 		{OPCODE_ILL_DA,		{OPCODE_ILL_DA,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_DB,		{OPCODE_ILL_DB,		ADDRMODE_ABY,		7,		"DCP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_DC,		{OPCODE_ILL_DC,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CMP_ABX,	{OPCODE_CMP_ABX,	ADDRMODE_ABX,		4,		"CMP",	&MKCpu::OpCodeCmpAbx 		}},
-		{OPCODE_DEC_ABX,	{OPCODE_DEC_ABX,	ADDRMODE_ABX,		7,		"DEC",	&MKCpu::OpCodeDecAbx 		}},
+		{OPCODE_CMP_ABX,	{OPCODE_CMP_ABX,	ADDRMODE_ABX,		4,		"CMP",	&MKCpu::OpCodeCmpAbx 			}},
+		{OPCODE_DEC_ABX,	{OPCODE_DEC_ABX,	ADDRMODE_ABX,		7,		"DEC",	&MKCpu::OpCodeDecAbx 			}},
 		{OPCODE_ILL_DF,		{OPCODE_ILL_DF,		ADDRMODE_ABX,		7,		"DCP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CPX_IMM,	{OPCODE_CPX_IMM,	ADDRMODE_IMM,		2,		"CPX",	&MKCpu::OpCodeCpxImm 		}},
-		{OPCODE_SBC_IZX,	{OPCODE_SBC_IZX,	ADDRMODE_IZX,		6,		"SBC",	&MKCpu::OpCodeSbcIzx 		}},
+		{OPCODE_CPX_IMM,	{OPCODE_CPX_IMM,	ADDRMODE_IMM,		2,		"CPX",	&MKCpu::OpCodeCpxImm 			}},
+		{OPCODE_SBC_IZX,	{OPCODE_SBC_IZX,	ADDRMODE_IZX,		6,		"SBC",	&MKCpu::OpCodeSbcIzx 			}},
 		{OPCODE_ILL_E2,		{OPCODE_ILL_E2,		ADDRMODE_IMM,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_E3,		{OPCODE_ILL_E3,		ADDRMODE_IZX,		8,		"ISC",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CPX_ZP,		{OPCODE_CPX_ZP,		ADDRMODE_ZP,		3,		"CPX",	&MKCpu::OpCodeCpxZp 		}},
-		{OPCODE_SBC_ZP,		{OPCODE_SBC_ZP,		ADDRMODE_ZP,		3,		"SBC",	&MKCpu::OpCodeSbcZp 		}},
-		{OPCODE_INC_ZP,		{OPCODE_INC_ZP,		ADDRMODE_ZP,		5,		"INC",	&MKCpu::OpCodeIncZp 		}},
+		{OPCODE_CPX_ZP,		{OPCODE_CPX_ZP,		ADDRMODE_ZP,		3,		"CPX",	&MKCpu::OpCodeCpxZp 			}},
+		{OPCODE_SBC_ZP,		{OPCODE_SBC_ZP,		ADDRMODE_ZP,		3,		"SBC",	&MKCpu::OpCodeSbcZp 			}},
+		{OPCODE_INC_ZP,		{OPCODE_INC_ZP,		ADDRMODE_ZP,		5,		"INC",	&MKCpu::OpCodeIncZp 			}},
 		{OPCODE_ILL_E7,		{OPCODE_ILL_E7,		ADDRMODE_ZP,		5,		"ISC",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_INX,			{OPCODE_INX,			ADDRMODE_IMP,		2,		"INX",	&MKCpu::OpCodeInx 			}},
-		{OPCODE_SBC_IMM,	{OPCODE_SBC_IMM,	ADDRMODE_IMM,		2,		"SBC",	&MKCpu::OpCodeSbcImm 		}},
-		{OPCODE_NOP,			{OPCODE_NOP,			ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeNop 			}},
+		{OPCODE_INX,		{OPCODE_INX,		ADDRMODE_IMP,		2,		"INX",	&MKCpu::OpCodeInx 			}},
+		{OPCODE_SBC_IMM,	{OPCODE_SBC_IMM,	ADDRMODE_IMM,		2,		"SBC",	&MKCpu::OpCodeSbcImm 			}},
+		{OPCODE_NOP,		{OPCODE_NOP,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeNop 			}},
 		{OPCODE_ILL_EB,		{OPCODE_ILL_EB,		ADDRMODE_IMM,		2,		"SBC",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_CPX_ABS,	{OPCODE_CPX_ABS,	ADDRMODE_ABS,		4,		"CPX",	&MKCpu::OpCodeCpxAbs 		}},
-		{OPCODE_SBC_ABS,	{OPCODE_SBC_ABS,	ADDRMODE_ABS,		4,		"SBC",	&MKCpu::OpCodeSbcAbs 		}},
-		{OPCODE_INC_ABS,	{OPCODE_INC_ABS,	ADDRMODE_ABS,		6,		"INC",	&MKCpu::OpCodeIncAbs 		}},
+		{OPCODE_CPX_ABS,	{OPCODE_CPX_ABS,	ADDRMODE_ABS,		4,		"CPX",	&MKCpu::OpCodeCpxAbs 			}},
+		{OPCODE_SBC_ABS,	{OPCODE_SBC_ABS,	ADDRMODE_ABS,		4,		"SBC",	&MKCpu::OpCodeSbcAbs 			}},
+		{OPCODE_INC_ABS,	{OPCODE_INC_ABS,	ADDRMODE_ABS,		6,		"INC",	&MKCpu::OpCodeIncAbs 			}},
 		{OPCODE_ILL_EF,		{OPCODE_ILL_EF,		ADDRMODE_ABS,		6,		"ISC",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_BEQ_REL,	{OPCODE_BEQ_REL,	ADDRMODE_REL,		2,		"BEQ",	&MKCpu::OpCodeBeqRel 		}},
-		{OPCODE_SBC_IZY,	{OPCODE_SBC_IZY,	ADDRMODE_IZY,		5,		"SBC",	&MKCpu::OpCodeSbcIzy 		}},
+		{OPCODE_BEQ_REL,	{OPCODE_BEQ_REL,	ADDRMODE_REL,		2,		"BEQ",	&MKCpu::OpCodeBeqRel 			}},
+		{OPCODE_SBC_IZY,	{OPCODE_SBC_IZY,	ADDRMODE_IZY,		5,		"SBC",	&MKCpu::OpCodeSbcIzy 			}},
 		{OPCODE_ILL_F2,		{OPCODE_ILL_F2,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_F3,		{OPCODE_ILL_F3,		ADDRMODE_IZY,		8,		"ISC",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_F4,		{OPCODE_ILL_F4,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_SBC_ZPX,	{OPCODE_SBC_ZPX,	ADDRMODE_ZPX,		4,		"SBC",	&MKCpu::OpCodeSbcZpx 		}},
-		{OPCODE_INC_ZPX,	{OPCODE_INC_ZPX,	ADDRMODE_ZPX,		6,		"INC",	&MKCpu::OpCodeIncZpx 		}},
+		{OPCODE_SBC_ZPX,	{OPCODE_SBC_ZPX,	ADDRMODE_ZPX,		4,		"SBC",	&MKCpu::OpCodeSbcZpx 			}},
+		{OPCODE_INC_ZPX,	{OPCODE_INC_ZPX,	ADDRMODE_ZPX,		6,		"INC",	&MKCpu::OpCodeIncZpx 			}},
 		{OPCODE_ILL_F7,		{OPCODE_ILL_F7,		ADDRMODE_ZPX,		6,		"ISC",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_SED,			{OPCODE_SED,			ADDRMODE_IMP,		2,		"SED",	&MKCpu::OpCodeSed 			}},
-		{OPCODE_SBC_ABY,	{OPCODE_SBC_ABY,	ADDRMODE_ABY,		4,		"SBC",	&MKCpu::OpCodeSbcAby 		}},
+		{OPCODE_SED,		{OPCODE_SED,		ADDRMODE_IMP,		2,		"SED",	&MKCpu::OpCodeSed 			}},
+		{OPCODE_SBC_ABY,	{OPCODE_SBC_ABY,	ADDRMODE_ABY,		4,		"SBC",	&MKCpu::OpCodeSbcAby 			}},
 		{OPCODE_ILL_FA,		{OPCODE_ILL_FA,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_FB,		{OPCODE_ILL_FB,		ADDRMODE_ABY,		7,		"ISC",	&MKCpu::OpCodeDud 			}},
 		{OPCODE_ILL_FC,		{OPCODE_ILL_FC,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 			}},
-		{OPCODE_SBC_ABX,	{OPCODE_SBC_ABX,	ADDRMODE_ABX,		4,		"SBC",	&MKCpu::OpCodeSbcAbx 		}},
-		{OPCODE_INC_ABX,	{OPCODE_INC_ABX,	ADDRMODE_ABX,		7,		"INC",	&MKCpu::OpCodeIncAbx 		}},
+		{OPCODE_SBC_ABX,	{OPCODE_SBC_ABX,	ADDRMODE_ABX,		4,		"SBC",	&MKCpu::OpCodeSbcAbx 			}},
+		{OPCODE_INC_ABX,	{OPCODE_INC_ABX,	ADDRMODE_ABX,		7,		"INC",	&MKCpu::OpCodeIncAbx 			}},
 		{OPCODE_ILL_FF,		{OPCODE_ILL_FF,		ADDRMODE_ABX,		7,		"ISC",	&MKCpu::OpCodeDud 			}}
 	};
 	mOpCodesMap = myOpCodesMap;
@@ -415,8 +417,27 @@ void MKCpu::InitCpu()
  */
 void MKCpu::SetFlags(unsigned char reg)
 {
+
 	SetFlag((0 == reg), FLAGS_ZERO);
 	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
+	SetFlag(true, FLAGS_UNUSED);
+}
+
+void MKCpu::SetFlagsRegQ(unsigned char start)
+{
+	qRegs.SetZeroFlag(start, 8, FLAGS_ZERO_Q);
+
+	//Set sign bit:
+	qRegs.SetBit(FLAGS_SIGN_Q, false);
+	qRegs.CNOT(start + 7, FLAGS_SIGN_Q);
+
+	SetFlag(true, FLAGS_UNUSED);
+}
+
+void MKCpu::SetFlagsQ(unsigned char reg)
+{
+	qRegs.CLOR(FLAGS_ZERO_Q, (0 == reg), FLAGS_ZERO_Q);
+	qRegs.CLOR(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN_Q);
 	SetFlag(true, FLAGS_UNUSED);
 }
 
@@ -429,6 +450,13 @@ void MKCpu::SetFlags(unsigned char reg)
  * Returns:		8-bit value after shift
  *--------------------------------------------------------------------
  */
+void MKCpu::ShiftLeftQ(bitLenInt start)
+{
+	// set Carry flag based on original bit #7
+	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
+	qRegs.LSL(1, start, 9);
+	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
+} 
 unsigned char MKCpu::ShiftLeft(unsigned char arg8)
 {
 	// set Carry flag based on original bit #7
@@ -449,6 +477,13 @@ unsigned char MKCpu::ShiftLeft(unsigned char arg8)
  * Returns:		unsigned char (byte) - after shift
  *--------------------------------------------------------------------
  */
+void MKCpu::ShiftRightQ(bitLenInt start)
+{
+	// set Carry flag based on original bit #7
+	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
+	qRegs.LSR(1, start, 9);
+	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
+}
 unsigned char MKCpu::ShiftRight(unsigned char arg8)
 {
 	SetFlag(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
@@ -468,6 +503,13 @@ unsigned char MKCpu::ShiftRight(unsigned char arg8)
  * Returns:		unsigned char (byte) - rotated value
  *--------------------------------------------------------------------
  */
+void MKCpu::RotateLeftQ()
+{
+	// set Carry flag based on original bit #7
+	qRegs.Swap(8, 16);
+	qRegs.ROL(1, 0, 9);
+	qRegs.Swap(8, 16);
+} 
 unsigned char MKCpu::RotateLeft(unsigned char arg8)
 {
 	unsigned char tmp8 = 0;
@@ -496,6 +538,13 @@ unsigned char MKCpu::RotateLeft(unsigned char arg8)
  * Returns:		unsigned char (byte) - rotated value
  *--------------------------------------------------------------------
  */
+void MKCpu::RotateRightQ()
+{
+	// set Carry flag based on original bit #7
+	qRegs.Swap(8, 16);
+	qRegs.ROR(1, 0, 9);
+	qRegs.Swap(8, 16);
+} 
 unsigned char MKCpu::RotateRight(unsigned char arg8)
 {
 	unsigned char tmp8 = 0;
@@ -551,20 +600,25 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 	unsigned char val = 0;
 	
 	val = mpMem->Peek8bit(addr);
+	
 	switch (logop) {
 		case LOGOP_OR:
 			mReg.Acc |= val;
+			qRegs.CLOR(0, val, 0, 8);
 			break;
 		case LOGOP_AND:
 			mReg.Acc &= val;
+			qRegs.CLAND(0, val, 0, 8);
 			break;
 		case LOGOP_EOR:
 			mReg.Acc ^= val;
+			qRegs.CLXOR(0, val, 0, 8);
 			break;
 		default:
 			break;
 	}
-	SetFlags(mReg.Acc);			
+	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);		
 }
 
 /*
@@ -666,6 +720,19 @@ unsigned short MKCpu::Bcd2Num(unsigned char v)
  */
 bool MKCpu::CheckFlag(unsigned char flag)
 {
+	unsigned char partFlag;
+	if (flag & FLAGS_CARRY) partFlag = qRegs.M(FLAGS_CARRY_Q) ? FLAGS_CARRY : 0;
+	mReg.Flags &= ~FLAGS_CARRY;
+	mReg.Flags |= partFlag;
+	if (flag & FLAGS_SIGN) partFlag = qRegs.M(FLAGS_SIGN_Q) ? FLAGS_SIGN : 0;
+	mReg.Flags &= ~FLAGS_SIGN;
+	mReg.Flags |= partFlag;
+	if (flag & FLAGS_ZERO) partFlag = qRegs.M(FLAGS_ZERO_Q) ? FLAGS_ZERO : 0;
+	mReg.Flags &= ~FLAGS_SIGN;
+	mReg.Flags |= partFlag;
+	if (flag & FLAGS_OVERFLOW) partFlag = qRegs.M(FLAGS_OVERFLOW_Q) ? FLAGS_SIGN : 0;
+	mReg.Flags &= ~FLAGS_SIGN;
+	mReg.Flags |= partFlag;
 	return ((mReg.Flags & flag) == flag);
 }
 
@@ -679,12 +746,28 @@ bool MKCpu::CheckFlag(unsigned char flag)
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
+
 void MKCpu::SetFlag(bool set, unsigned char flag)
 {
 	if (set) {
 		mReg.Flags |= flag;
 	} else {
 		mReg.Flags &= ~flag;
+	}
+}
+
+void MKCpu::SetFlagQ(bool set, unsigned char flag)
+{
+	if (set) {
+		if (flag & FLAGS_CARRY) qRegs.CLOR(FLAGS_CARRY_Q, true, FLAGS_CARRY_Q);
+		if (flag & FLAGS_ZERO) qRegs.CLOR(FLAGS_ZERO_Q, true, FLAGS_ZERO_Q);
+		if (flag & FLAGS_OVERFLOW) qRegs.CLOR(FLAGS_OVERFLOW_Q, true, FLAGS_OVERFLOW_Q);
+		if (flag & FLAGS_SIGN) qRegs.CLOR(FLAGS_SIGN_Q, true, FLAGS_SIGN_Q);
+	} else {
+		if (flag & FLAGS_CARRY) qRegs.CLAND(FLAGS_CARRY_Q, false, FLAGS_CARRY_Q);
+		if (flag & FLAGS_ZERO) qRegs.CLAND(FLAGS_ZERO_Q, false, FLAGS_ZERO_Q);
+		if (flag & FLAGS_OVERFLOW) qRegs.CLAND(FLAGS_OVERFLOW_Q, false, FLAGS_OVERFLOW_Q);
+		if (flag & FLAGS_SIGN) qRegs.CLAND(FLAGS_SIGN_Q, false, FLAGS_SIGN_Q);
 	}
 }
 
@@ -699,11 +782,10 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 {
 	// This algorithm was adapted from Frodo emulator code.
-	unsigned short utmp16 = mReg.Acc + mem8 + (CheckFlag(FLAGS_CARRY) ? 1 : 0);
-	if (CheckFlag(FLAGS_DEC)) {	// BCD mode
+	unsigned short utmp16 = mReg.Acc + mem8 + ((mReg.Flags & FLAGS_CARRY) ? 1 : 0);
+	if (mReg.Flags & FLAGS_DEC) {	// BCD mode
 	
-		unsigned short al = (mReg.Acc & 0x0F) + (mem8 & 0x0F) 
-													+ (CheckFlag(FLAGS_CARRY) ? 1 : 0);
+		unsigned short al = (mReg.Acc & 0x0F) + (mem8 & 0x0F) + ((mReg.Flags & FLAGS_CARRY) ? 1 : 0);
 		if (al > 9) al += 6;
 		unsigned short ah = (mReg.Acc >> 4) + (mem8 >> 4);
 		if (al > 0x0F) ah++;
@@ -727,6 +809,23 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 	return mReg.Acc;
 }
 
+void MKCpu::AddWithCarryQ(unsigned char mem8)
+{
+	if (CheckFlag(FLAGS_DEC)) {
+		qRegs.INCBCDC(mem8, 0, 8, 16);
+	}
+	else {
+		qRegs.INCSC(mem8, 0, 8, FLAGS_OVERFLOW_Q, 16);
+	}
+
+	qRegs.SetZeroFlag(0, 8, FLAGS_ZERO_Q);
+	//Set negative flag:
+	qRegs.SetBit(FLAGS_SIGN_Q, false);	
+	qRegs.CNOT(7, FLAGS_SIGN_Q);
+
+	SetFlag(true, FLAGS_UNUSED);
+}
+
 /*
  *--------------------------------------------------------------------
  * Method:		SubWithCarry()
@@ -737,13 +836,12 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
  */
 unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 {
-	unsigned short utmp16 = mReg.Acc - mem8 - (CheckFlag(FLAGS_CARRY) ? 0 : 1);
+	unsigned short utmp16 = mReg.Acc - mem8 - ((mReg.Flags & FLAGS_CARRY) ? 0 : 1);
 
 	// This algorithm was adapted from Frodo emulator code.
-	if (CheckFlag(FLAGS_DEC)) {	// BCD mode
+	if (mReg.Flags & FLAGS_DEC) {	// BCD mode
 	
-		unsigned char al = (mReg.Acc & 0x0F) - (mem8 & 0x0F) 
-													- (CheckFlag(FLAGS_CARRY) ? 0 : 1);
+		unsigned char al = (mReg.Acc & 0x0F) - (mem8 & 0x0F) - ((mReg.Flags & FLAGS_CARRY) ? 0 : 1);
 		unsigned char ah = (mReg.Acc >> 4) - (mem8 >> 4);
 		if (al & 0x10) {
 			al -= 6; ah--;
@@ -768,6 +866,23 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 	}
 	SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
+}
+
+void MKCpu::SubWithCarryQ(unsigned char mem8)
+{
+	if (CheckFlag(FLAGS_DEC)) {
+		qRegs.DECBCDC(mem8, 0, 8, 16);
+	}
+	else {
+		qRegs.DECSC(mem8, 0, 8, FLAGS_ZERO_Q, 16);
+	}
+
+	qRegs.SetZeroFlag(0, 8, FLAGS_ZERO_Q);
+	//Set negative flag:	
+	qRegs.SetBit(FLAGS_SIGN_Q, false);	
+	qRegs.CNOT(7, FLAGS_SIGN_Q);
+
+	SetFlag(true, FLAGS_UNUSED);
 }
 
 /*
@@ -826,39 +941,43 @@ unsigned short MKCpu::GetAddrWithMode(int mode)
 			
 		case ADDRMODE_ABX:
 			mReg.LastArg = tmp = GetArg16(0);
-			//arg16 = GetArg16(mReg.IndX);
-			arg16 = tmp + mReg.IndX;
-			//mReg.LastArg = arg16 - mReg.IndX;
-			mReg.PageBoundary = PageBoundary(tmp, arg16);
+			//mReg.IndX = qRegs.MReg8(8);
+			//arg16 = tmp + mReg.IndX;
+			arg16 = tmp;
+			mReg.PageBoundary = PageBoundary(tmp, arg16 + 255);
 			break;
 			
 		case ADDRMODE_ABY:
 			mReg.LastArg = tmp = GetArg16(0);
-			//arg16 = GetArg16(mReg.IndY);
+			//mReg.IndY = qRegs.MReg8(16);
 			arg16 = tmp + mReg.IndY;
-			//mReg.LastArg = arg16 - mReg.IndY;
 			mReg.PageBoundary = PageBoundary(tmp, arg16);
 			break;
 			
 		case ADDRMODE_ZPX:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
-			arg16 = (arg16 + mReg.IndX) & 0xFF;
+			//mReg.IndX = qRegs.MReg8(8);
+			//arg16 = (arg16 + mReg.IndX) & 0xFF;
 			break;
 			
 		case ADDRMODE_ZPY:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
+			//mReg.IndY = qRegs.MReg8(16);
 			arg16 = (arg16 + mReg.IndY) & 0xFF;
 			break;
 			
 		case ADDRMODE_IZX:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
-			arg16 = (arg16 + mReg.IndX) & 0xFF;
+			//mReg.IndX = qRegs.MReg8(8);
+			//arg16 = (arg16 + mReg.IndX) & 0xFF;
+			arg16 = arg16 & 0xFF;
 			arg16 = mpMem->Peek16bit(arg16);			
 			break;
 			
 		case ADDRMODE_IZY:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
 			tmp = mpMem->Peek16bit(arg16);
+			//mReg.IndY = qRegs.MReg8(16);
 			arg16 = tmp + mReg.IndY;
 			mReg.PageBoundary = PageBoundary(tmp, arg16);
 			break;
@@ -1121,8 +1240,13 @@ void MKCpu::OpCodeLdaIzx()
 	// LoaD Accumulator, Indexed Indirect ($A1 arg : LDA (arg,X) 
 	// ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
-	mReg.Acc = mpMem->Peek8bit(arg16);
+	unsigned char toLoad[256];
+	for (int i = 0; i < 256; i++) {
+		toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+	}
+	mReg.Acc = qRegs.SuperposeReg8(8, 0, toLoad);
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1138,7 +1262,9 @@ void MKCpu::OpCodeLdaZp()
 	// LoaD Accumulator, Zero Page ($A5 arg : LDA arg ;arg=0..$FF),
 	// MEM=arg
 	mReg.Acc = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_ZP));
-	SetFlags(mReg.Acc);			
+	qRegs.SetReg(0, 8, mReg.Acc);
+	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);			
 }
 
 /*
@@ -1154,8 +1280,10 @@ void MKCpu::OpCodeLdaImm()
 	// LoaD Accumulator, Immediate ($A9 arg : LDA #arg ;arg=0..$FF),
 	// MEM=PC+1
 	mReg.Acc = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
+	qRegs.SetReg(0, 8, mReg.Acc);
 	mReg.LastArg = mReg.Acc;
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1173,7 +1301,9 @@ void MKCpu::OpCodeLdaAbs()
 	// ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	mReg.Acc = mpMem->Peek8bit(arg16);
+	qRegs.SetReg(0, 8, mReg.Acc);
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1192,7 +1322,9 @@ void MKCpu::OpCodeLdaIzy()
 	arg16 = GetAddrWithMode(ADDRMODE_IZY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	mReg.Acc = mpMem->Peek8bit(arg16);
+	qRegs.SetReg(0, 8, mReg.Acc);
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1209,8 +1341,13 @@ void MKCpu::OpCodeLdaZpx()
 	// LoaD Accumulator, Zero Page Indexed, X ($B5 arg : LDA arg,X
 	// ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
-	mReg.Acc = mpMem->Peek8bit(arg16);
+	unsigned char toLoad[256];
+	for (int i = 0; i < 256; i++) {
+		toLoad[i] = mpMem->Peek8bit(arg16 + i);
+	}
+	mReg.Acc = qRegs.SuperposeReg8(8, 0, toLoad);
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1229,7 +1366,9 @@ void MKCpu::OpCodeLdaAby()
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	mReg.Acc = mpMem->Peek8bit(arg16);
+	qRegs.SetReg(0, 8, mReg.Acc);
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1247,8 +1386,13 @@ void MKCpu::OpCodeLdaAbx()
 	// ($BD addrlo addrhi : LDA addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	mReg.Acc = mpMem->Peek8bit(arg16);
+	unsigned char toLoad[256];
+	for (int i = 0; i < 256; i++) {
+		toLoad[i] = mpMem->Peek8bit(arg16 + i);
+	}
+	mReg.Acc = qRegs.SuperposeReg8(8, 0, toLoad);
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1263,9 +1407,12 @@ void MKCpu::OpCodeLdxImm()
 {
 	// LoaD X register, Immediate ($A2 arg : LDX #arg ;arg=0..$FF),
 	// MEM=PC+1
-	mReg.IndX = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
+	unsigned char toX = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
+	mReg.IndX = toX;
+	qRegs.SetReg(8, 8, toX);
 	mReg.LastArg = mReg.IndX;
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1280,8 +1427,11 @@ void MKCpu::OpCodeLdxZp()
 {
 	// LoaD X register, Zero Page ($A6 arg : LDX arg ;arg=0..$FF),
 	// MEM=arg
-	mReg.IndX = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_ZP));
+	unsigned char toX = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_ZP));
+	mReg.IndX = toX;
+	qRegs.SetReg(8, 8, toX);
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1298,8 +1448,11 @@ void MKCpu::OpCodeLdxAbs()
 	// LoaD X register, Absolute
 	// ($AE addrlo addrhi : LDX addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
-	mReg.IndX = mpMem->Peek8bit(arg16);
+	unsigned char toX = mpMem->Peek8bit(arg16);
+	mReg.IndX = toX;
+	qRegs.SetReg(8, 8, toX);
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1316,8 +1469,11 @@ void MKCpu::OpCodeLdxZpy()
 	// LoaD X register, Zero Page Indexed, Y
 	// ($B6 arg : LDX arg,Y ;arg=0..$FF), MEM=arg+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ZPY);
-	mReg.IndX = mpMem->Peek8bit(arg16);
+	unsigned char toX = mpMem->Peek8bit(arg16);
+	mReg.IndX = toX;
+	qRegs.SetReg(8, 8, toX);
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1335,8 +1491,11 @@ void MKCpu::OpCodeLdxAby()
 	// ($BE addrlo addrhi : LDX addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	mReg.IndX = mpMem->Peek8bit(arg16);
+	unsigned char toX = mpMem->Peek8bit(arg16);
+	mReg.IndX = toX;
+	qRegs.SetReg(8, 8, toX);
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1354,6 +1513,8 @@ void MKCpu::OpCodeLdyImm()
 	mReg.IndY = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
 	mReg.LastArg = mReg.IndY;
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -1370,6 +1531,8 @@ void MKCpu::OpCodeLdyZp()
 	// MEM=arg
 	mReg.IndY = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_ZP));
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -1388,6 +1551,8 @@ void MKCpu::OpCodeLdyAbs()
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	mReg.IndY = mpMem->Peek8bit(arg16);
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -1404,8 +1569,12 @@ void MKCpu::OpCodeLdyZpx()
 	// LoaD Y register, Zero Page Indexed, X
 	// ($B4 arg : LDY arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	mReg.IndY = mpMem->Peek8bit(arg16);
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -1422,9 +1591,13 @@ void MKCpu::OpCodeLdyAbx()
 	// LoaD Y register, Absolute Indexed, X
 	// ($BC addrlo addrhi : LDY addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	mReg.IndY = mpMem->Peek8bit(arg16);
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -1439,8 +1612,11 @@ void MKCpu::OpCodeTax()
 {
 	// Transfer A to X, Implied ($AA : TAX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	qRegs.SetReg(8, 8, 0);
+	qRegs.OR(0, 8, 8, 8);
 	mReg.IndX = mReg.Acc;
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1455,8 +1631,11 @@ void MKCpu::OpCodeTay()
 {
 	// Transfer A to Y, Implied ($A8 : TAY)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	mReg.Acc = qRegs.MReg8(0);
 	mReg.IndY = mReg.Acc;
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -1471,8 +1650,11 @@ void MKCpu::OpCodeTxa()
 {
 	// Transfer X to A, Implied ($8A : TXA)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	qRegs.SetReg(0, 8, 0);
+	qRegs.OR(0, 8, 0, 8);
 	mReg.Acc = mReg.IndX;
 	SetFlags(mReg.Acc);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1488,7 +1670,10 @@ void MKCpu::OpCodeTya()
 	// Transfer Y to A, Implied ($98 : TYA)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.Acc = mReg.IndY;
+	qRegs.SetReg(0, 8, mReg.Acc);
 	SetFlags(mReg.Acc);
+	//SetFlagsRegQ(0);
+	SetFlagsRegQ(0);
 }
 
 /*
@@ -1504,7 +1689,9 @@ void MKCpu::OpCodeTsx()
 	// Transfer Stack ptr to X, Implied ($BA : TSX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.IndX = mReg.PtrStack;
+	qRegs.SetReg(8, 8, mReg.IndX);
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -1519,7 +1706,9 @@ void MKCpu::OpCodeTxs()
 {
 	// Transfer X to Stack ptr, Implied ($9A : TXS)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	mReg.PtrStack = mReg.IndX;
+	//mReg.PtrStack = mReg.IndX;
+
+	mReg.PtrStack = qRegs.MReg8(8);
 }
 
 /*
@@ -1536,6 +1725,9 @@ void MKCpu::OpCodeStaIzx()
 	// STore Accumulator, Indexed Indirect
 	// ($81 arg : STA (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1553,6 +1745,7 @@ void MKCpu::OpCodeStaZp()
 	// STore Accumulator, Zero Page ($85 arg : STA arg ;arg=0..$FF),
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1570,6 +1763,7 @@ void MKCpu::OpCodeStaAbs()
 	// STore Accumulator, Absolute
 	// ($8D addrlo addrhi : STA addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1587,6 +1781,7 @@ void MKCpu::OpCodeStaIzy()
 	// STore Accumulator, Indirect Indexed
 	// ($91 arg : STA (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	arg16 = GetAddrWithMode(ADDRMODE_IZY);
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1604,6 +1799,7 @@ void MKCpu::OpCodeStaZpx()
 	// STore Accumulator, Zero Page Indexed, X
 	// ($95 arg : STA arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1621,6 +1817,7 @@ void MKCpu::OpCodeStaAby()
 	// STore Accumulator, Absolute Indexed, Y
 	// ($99 addrlo addrhi : STA addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1637,7 +1834,10 @@ void MKCpu::OpCodeStaAbx()
 	unsigned short arg16 = 0;
 	// STore Accumulator, Absolute Indexed, X
 	// ($9D addrlo addrhi : STA addr,X ;addr=0..$FFFF), MEM=addr+X
-	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	arg16 = GetAddrWithMode(ADDRMODE_ABX); 
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -1655,6 +1855,7 @@ void MKCpu::OpCodeStxZp()
 	// STore X register, Zero Page ($86 arg : STX arg ;arg=0..$FF),
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
+	mReg.IndX = qRegs.MReg8(8);
 	mpMem->Poke8bit(arg16, mReg.IndX);
 }
 
@@ -1672,6 +1873,7 @@ void MKCpu::OpCodeStxAbs()
 	// STore X register, Absolute
 	// ($8E addrlo addrhi : STX addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
+	mReg.IndX = qRegs.MReg8(8);
 	mpMem->Poke8bit(arg16, mReg.IndX);
 }
 
@@ -1689,6 +1891,7 @@ void MKCpu::OpCodeStxZpy()
 	// STore X register, Zero Page Indexed, Y
 	// ($96 arg : STX arg,Y ;arg=0..$FF), MEM=arg+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ZPY);
+	mReg.IndX = qRegs.MReg8(8);
 	mpMem->Poke8bit(arg16, mReg.IndX);
 }
 
@@ -1921,6 +2124,7 @@ void MKCpu::OpCodeIncZp()
 	arg8 = mpMem->Peek8bit(arg16) + 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -1941,6 +2145,7 @@ void MKCpu::OpCodeIncAbs()
 	arg8 = mpMem->Peek8bit(arg16) + 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -1961,6 +2166,7 @@ void MKCpu::OpCodeIncZpx()
 	arg8 = mpMem->Peek8bit(arg16) + 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -1978,9 +2184,12 @@ void MKCpu::OpCodeIncAbx()
 	// INCrement memory, Absolute Indexed, X
 	// ($FE addrlo addrhi : INC addr,X ;addr=0..$FFFF), MEM=addr+X	
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16) + 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -1995,6 +2204,8 @@ void MKCpu::OpCodeInx()
 {
 	// INcrement X, Implied ($E8 : INX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	qRegs.INCSC(1, 8, 8, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
+	qRegs.SetZeroFlag(8, 8, FLAGS_ZERO_Q);
 	mReg.IndX++;
 	SetFlags(mReg.IndX);
 }
@@ -2011,6 +2222,8 @@ void MKCpu::OpCodeDex()
 {
 	// DEcrement X, Implied ($CA : DEX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	qRegs.DECSC(1, 8, 8, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
+	qRegs.SetZeroFlag(8, 8, FLAGS_ZERO_Q);
 	mReg.IndX--;
 	SetFlags(mReg.IndX);
 }
@@ -2029,6 +2242,8 @@ void MKCpu::OpCodeIny()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.IndY++;
 	SetFlags(mReg.IndY);
+	//SetFlagsRegQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -2045,6 +2260,8 @@ void MKCpu::OpCodeDey()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.IndY--;
 	SetFlags(mReg.IndY);
+	//SetFlagsQ(16);
+	SetFlagsQ(mReg.IndY);
 }
 
 /*
@@ -2091,6 +2308,8 @@ void MKCpu::OpCodeOraIzx()
 	// bitwise OR with Accumulator, Indexed Indirect
 	// ($01 arg : ORA (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	LogicOpAcc(arg16, LOGOP_OR);
 }
 
@@ -2211,6 +2430,8 @@ void MKCpu::OpCodeOraAbx()
 	// bitwise OR with Accumulator, Absolute Indexed, X
 	// ($1D addrlo addrhi : ORA addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	LogicOpAcc(arg16, LOGOP_OR);
 }
@@ -2231,6 +2452,9 @@ void MKCpu::OpCodeAslZp()
 	// MEM=arg	
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);	
+	SetFlags(arg8);
+	SetFlagsQ(arg8);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -2248,6 +2472,7 @@ void MKCpu::OpCodeAslAcc()
 	// Arithmetic Shift Left, Accumulator ($0A : ASL)
 	mReg.LastAddrMode = ADDRMODE_ACC;
 	mReg.Acc = ShiftLeft(mReg.Acc);
+	ShiftLeftQ(0);
 }
 
 /*
@@ -2266,6 +2491,7 @@ void MKCpu::OpCodeAslAbs()
 	// ($0E addrlo addrhi : ASL addr ;addr=0..$FFFF), MEM=addr	
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -2286,6 +2512,7 @@ void MKCpu::OpCodeAslZpx()
 	// ($16 arg : ASL arg,X ;arg=0..$FF), MEM=arg+X	
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -2305,7 +2532,10 @@ void MKCpu::OpCodeAslAbx()
 	// Arithmetic Shift Left, Absolute Indexed, X
 	// ($1E addrlo addrhi : ASL addr,X ;addr=0..$FFFF), MEM=addr+X		
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -2355,6 +2585,8 @@ void MKCpu::OpCodeAndIzx()
 	// bitwise AND with accumulator, Indexed Indirect
 	// ($21 arg : AND (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	LogicOpAcc(arg16, LOGOP_AND);
 }
 
@@ -2475,6 +2707,8 @@ void MKCpu::OpCodeAndAbx()
 	// bitwise AND with accumulator, Absolute Indexed, X
 	// ($3D addrlo addrhi : AND addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	LogicOpAcc(arg16, LOGOP_AND);
 }
@@ -2496,8 +2730,12 @@ void MKCpu::OpCodeBitZp()
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-	arg8 &= mReg.Acc;
+	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
+	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+	//arg8 &= mReg.Acc;
+	arg8 = (mpMem->Peek8bit(arg16)) & (qRegs.MReg8(0));
 	SetFlag((arg8 == 0), FLAGS_ZERO);
+	SetFlagQ((arg8 == 0), FLAGS_ZERO);
 }
 
 /*
@@ -2517,9 +2755,13 @@ void MKCpu::OpCodeBitAbs()
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
-	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);			
-	arg8 &= mReg.Acc;
+	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
+	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);			
+	//arg8 &= mReg.Acc;
+	arg8 = (mpMem->Peek8bit(arg16)) & (qRegs.MReg8(0));
 	SetFlag((arg8 == 0), FLAGS_ZERO);
+	SetFlagQ((arg8 == 0), FLAGS_ZERO);
 }
 
 /*
@@ -2554,6 +2796,7 @@ void MKCpu::OpCodeRolAcc()
 	// ROtate Left, Accumulator ($2A : ROL)
 	mReg.LastAddrMode = ADDRMODE_ACC;
 	mReg.Acc = RotateLeft(mReg.Acc);
+	RotateLeftQ();
 }
 
 /*
@@ -2611,6 +2854,8 @@ void MKCpu::OpCodeRolAbx()
 	// ROtate Left, Absolute Indexed, X
 	// ($3E addrlo addrhi : ROL addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
 	arg8 = RotateLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
@@ -2651,6 +2896,7 @@ void MKCpu::OpCodePha()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	arg16 = 0x100;
 	arg16 += mReg.PtrStack--;
+	mReg.Acc = qRegs.MReg8(0);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
 
@@ -2688,7 +2934,9 @@ void MKCpu::OpCodePla()
 	arg16 = 0x100;
 	arg16 += ++mReg.PtrStack;
 	mReg.Acc = mpMem->Peek8bit(arg16);
+	qRegs.SetReg(0, 8, mReg.Acc);
 	SetFlags(mReg.Acc);
+	SetFlagsQ(0);
 }
 
 /*
@@ -2704,6 +2952,7 @@ void MKCpu::OpCodeClc()
 	// CLear Carry, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_CARRY);
+	SetFlagQ(false, FLAGS_CARRY);
 }
 
 /*
@@ -2719,6 +2968,7 @@ void MKCpu::OpCodeSec()
 	// SEt Carry, Implied ($38 : SEC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(true, FLAGS_CARRY);
+	SetFlagQ(true, FLAGS_CARRY);
 }
 
 /*
@@ -2734,6 +2984,7 @@ void MKCpu::OpCodeCli()
 	// CLear Interrupt, Implied ($58 : CLI)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_IRQ);
+	SetFlagQ(false, FLAGS_IRQ);
 }
 
 /*
@@ -2749,6 +3000,7 @@ void MKCpu::OpCodeClv()
 	// CLear oVerflow, Implied ($B8 : CLV)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_OVERFLOW);
+	SetFlagQ(false, FLAGS_OVERFLOW);
 }
 
 /*
@@ -2764,6 +3016,7 @@ void MKCpu::OpCodeCld()
 	// CLear Decimal, Implied ($D8 : CLD)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_DEC);
+	SetFlagQ(false, FLAGS_DEC);
 }
 
 /*
@@ -2779,6 +3032,7 @@ void MKCpu::OpCodeSed()
 	// SEt Decimal, Implied ($F8 : SED)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(true, FLAGS_DEC);
+	SetFlagQ(true, FLAGS_DEC);
 }
 
 /*
@@ -2794,6 +3048,7 @@ void MKCpu::OpCodeSei()
 	// SEt Interrupt, Implied ($78 : SEI)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(true, FLAGS_IRQ);
+	SetFlagQ(true, FLAGS_IRQ);
 }
 
 /*
@@ -2819,6 +3074,7 @@ void MKCpu::OpCodeRti()
 	arg16 = 0x100;
 	arg16 += ++mReg.PtrStack;
 	mReg.Flags = mpMem->Peek8bit(arg16);
+	SetFlagsQ(mReg.Flags);
 	SetFlag(true,FLAGS_UNUSED);
 	arg16++; mReg.PtrStack++;
 	mReg.PtrAddr = mpMem->Peek8bit(arg16);
@@ -2867,6 +3123,8 @@ void MKCpu::OpCodeEorIzx()
 	// bitwise Exclusive OR, Indexed Indirect
 	// ($41 arg : EOR (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	LogicOpAcc(arg16, LOGOP_EOR);
 }
 
@@ -2987,6 +3245,8 @@ void MKCpu::OpCodeEorAbx()
 	// bitwise Exclusive OR, Absolute Indexed, X
 	// ($5D addrlo addrhi : EOR addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	LogicOpAcc(arg16, LOGOP_EOR);
 }
@@ -3007,6 +3267,7 @@ void MKCpu::OpCodeLsrZp()
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3024,6 +3285,7 @@ void MKCpu::OpCodeLsrAcc()
 	// Logical Shift Right, Accumulator ($4A : LSR)
 	mReg.LastAddrMode = ADDRMODE_ACC;
 	mReg.Acc = ShiftRight(mReg.Acc);
+	ShiftRightQ(0);
 }
 
 /*
@@ -3042,6 +3304,7 @@ void MKCpu::OpCodeLsrAbs()
 	// ($4E addrlo addrhi : LSR addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3062,6 +3325,7 @@ void MKCpu::OpCodeLsrZpx()
 	// ($56 arg : LSR arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3081,7 +3345,10 @@ void MKCpu::OpCodeLsrAbx()
 	// Logical Shift Right, Absolute Indexed, X
 	// ($5E addrlo addrhi : LSR addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
+	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3100,7 +3367,12 @@ void MKCpu::OpCodeAdcIzx()
 	// ADd with Carry, Indexed Indirect
 	// ($61 arg : ADC (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3117,7 +3389,10 @@ void MKCpu::OpCodeAdcZp()
 	// ADd with Carry, Zero Page ($65 arg : ADC arg ;arg=0..$FF),
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3134,6 +3409,8 @@ void MKCpu::OpCodeAdcImm()
 	// MEM=PC+1
 	mReg.LastArg = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
 	AddWithCarry(mReg.LastArg);
+
+	AddWithCarryQ(mReg.LastArg);
 }
 
 /*
@@ -3150,7 +3427,10 @@ void MKCpu::OpCodeAdcAbs()
 	// ADd with Carry, Absolute
 	// ($6D addrlo addrhi : ADC addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3168,7 +3448,10 @@ void MKCpu::OpCodeAdcIzy()
 	// ($71 arg : ADC (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	arg16 = GetAddrWithMode(ADDRMODE_IZY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3185,7 +3468,10 @@ void MKCpu::OpCodeAdcZpx()
 	// ADd with Carry, Zero Page Indexed, X
 	// ($75 arg : ADC arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3203,7 +3489,10 @@ void MKCpu::OpCodeAdcAby()
 	// ($79 addrlo addrhi : ADC addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3220,8 +3509,13 @@ void MKCpu::OpCodeAdcAbx()
 	// ADd with Carry, Absolute Indexed, X
 	// ($7D addrlo addrhi : ADC addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	AddWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toAdd = mpMem->Peek8bit(arg16);
+	AddWithCarry(toAdd);
+
+	AddWithCarryQ(toAdd);
 }
 
 /*
@@ -3255,6 +3549,7 @@ void MKCpu::OpCodeRorAcc()
 	// ROtate Right, Accumulator ($6A : ROR)
 	mReg.LastAddrMode = ADDRMODE_ACC;
 	mReg.Acc = RotateRight(mReg.Acc);
+	RotateRightQ();
 }
 
 /*
@@ -3310,6 +3605,8 @@ void MKCpu::OpCodeRorAbx()
 	// ROtate Right, Absolute Indexed, X
 	// ($7E addrlo addrhi : ROR addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
 	mpMem->Poke8bit(arg16, RotateRight(arg8));
 }
@@ -3329,8 +3626,10 @@ void MKCpu::OpCodeCpyImm()
 	// MEM=PC+1
 	mReg.LastArg = arg8 = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
 	SetFlag((mReg.IndY >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.IndY >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndY - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3349,8 +3648,10 @@ void MKCpu::OpCodeCpyZp()
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlag((mReg.IndY >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.IndY >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndY - arg8;
-	SetFlags(arg8);	
+	SetFlags(arg8);
+	SetFlagsQ(arg8);	
 }
 
 /*
@@ -3370,8 +3671,10 @@ void MKCpu::OpCodeCpyAbs()
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlag((mReg.IndY >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.IndY >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndY - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3389,10 +3692,15 @@ void MKCpu::OpCodeCmpIzx()
 	// CoMPare accumulator, Indexed Indirect
 	// ($A1 arg : LDA (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3411,9 +3719,12 @@ void MKCpu::OpCodeCmpZp()
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3431,9 +3742,12 @@ void MKCpu::OpCodeCmpImm()
 	// MEM=PC+1
 	arg8 = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
 	mReg.LastArg = arg8;
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3452,9 +3766,12 @@ void MKCpu::OpCodeCmpAbs()
 	// ($CD addrlo addrhi : CMP addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3474,9 +3791,12 @@ void MKCpu::OpCodeCmpIzy()
 	arg16 = GetAddrWithMode(ADDRMODE_IZY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3495,9 +3815,17 @@ void MKCpu::OpCodeCmpZpx()
 	// ($D5 arg : CMP arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
 	arg8 = mpMem->Peek8bit(arg16);
+	unsigned char toLoad[256];
+	for (int i = 0; i < 256; i++) {
+		toLoad[i] = mpMem->Peek8bit(arg16 + i);
+	}
+	mReg.Acc = qRegs.SuperposeReg8(8, 0, toLoad);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3517,9 +3845,12 @@ void MKCpu::OpCodeCmpAby()
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3537,11 +3868,16 @@ void MKCpu::OpCodeCmpAbx()
 	// CoMPare accumulator, Absolute Indexed, X
 	// ($DD addrlo addrhi : CMP addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3562,6 +3898,7 @@ void MKCpu::OpCodeDecZp()
 	arg8 = mpMem->Peek8bit(arg16) - 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3582,6 +3919,7 @@ void MKCpu::OpCodeDecAbs()
 	arg8 = mpMem->Peek8bit(arg16) - 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3602,6 +3940,7 @@ void MKCpu::OpCodeDecZpx()
 	arg8 = mpMem->Peek8bit(arg16) - 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3619,9 +3958,12 @@ void MKCpu::OpCodeDecAbx()
 	// DECrement memory, Absolute Indexed, X
 	// ($DE addrlo addrhi : DEC addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16) - 1;
 	mpMem->Poke8bit(arg16, arg8);
-	SetFlags(arg8);	
+	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3638,9 +3980,12 @@ void MKCpu::OpCodeCpxImm()
 	// ComPare X register, Immediate ($E0 arg : CPX #arg ;arg=0..$FF),
 	// MEM=PC+1
 	mReg.LastArg = arg8 = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
+	mReg.IndX = qRegs.MReg8(8);
 	SetFlag((mReg.IndX >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.IndX >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndX - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3659,9 +4004,12 @@ void MKCpu::OpCodeCpxZp()
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.IndX = qRegs.MReg8(8);
 	SetFlag((mReg.IndX >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.IndX >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndX - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3680,9 +4028,12 @@ void MKCpu::OpCodeCpxAbs()
 	// ($EC addrlo addrhi : CPX addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
+	mReg.IndX = qRegs.MReg8(8);
 	SetFlag((mReg.IndX >= arg8), FLAGS_CARRY);
+	SetFlagQ((mReg.IndX >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndX - arg8;
 	SetFlags(arg8);
+	SetFlagsQ(arg8);
 }
 
 /*
@@ -3699,7 +4050,10 @@ void MKCpu::OpCodeSbcZp()
 	// SuBtract with Carry, Zero Page ($E5 arg : SBC arg ;arg=0..$FF),
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3716,7 +4070,10 @@ void MKCpu::OpCodeSbcAbs()
 	// SuBtract with Carry, Absolute
 	// ($ED addrlo addrhi : SBC addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3733,7 +4090,12 @@ void MKCpu::OpCodeSbcIzx()
 	// SuBtract with Carry, Indexed Indirect
 	// ($E1 arg : SBC (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3751,7 +4113,10 @@ void MKCpu::OpCodeSbcIzy()
 	// ($F1 arg : SBC (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	arg16 = GetAddrWithMode(ADDRMODE_IZY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3768,7 +4133,10 @@ void MKCpu::OpCodeSbcZpx()
 	// SuBtract with Carry, Zero Page Indexed, X
 	// ($F5 arg : SBC arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3786,7 +4154,10 @@ void MKCpu::OpCodeSbcAby()
 	// ($F9 addrlo addrhi : SBC addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3803,8 +4174,13 @@ void MKCpu::OpCodeSbcAbx()
 	// SuBtract with Carry, Absolute Indexed, X
 	// ($FD addrlo addrhi : SBC addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	SubWithCarry(mpMem->Peek8bit(arg16));
+	unsigned char toSub = mpMem->Peek8bit(arg16);
+	SubWithCarry(toSub);
+
+	SubWithCarryQ(toSub);
 }
 
 /*
@@ -3821,6 +4197,8 @@ void MKCpu::OpCodeSbcImm()
 	// MEM=PC+1
 	mReg.LastArg = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
 	SubWithCarry(mReg.LastArg);
+
+	SubWithCarryQ(mReg.LastArg);
 }
 
 /*
@@ -3834,6 +4212,258 @@ void MKCpu::OpCodeSbcImm()
 void MKCpu::OpCodeDud()
 {
 	// this method body left intentionally empty
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeHadAcc()
+ * Purpose:		Apply Hadamard to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeHadA()
+{
+	qRegs.H(0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeHadX()
+ * Purpose:		Apply Hadamard to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeHadX()
+{
+	qRegs.H(8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeXA()
+ * Purpose:		Apply Pauli X to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeXA()
+{
+	qRegs.X(0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeXX()
+ * Purpose:		Apply Pauli X to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeXX()
+{
+	qRegs.X(8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeYA()
+ * Purpose:		Apply Pauli Y to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeYA()
+{
+	qRegs.Y(0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeYX()
+ * Purpose:		Apply Pauli Y to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeYX()
+{
+	qRegs.Y(8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeZA()
+ * Purpose:		Apply Pauli Z to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeZA()
+{
+	qRegs.Z(0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeZX()
+ * Purpose:		Apply Pauli Z to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeZX()
+{
+	qRegs.Z(8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeR1A()
+ * Purpose:		Apply quarter rotation around |1> axis to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeR1A()
+{
+	qRegs.R1(M_PI / 2.0, 0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeR1X()
+ * Purpose:		Apply quarter rotation around |1> axis to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeR1X()
+{
+	qRegs.R1(M_PI / 2.0, 8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeRXA()
+ * Purpose:		Apply quarter rotation around X axis to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeRXA()
+{
+	qRegs.RX(M_PI / 2.0, 0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeRXX()
+ * Purpose:		Apply quarter rotation around X axis to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeRXX()
+{
+	qRegs.RX(M_PI / 2.0, 8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeRYA()
+ * Purpose:		Apply quarter rotation around Y axis to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeRYA()
+{
+	qRegs.RY(M_PI / 2.0, 0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeRYX()
+ * Purpose:		Apply quarter rotation around Y axis to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeRYX()
+{
+	qRegs.RY(M_PI / 2.0, 8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeRZA()
+ * Purpose:		Apply quarter rotation around Z axis to each bit in Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeRZA()
+{
+	qRegs.RZ(M_PI / 2.0, 0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeRZX()
+ * Purpose:		Apply quarter rotation around Z axis to each bit in IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeRZX()
+{
+	qRegs.RZ(M_PI / 2.0, 8, 8);
+	SetFlagsRegQ(8);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeFTA()
+ * Purpose:		Fourier transform Acc and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeFTA()
+{
+	qRegs.QFT(0, 8);
+	SetFlagsRegQ(0);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeFTX()
+ * Purpose:		Fourier transform IndX and set flags
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeFTX()
+{
+	qRegs.QFT(8, 8);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -4041,12 +4671,15 @@ void	MKCpu::Reset()
  */
 void MKCpu::SetRegs(Regs r)
 {
-	mReg.Acc 			= r.Acc;
-	mReg.IndX 		= r.IndX;
-	mReg.IndY 		= r.IndY;
-	mReg.PtrAddr 	= r.PtrAddr;
-	mReg.PtrStack	= r.PtrStack;
-	mReg.Flags 		= r.Flags;
+	mReg.Acc = r.Acc;
+	qRegs.SetReg(0, 8, r.Acc);
+	mReg.IndX = r.IndX;
+	qRegs.SetReg(8, 8, r.IndX);
+	mReg.IndY = r.IndY;
+	mReg.PtrAddr = r.PtrAddr;
+	mReg.PtrStack = r.PtrStack;
+	mReg.Flags = r.Flags;
+	SetFlagsQ(r.Flags);
 }
 
 /*
