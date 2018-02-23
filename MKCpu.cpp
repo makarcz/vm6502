@@ -473,9 +473,10 @@ void MKCpu::ShiftLeftQ(bitLenInt start)
 {
 	// set Carry flag based on original bit #7
 	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
-	qRegs.LSL(1, start, 9);
+	qRegs.SetBit(start + 8, 0);
+	qRegs.ROL(1, start, 9);
 	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
-} 
+}
 unsigned char MKCpu::ShiftLeft(unsigned char arg8)
 {
 	// set Carry flag based on original bit #7
@@ -500,7 +501,8 @@ void MKCpu::ShiftRightQ(bitLenInt start)
 {
 	// set Carry flag based on original bit #7
 	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
-	qRegs.LSR(1, start, 9);
+	qRegs.SetBit(start + 8, false);
+	qRegs.ROR(1, start, 9);
 	qRegs.Swap(start + 8, FLAGS_CARRY_Q);
 }
 unsigned char MKCpu::ShiftRight(unsigned char arg8)
