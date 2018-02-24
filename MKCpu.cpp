@@ -1980,7 +1980,7 @@ void MKCpu::OpCodeBneRel()
 	unsigned short arg16 = 0;
 	// Branch on Not Equal, Relative ($D0 signoffs : BNE signoffs
 	// ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
-  arg16 = GetAddrWithMode(ADDRMODE_REL);
+  	arg16 = GetAddrWithMode(ADDRMODE_REL);
 	if (!CheckFlag(FLAGS_ZERO)) {
 		mReg.CyclesLeft += (mReg.PageBoundary ? 2 : 1);
 		mReg.PtrAddr = arg16;
@@ -2229,6 +2229,7 @@ void MKCpu::OpCodeInx()
 	qRegs.SetZeroFlag(8, 8, FLAGS_ZERO_Q);
 	mReg.IndX++;
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -2247,6 +2248,7 @@ void MKCpu::OpCodeDex()
 	qRegs.SetZeroFlag(8, 8, FLAGS_ZERO_Q);
 	mReg.IndX--;
 	SetFlags(mReg.IndX);
+	SetFlagsRegQ(8);
 }
 
 /*
@@ -2754,7 +2756,8 @@ void MKCpu::OpCodeBitZp()
 	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	//arg8 &= mReg.Acc;
-	arg8 = (mpMem->Peek8bit(arg16)) & (qRegs.MReg8(0));
+	mReg.Acc = qRegs.MReg8(0);
+	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
 	SetFlagQ((arg8 == 0), FLAGS_ZERO);
 }
@@ -2778,9 +2781,10 @@ void MKCpu::OpCodeBitAbs()
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
-	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);			
+	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);		
 	//arg8 &= mReg.Acc;
-	arg8 = (mpMem->Peek8bit(arg16)) & (qRegs.MReg8(0));
+	mReg.Acc = qRegs.MReg8(0);
+	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
 	SetFlagQ((arg8 == 0), FLAGS_ZERO);
 }
