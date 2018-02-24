@@ -3835,18 +3835,13 @@ void MKCpu::OpCodeCmpZpx()
 	// CoMPare accumulator, Zero Page Indexed, X
 	// ($D5 arg : CMP arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(8);
+	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
-	unsigned char toLoad[256];
-	for (int i = 0; i < 256; i++) {
-		toLoad[i] = mpMem->Peek8bit(arg16 + i);
-	}
-	mReg.Acc = qRegs.SuperposeReg8(8, 0, toLoad);
 	mReg.Acc = qRegs.MReg8(0);
 	SetFlag((mReg.Acc >= arg8), FLAGS_CARRY);
-	SetFlagQ((mReg.Acc >= arg8), FLAGS_CARRY);
 	arg8 = mReg.Acc - arg8;
 	SetFlags(arg8);
-	SetFlagsQ(arg8);
 }
 
 /*
