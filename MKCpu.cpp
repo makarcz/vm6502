@@ -670,6 +670,8 @@ void MKCpu::CompareOpAcc(unsigned char val)
 	qRegs.SetBit(FLAGS_CARRY_Q, false);
 	qRegs.DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs.SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
+	qRegs.SetBit(FLAGS_SIGN_Q, false);
+	qRegs.CNOT(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 	qRegs.INC(val, REGS_ACC_Q, REG_LEN);
 
 	SetFlag((mReg.Acc >= val), FLAGS_CARRY);
@@ -692,6 +694,8 @@ void MKCpu::CompareOpIndX(unsigned char val)
 	qRegs.SetBit(FLAGS_CARRY_Q, false);
 	qRegs.DECSC(val, REGS_INDX_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs.SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
+	qRegs.SetBit(FLAGS_SIGN_Q, false);
+	qRegs.CNOT(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 	qRegs.INC(val, REGS_INDX_Q, REG_LEN);
 
 	SetFlag((mReg.IndX >= val), FLAGS_CARRY);
@@ -1433,7 +1437,7 @@ void MKCpu::OpCodeLdaZpx()
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
 	unsigned char toLoad[256];
 	for (int i = 0; i < 256; i++) {
-		toLoad[i] = mpMem->Peek8bit(arg16 + i);
+		toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 	}
 	mReg.Acc = qRegs.SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
 	SetFlags(mReg.Acc);
@@ -1685,7 +1689,7 @@ void MKCpu::OpCodeLdyZpx()
 	// ($B4 arg : LDY arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
 	mReg.IndX = qRegs.MReg8(8);
-	arg16 += mReg.IndX;
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	mReg.IndY = mpMem->Peek8bit(arg16);
 	SetFlags(mReg.IndY);
 	//SetFlagsRegQ(16);
@@ -1914,6 +1918,8 @@ void MKCpu::OpCodeStaZpx()
 	// STore Accumulator, Zero Page Indexed, X
 	// ($95 arg : STA arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	mReg.Acc = qRegs.MReg8(REGS_ACC_Q);
 	mpMem->Poke8bit(arg16, mReg.Acc);
 }
@@ -2058,6 +2064,8 @@ void MKCpu::OpCodeStyZpx()
 	// STore Y register, Zero Page Indexed, X
 	// ($94 arg : STY arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	mpMem->Poke8bit(arg16, mReg.IndY);
 }
 
@@ -2278,6 +2286,8 @@ void MKCpu::OpCodeIncZpx()
 	// INCrement memory, Zero Page Indexed, X
 	// ($F6 arg : INC arg,X ;arg=0..$FF), MEM=arg+X	
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16) + 1;
 	mpMem->Poke8bit(arg16, arg8);
 	SetFlags(arg8);
@@ -2512,6 +2522,8 @@ void MKCpu::OpCodeOraZpx()
 	// bitwise OR with Accumulator, Zero Page Indexed, X
 	// ($15 arg : ORA arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	LogicOpAcc(arg16, LOGOP_OR);
 }
 
@@ -2529,6 +2541,8 @@ void MKCpu::OpCodeOraAby()
 	// bitwise OR with Accumulator, Absolute Indexed, Y
 	// ($19 addrlo addrhi : ORA addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	LogicOpAcc(arg16, LOGOP_OR);
 }
@@ -2628,6 +2642,8 @@ void MKCpu::OpCodeAslZpx()
 	// Arithmetic Shift Left, Zero Page Indexed, X
 	// ($16 arg : ASL arg,X ;arg=0..$FF), MEM=arg+X	
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
@@ -2789,6 +2805,8 @@ void MKCpu::OpCodeAndZpx()
 	// bitwise AND with accumulator, Zero Page Indexed, X
 	// ($35 arg : AND arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	LogicOpAcc(arg16, LOGOP_AND);
 }
 
@@ -2953,6 +2971,8 @@ void MKCpu::OpCodeRolZpx()
 	// ROtate Left, Zero Page Indexed, X
 	// ($36 arg : ROL arg,X ;arg=0..$FF), MEM=arg+X		
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
 	arg8 = RotateLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
@@ -3359,6 +3379,8 @@ void MKCpu::OpCodeEorZpx()
 	// bitwise Exclusive OR, Zero Page Indexed, X
 	// ($55 arg : EOR arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	LogicOpAcc(arg16, LOGOP_EOR);
 }
 
@@ -3473,6 +3495,8 @@ void MKCpu::OpCodeLsrZpx()
 	// Logical Shift Right, Zero Page Indexed, X
 	// ($56 arg : LSR arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
@@ -3617,6 +3641,8 @@ void MKCpu::OpCodeAdcZpx()
 	// ADd with Carry, Zero Page Indexed, X
 	// ($75 arg : ADC arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	unsigned char toAdd = mpMem->Peek8bit(arg16);
 	AddWithCarry(toAdd);
 
@@ -3735,6 +3761,8 @@ void MKCpu::OpCodeRorZpx()
 	// ROtate Right, Zero Page Indexed, X
 	// ($76 arg : ROR arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
 	mpMem->Poke8bit(arg16, RotateRight(arg8));		
 }
@@ -4225,6 +4253,8 @@ void MKCpu::OpCodeSbcZpx()
 	// SuBtract with Carry, Zero Page Indexed, X
 	// ($F5 arg : SBC arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
+	mReg.IndX = qRegs.MReg8(REGS_INDX_Q);
+	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	unsigned char toSub = mpMem->Peek8bit(arg16);
 	SubWithCarry(toSub);
 
