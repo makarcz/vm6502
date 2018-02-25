@@ -128,6 +128,7 @@ enum eAddrModes {
 	ADDRMODE_ZP,
 	ADDRMODE_IMP,
 	ADDRMODE_IND,
+	ADDRMODE_ABA,
 	ADDRMODE_ABX,
 	ADDRMODE_ABY,
 	ADDRMODE_ZPX,
@@ -725,6 +726,9 @@ class MKCpu
 		void OpCodeFTX();
 		void OpCodeCXA();
 		void OpCodeCAX();
+		void OpCodeLdaAba();
+		void OpCodeHac();
+		void OpCodeHav();
 
 };
 
