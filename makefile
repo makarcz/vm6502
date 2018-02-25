@@ -1,6 +1,6 @@
 # Project: MKBasic
 
-QRACKVER = qrack.cpp #or qrack.cpp or qrack_serial.cpp
+QRACKVER = qrack.cpp #qrack_ocl, qrack.cpp, or qrack_serial.cpp
 SDLBASE  = $(SDLDIR)
 SDLINCS   = -I"/usr/include/SDL2"
 CPP      = g++ -D__DEBUG__ -DLINUX

@@ -83,6 +83,7 @@ struct Regs {
 #define FLAGS_ZERO_Q		17
 #define FLAGS_OVERFLOW_Q	18
 #define FLAGS_SIGN_Q		19
+#define FLAGS_ORACLE_Q		20
 
 /*
  * Virtual CPU, 6502 addressing modes:
@@ -128,7 +129,7 @@ enum eAddrModes {
 	ADDRMODE_ZP,
 	ADDRMODE_IMP,
 	ADDRMODE_IND,
-	ADDRMODE_ABA,
+	//ADDRMODE_ABA,
 	ADDRMODE_ABX,
 	ADDRMODE_ABY,
 	ADDRMODE_ZPX,
@@ -729,9 +730,11 @@ class MKCpu
 		//void OpCodeCXA();
 		//void OpCodeCAX();
 		void OpCodeLdaAba();
+		void OpCodeHao();
 		void OpCodeHac();
 		void OpCodeHav();
-
+		void OpCodeClo();
+		void OpCodeSeo();
 };
 
 } // namespace MKBasic
