@@ -529,6 +529,8 @@ class MKCpu
 		unsigned char RotateRight(unsigned char arg8);			// Rotate left, Carry to bit 7, bit 0 to Carry, update flags N and Z.
 		unsigned short GetArg16(unsigned char offs);				// Get 2-byte argument, add offset, increase PC.
 		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory at address and Acc.
+		void CompareOpAcc(unsigned char val);				// Perform arithmetic compare between val and Acc
+		void CompareOpIndX(unsigned char val);				// Perform arithmetic compare between val and IndX
 																												// Result in Acc. Set flags.
 		unsigned short ComputeRelJump(unsigned char offs);	// Compute new PC based on relative offset.
 		unsigned short ComputeRelJump(unsigned short addr,
@@ -724,8 +726,8 @@ class MKCpu
 		void OpCodeRZX();
 		void OpCodeFTA();
 		void OpCodeFTX();
-		void OpCodeCXA();
-		void OpCodeCAX();
+		//void OpCodeCXA();
+		//void OpCodeCAX();
 		void OpCodeLdaAba();
 		void OpCodeHac();
 		void OpCodeHav();
