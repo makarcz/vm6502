@@ -72,9 +72,13 @@ struct Regs {
 	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
 	int  						CyclesLeft;		// # of cycles left to complete current opcode
 	bool						PageBoundary;	// true if page boundary was crossed
-
+	unsigned char CmpW;				//Ehrenfest's mirror of REGS_CMPW_Q
 };
 
+#define REGS_ACC_Q		0
+#define REGS_INDX_Q		8
+#define REGS_CMPW_Q		20
+#define REG_LEN			8
 #define FLAGS_CARRY_Q		16
 #define FLAGS_ZERO_Q		17
 #define FLAGS_OVERFLOW_Q	18
@@ -518,12 +522,12 @@ class MKCpu
 		unsigned char ShiftLeft(unsigned char arg8);				// Arithmetic Shift Left, set Carry flag
 		void ShiftRightQ(bitLenInt start);
 		unsigned char ShiftRight(unsigned char arg8);				// Logical Shift Right, update flags NZC.
-		void RotateLeftQ();
+		void RotateLeftQ(bitLenInt reg);
 		unsigned char RotateLeft(unsigned char arg8);				// Rotate left, Carry to bit 0, bit 7 to Carry, update flags N and Z.
-		void RotateRightQ();
+		void RotateRightQ(bitLenInt reg);
 		unsigned char RotateRight(unsigned char arg8);			// Rotate left, Carry to bit 7, bit 0 to Carry, update flags N and Z.
 		unsigned short GetArg16(unsigned char offs);				// Get 2-byte argument, add offset, increase PC.
-		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory location and Acc.
+		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory at address and Acc.
 																												// Result in Acc. Set flags.
 		unsigned short ComputeRelJump(unsigned char offs);	// Compute new PC based on relative offset.
 		unsigned short ComputeRelJump(unsigned short addr,
@@ -719,6 +723,8 @@ class MKCpu
 		void OpCodeRZX();
 		void OpCodeFTA();
 		void OpCodeFTX();
+		void OpCodeCXA();
+		void OpCodeCAX();
 
 };
 
