@@ -389,7 +389,7 @@ void MKCpu::InitCpu()
 	mReg.Acc = 0;
 	mReg.Acc16 = 0;
 	mReg.Flags = FLAGS_UNUSED;
-	qRegs.SetBit(FLAGS_ORACLE_Q, true);
+	//qRegs.SetBit(FLAGS_ORACLE_Q, true);
 	mReg.IndX = 0;
 	mReg.IndY = 0;
 	mReg.Ptr16 = 0;
@@ -453,25 +453,42 @@ void MKCpu::SetFlags(unsigned char reg)
 
 	SetFlag((0 == reg), FLAGS_ZERO);
 	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
+	//SetFlag(!(mReg.Flags & FLAGS_UNUSED), FLAGS_UNUSED);
 	SetFlag(true, FLAGS_UNUSED);
 }
 
 void MKCpu::SetFlagsRegQ(unsigned char start)
 {
 	qRegs.SetZeroFlag(start, REG_LEN, FLAGS_ZERO_Q);
-
-	//Set sign bit:
-	qRegs.SetBit(FLAGS_SIGN_Q, false);
-	qRegs.CNOT(start + 7, FLAGS_SIGN_Q);
-
-	qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	qRegs.SetSignFlag(start + REG_LEN - 1, FLAGS_SIGN_Q);
+	//qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
-	qRegs.CLOR(FLAGS_ZERO_Q, (0 == reg), FLAGS_ZERO_Q);
-	qRegs.CLOR(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN_Q);
-	qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	qRegs.SetBit(FLAGS_ZERO_Q, (0 == reg));
+	qRegs.SetBit(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
+	//qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		MeasureFlagsQ()
+ * Purpose:		Measure the qubit flags, and set the
+			corresponding classical flags.
+ * Arguments:	n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::MeasureFlagsQ()
+{
+	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC);
+	//mReg.Flags |= qRegs.M(FLAGS_ORACLE_Q) ? 	FLAGS_UNUSED : 0;
+	mReg.Flags |= FLAGS_UNUSED;
+	mReg.Flags |= qRegs.M(FLAGS_CARRY_Q) ? 		FLAGS_CARRY : 0;
+	mReg.Flags |= qRegs.M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
+	mReg.Flags |= qRegs.M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
+	mReg.Flags |= qRegs.M(FLAGS_SIGN_Q) ? 		FLAGS_SIGN : 0;
 }
 
 /*
@@ -653,7 +670,7 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 			break;
 	}
 	SetFlags(mReg.Acc);
-	SetFlagsRegQ(0);		
+	SetFlagsRegQ(REGS_ACC_Q);		
 }
 
 /*
@@ -671,8 +688,8 @@ void MKCpu::CompareOpAcc(unsigned char val)
 	qRegs.SetBit(FLAGS_CARRY_Q, false);
 	qRegs.DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs.SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
-	qRegs.SetBit(FLAGS_SIGN_Q, false);
-	qRegs.CNOT(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+	qRegs.SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+	//qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 	qRegs.INC(val, REGS_ACC_Q, REG_LEN);
 
 	SetFlag((mReg.Acc >= val), FLAGS_CARRY);
@@ -682,7 +699,7 @@ void MKCpu::CompareOpAcc(unsigned char val)
 
 /*
  *--------------------------------------------------------------------
- * Method:		CompareOpAcc()
+ * Method:		CompareOpIndX()
  * Purpose:		Subtract val from IndX, conditioning flags.
  *			Then, add val back into IndX, leaving flags alone.
  * Arguments:		val - val to compare
@@ -695,8 +712,7 @@ void MKCpu::CompareOpIndX(unsigned char val)
 	qRegs.SetBit(FLAGS_CARRY_Q, false);
 	qRegs.DECSC(val, REGS_INDX_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs.SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
-	qRegs.SetBit(FLAGS_SIGN_Q, false);
-	qRegs.CNOT(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+	qRegs.SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 	qRegs.INC(val, REGS_INDX_Q, REG_LEN);
 
 	SetFlag((mReg.IndX >= val), FLAGS_CARRY);
@@ -846,13 +862,13 @@ void MKCpu::SetFlagQ(bool set, unsigned char flag)
 		if (flag & FLAGS_ZERO) qRegs.CLOR(FLAGS_ZERO_Q, true, FLAGS_ZERO_Q);
 		if (flag & FLAGS_OVERFLOW) qRegs.CLOR(FLAGS_OVERFLOW_Q, true, FLAGS_OVERFLOW_Q);
 		if (flag & FLAGS_SIGN) qRegs.CLOR(FLAGS_SIGN_Q, true, FLAGS_SIGN_Q);
-		if (flag & FLAGS_UNUSED) qRegs.CLOR(FLAGS_ORACLE_Q, true, FLAGS_ORACLE_Q);
+		//if (flag & FLAGS_UNUSED) qRegs.CLOR(FLAGS_ORACLE_Q, true, FLAGS_ORACLE_Q);
 	} else {
 		if (flag & FLAGS_CARRY) qRegs.CLAND(FLAGS_CARRY_Q, false, FLAGS_CARRY_Q);
 		if (flag & FLAGS_ZERO) qRegs.CLAND(FLAGS_ZERO_Q, false, FLAGS_ZERO_Q);
 		if (flag & FLAGS_OVERFLOW) qRegs.CLAND(FLAGS_OVERFLOW_Q, false, FLAGS_OVERFLOW_Q);
 		if (flag & FLAGS_SIGN) qRegs.CLAND(FLAGS_SIGN_Q, false, FLAGS_SIGN_Q);
-		if (flag & FLAGS_UNUSED) qRegs.CLAND(FLAGS_ORACLE_Q, true, FLAGS_ORACLE_Q);
+		//if (flag & FLAGS_UNUSED) qRegs.CLAND(FLAGS_ORACLE_Q, false, FLAGS_ORACLE_Q);
 	}
 }
 
@@ -890,7 +906,7 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	}
-	//SetFlag(true, FLAGS_UNUSED);
+	SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
 }
 
@@ -903,11 +919,7 @@ void MKCpu::AddWithCarryQ(unsigned char mem8)
 		qRegs.INCSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	}
 
-	qRegs.SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
-	qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
-	//Set negative flag:
-	qRegs.SetBit(FLAGS_SIGN_Q, false);	
-	qRegs.CNOT(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+	SetFlagsRegQ(REGS_ACC_Q);
 }
 
 /*
@@ -948,7 +960,7 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	
 	}
-	//SetFlag(true, FLAGS_UNUSED);
+	SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
 }
 
@@ -961,11 +973,7 @@ void MKCpu::SubWithCarryQ(unsigned char mem8)
 		qRegs.DECSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q, FLAGS_CARRY_Q);
 	}
 
-	qRegs.SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
-	qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
-	//Set negative flag:	
-	qRegs.SetBit(FLAGS_SIGN_Q, false);	
-	qRegs.CNOT(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+	SetFlagsRegQ(REGS_ACC_Q);
 }
 
 /*
@@ -3017,7 +3025,8 @@ void MKCpu::OpCodePhp()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	arg16 = 0x100;
 	arg16 += mReg.PtrStack--;
-	arg8 = mReg.Flags | FLAGS_BRK;// | FLAGS_UNUSED;
+	MeasureFlagsQ();
+	arg8 = mReg.Flags | FLAGS_BRK | FLAGS_UNUSED;
 	mpMem->Poke8bit(arg16, arg8);
 }
 
@@ -3055,7 +3064,8 @@ void MKCpu::OpCodePlp()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	arg16 = 0x100;
 	arg16 += ++mReg.PtrStack;
-	mReg.Flags = mpMem->Peek8bit(arg16);// | FLAGS_UNUSED;
+	mReg.Flags = mpMem->Peek8bit(arg16) | FLAGS_UNUSED;
+	SetFlagsQ(mReg.Flags);
 }
 
 /*
@@ -3091,7 +3101,7 @@ void MKCpu::OpCodeClo()
 {
 	// CLear Oracle, Implied ($1f : CLO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_UNUSED);
+	//SetFlag(false, FLAGS_UNUSED);
 	SetFlagQ(false, FLAGS_UNUSED);
 }
 
@@ -3122,7 +3132,7 @@ void MKCpu::OpCodeSeo()
 {
 	// SEear Oracle, Implied ($3f : SEO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(true, FLAGS_UNUSED);
+	//SetFlag(true, FLAGS_UNUSED);
 	SetFlagQ(true, FLAGS_UNUSED);
 }
 
@@ -3292,7 +3302,7 @@ void MKCpu::OpCodeRti()
 	arg16 += ++mReg.PtrStack;
 	mReg.Flags = mpMem->Peek8bit(arg16);
 	SetFlagsQ(mReg.Flags);
-	//SetFlag(true,FLAGS_UNUSED);
+	SetFlag(true,FLAGS_UNUSED);
 	arg16++; mReg.PtrStack++;
 	mReg.PtrAddr = mpMem->Peek8bit(arg16);
 	arg16++; mReg.PtrStack++;
@@ -4653,46 +4663,6 @@ void MKCpu::OpCodeFTX()
 	SetFlagsRegQ(REGS_INDX_Q);
 	//TODO: Implement classical Fourier transform, here.
 }
-
-/*
- *--------------------------------------------------------------------
- * Method:		OpCodeCxa()
- * Purpose:		Subtract Acc from IndX and store result in IndX.
-			Condition flags on IndX and subtraction.
- * Arguments:		n/a
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
-/*void MKCpu::OpCodeCXA() {
-	qRegs.SetBit(FLAGS_SIGN_Q, false);
-	qRegs.SUBSC(REGS_INDX_Q, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
-	qRegs.SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
-	qRegs.CNOT(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
-
-	mReg.IndX = (mReg.IndX - mReg.Acc) & 0xFF;
-	SetFlag(mReg.IndX < mReg.Acc, FLAGS_CARRY_Q);
-	SetFlags(mReg.IndX);
-}*/
-
-/*
- *--------------------------------------------------------------------
- * Method:		OpCodeCax()
- * Purpose:		Subtract IndX from Acc and store result in Acc.
-			Condition flags on Acc and subtraction.
- * Arguments:		n/a
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
-/*void MKCpu::OpCodeCAX() {
-	qRegs.SetBit(FLAGS_SIGN_Q, false);
-	qRegs.SUBSC(REGS_ACC_Q, REGS_INDX_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
-	qRegs.SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
-	qRegs.CNOT(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
-
-	mReg.Acc = (mReg.Acc - mReg.IndX) & 0xFF;
-	SetFlag(mReg.Acc < mReg.IndX, FLAGS_CARRY_Q);
-	SetFlags(mReg.Acc);
-}*/
 
 /*
  *--------------------------------------------------------------------

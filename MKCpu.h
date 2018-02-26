@@ -515,11 +515,12 @@ class MKCpu
 		bool				mEnableHistory;	// enable/disable execute history
 		
 		
-		void	InitCpu();
-		unsigned char	RotateClassical(unsigned char reg);								//Perform classical equivalent of quantum rotation
-		void	SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on Acc, X or Y
-		void	SetFlagsRegQ(unsigned char reg);								// set quantum flags based on quantum register
-		void	SetFlagsQ(unsigned char reg);									// set quantum flags based on input
+		void InitCpu();
+		unsigned char RotateClassical(unsigned char reg);								//Perform classical equivalent of quantum rotation
+		void SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on Acc, X or Y
+		void SetFlagsRegQ(unsigned char reg);								// set quantum flags based on quantum register
+		void SetFlagsQ(unsigned char reg);									// set quantum flags based on input
+		void MeasureFlagsQ();										//Measure quantum flags
 		void ShiftLeftQ(bitLenInt start);
 		unsigned char ShiftLeft(unsigned char arg8);				// Arithmetic Shift Left, set Carry flag
 		void ShiftRightQ(bitLenInt start);
