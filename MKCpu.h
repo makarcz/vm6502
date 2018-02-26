@@ -72,6 +72,7 @@ struct Regs {
 	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
 	int  						CyclesLeft;		// # of cycles left to complete current opcode
 	bool						PageBoundary;	// true if page boundary was crossed
+	bool						qOEngaged;
 	unsigned char CmpW;				//Ehrenfest's mirror of REGS_CMPW_Q
 };
 
@@ -736,6 +737,8 @@ class MKCpu
 		void OpCodeHav();
 		void OpCodeClo();
 		void OpCodeSeo();
+		void OpCodeEqo();
+		void OpCodeDqo();
 };
 
 } // namespace MKBasic

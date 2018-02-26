@@ -139,8 +139,8 @@ void MKCpu::InitCpu()
 		{OPCODE_PHP,		{OPCODE_PHP,		ADDRMODE_IMP,		3,		"PHP",	&MKCpu::OpCodePhp		/*08*/	}},
 		{OPCODE_ORA_IMM,	{OPCODE_ORA_IMM,	ADDRMODE_IMM,		2,		"ORA",	&MKCpu::OpCodeOraImm 		/*09*/	}},
 		{OPCODE_ASL,		{OPCODE_ASL,		ADDRMODE_ACC,		2,		"ASL",	&MKCpu::OpCodeAslAcc		/*0a*/	}},
-		{OPCODE_ILL_0B,		{OPCODE_ILL_0B,		ADDRMODE_ACC,		2,		"ANC",	&MKCpu::OpCodeDud 		/*0b*/	}},
-		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_ACC,		4,		"NOP",	&MKCpu::OpCodeDud		/*0c*/	}},
+		{OPCODE_ILL_0B,		{OPCODE_ILL_0B,		ADDRMODE_IMP,		2,		"EQO",	&MKCpu::OpCodeEqo 		/*0b*/	}},
+		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_IMP,		2,		"DQO",	&MKCpu::OpCodeDqo		/*0c*/	}},
 		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 		/*0d*/	}},
 		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 		/*0e*/	}},
 		{OPCODE_ILL_0F,		{OPCODE_ILL_0F,		ADDRMODE_ABS,		6,		"SLO",	&MKCpu::OpCodeDud 		/*0f*/	}},
@@ -388,7 +388,7 @@ void MKCpu::InitCpu()
 	mOpCodesMap = myOpCodesMap;
 	mReg.Acc = 0;
 	mReg.Acc16 = 0;
-	mReg.Flags = FLAGS_UNUSED;
+	mReg.Flags = 0;// FLAGS_UNUSED;
 	//qRegs.SetBit(FLAGS_ORACLE_Q, true);
 	mReg.IndX = 0;
 	mReg.IndY = 0;
@@ -454,21 +454,21 @@ void MKCpu::SetFlags(unsigned char reg)
 	SetFlag((0 == reg), FLAGS_ZERO);
 	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
 	//SetFlag(!(mReg.Flags & FLAGS_UNUSED), FLAGS_UNUSED);
-	SetFlag(true, FLAGS_UNUSED);
+	//SetFlag(true, FLAGS_UNUSED);
 }
 
 void MKCpu::SetFlagsRegQ(unsigned char start)
 {
 	qRegs.SetZeroFlag(start, REG_LEN, FLAGS_ZERO_Q);
 	qRegs.SetSignFlag(start + REG_LEN - 1, FLAGS_SIGN_Q);
-	//qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	if (mReg.Flags & FLAGS_UNUSED) qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
 	qRegs.SetBit(FLAGS_ZERO_Q, (0 == reg));
 	qRegs.SetBit(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
-	//qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	if (mReg.Flags & FLAGS_UNUSED) qRegs.CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 /*
@@ -482,9 +482,7 @@ void MKCpu::SetFlagsQ(unsigned char reg)
  */
 void MKCpu::MeasureFlagsQ()
 {
-	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC);
-	//mReg.Flags |= qRegs.M(FLAGS_ORACLE_Q) ? 	FLAGS_UNUSED : 0;
-	mReg.Flags |= FLAGS_UNUSED;
+	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_UNUSED);
 	mReg.Flags |= qRegs.M(FLAGS_CARRY_Q) ? 		FLAGS_CARRY : 0;
 	mReg.Flags |= qRegs.M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
 	mReg.Flags |= qRegs.M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
@@ -906,7 +904,7 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	}
-	SetFlag(true, FLAGS_UNUSED);
+	//SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
 }
 
@@ -960,7 +958,7 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	
 	}
-	SetFlag(true, FLAGS_UNUSED);
+	//SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
 }
 
@@ -3026,7 +3024,7 @@ void MKCpu::OpCodePhp()
 	arg16 = 0x100;
 	arg16 += mReg.PtrStack--;
 	MeasureFlagsQ();
-	arg8 = mReg.Flags | FLAGS_BRK | FLAGS_UNUSED;
+	arg8 = mReg.Flags | FLAGS_BRK;// | FLAGS_UNUSED;
 	mpMem->Poke8bit(arg16, arg8);
 }
 
@@ -3064,7 +3062,7 @@ void MKCpu::OpCodePlp()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	arg16 = 0x100;
 	arg16 += ++mReg.PtrStack;
-	mReg.Flags = mpMem->Peek8bit(arg16) | FLAGS_UNUSED;
+	mReg.Flags = mpMem->Peek8bit(arg16);// | FLAGS_UNUSED;
 	SetFlagsQ(mReg.Flags);
 }
 
@@ -3302,7 +3300,7 @@ void MKCpu::OpCodeRti()
 	arg16 += ++mReg.PtrStack;
 	mReg.Flags = mpMem->Peek8bit(arg16);
 	SetFlagsQ(mReg.Flags);
-	SetFlag(true,FLAGS_UNUSED);
+	//SetFlag(true,FLAGS_UNUSED);
 	arg16++; mReg.PtrStack++;
 	mReg.PtrAddr = mpMem->Peek8bit(arg16);
 	arg16++; mReg.PtrStack++;
@@ -4661,6 +4659,34 @@ void MKCpu::OpCodeFTX()
 {
 	qRegs.QFT(REGS_INDX_Q, REG_LEN);
 	SetFlagsRegQ(REGS_INDX_Q);
+	//TODO: Implement classical Fourier transform, here.
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeEqo()
+ * Purpose:		Engage Quantum Oracle
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeEqo()
+{
+	SetFlag(true, FLAGS_UNUSED);
+	//TODO: Implement classical Fourier transform, here.
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeDqo()
+ * Purpose:		Engage Quantum Oracle
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeDqo()
+{
+	SetFlag(false, FLAGS_UNUSED);
 	//TODO: Implement classical Fourier transform, here.
 }
 
