@@ -464,18 +464,21 @@ void MKCpu::SetFlags(unsigned char reg)
 
 	SetFlag((0 == reg), FLAGS_ZERO);
 	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
+	SetFlag((mReg.Flags & FLAGS_ORACLE), FLAGS_ORACLE);
 }
 
 void MKCpu::SetFlagsRegQ(unsigned char start)
 {
 	qRegs->SetZeroFlag(start, REG_LEN, FLAGS_ZERO_Q);
 	qRegs->SetSignFlag(start + REG_LEN - 1, FLAGS_SIGN_Q);
+	if (mReg.Flags & FLAGS_ORACLE) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
 	qRegs->SetBit(FLAGS_ZERO_Q, (0 == reg));
 	qRegs->SetBit(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
+	if (mReg.Flags & FLAGS_ORACLE) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 /*
@@ -695,6 +698,7 @@ void MKCpu::CompareOpAcc(unsigned char val)
 	qRegs->DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
 	qRegs->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+	if (mReg.Flags & FLAGS_ORACLE) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 	qRegs->INC(val, REGS_ACC_Q, REG_LEN);
 
 	SetFlag((mReg.Acc >= val), FLAGS_CARRY);

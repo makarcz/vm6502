@@ -715,7 +715,7 @@ class MKCpu
 		void OpCodeHadX();
 		void OpCodeXA();
 		void OpCodeXX();
-                void OpCodeXO();
+		void OpCodeXO();
 		void OpCodeYA();
 		void OpCodeYX();
 		void OpCodeZA();
@@ -738,10 +738,10 @@ class MKCpu
 		void OpCodeHav();
 		void OpCodeClo();
 		void OpCodeSeo();
-                void OpCodeOcnZero();
-                void OpCodeOcnSign();
-                void OpCodeOcnCarry();
-                void OpCodeOcnOver();
+		void OpCodeOcnZero();
+		void OpCodeOcnSign();
+		void OpCodeOcnCarry();
+		void OpCodeOcnOver();
 };
 
 } // namespace MKBasic
