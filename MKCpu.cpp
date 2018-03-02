@@ -465,7 +465,7 @@ void MKCpu::SetFlags(unsigned char reg)
 
 	SetFlag((0 == reg), FLAGS_ZERO);
 	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
-	//SetFlag(!(mReg.Flags & FLAGS_UNUSED), FLAGS_UNUSED);
+	SetFlag((mReg.Flags & FLAGS_UNUSED), FLAGS_UNUSED);
 	//SetFlag(true, FLAGS_UNUSED);
 }
 
@@ -495,7 +495,7 @@ void MKCpu::SetFlagsQ(unsigned char reg)
 void MKCpu::MeasureFlagsQ()
 {
 	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_UNUSED);
-	mReg.Flags |= qRegs->M(FLAGS_CARRY_Q) ? 		FLAGS_CARRY : 0;
+	mReg.Flags |= qRegs->M(FLAGS_CARRY_Q) ? 	FLAGS_CARRY : 0;
 	mReg.Flags |= qRegs->M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
 	mReg.Flags |= qRegs->M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
 	mReg.Flags |= qRegs->M(FLAGS_SIGN_Q) ? 		FLAGS_SIGN : 0;
@@ -699,7 +699,7 @@ void MKCpu::CompareOpAcc(unsigned char val)
 	qRegs->DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
 	qRegs->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
-	//qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	if (mReg.Flags & FLAGS_UNUSED) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 	qRegs->INC(val, REGS_ACC_Q, REG_LEN);
 
 	SetFlag((mReg.Acc >= val), FLAGS_CARRY);
@@ -872,13 +872,11 @@ void MKCpu::SetFlagQ(bool set, unsigned char flag)
 		if (flag & FLAGS_ZERO) qRegs->CLOR(FLAGS_ZERO_Q, true, FLAGS_ZERO_Q);
 		if (flag & FLAGS_OVERFLOW) qRegs->CLOR(FLAGS_OVERFLOW_Q, true, FLAGS_OVERFLOW_Q);
 		if (flag & FLAGS_SIGN) qRegs->CLOR(FLAGS_SIGN_Q, true, FLAGS_SIGN_Q);
-		//if (flag & FLAGS_UNUSED) qRegs->CLOR(FLAGS_ORACLE_Q, true, FLAGS_ORACLE_Q);
 	} else {
 		if (flag & FLAGS_CARRY) qRegs->CLAND(FLAGS_CARRY_Q, false, FLAGS_CARRY_Q);
 		if (flag & FLAGS_ZERO) qRegs->CLAND(FLAGS_ZERO_Q, false, FLAGS_ZERO_Q);
 		if (flag & FLAGS_OVERFLOW) qRegs->CLAND(FLAGS_OVERFLOW_Q, false, FLAGS_OVERFLOW_Q);
 		if (flag & FLAGS_SIGN) qRegs->CLAND(FLAGS_SIGN_Q, false, FLAGS_SIGN_Q);
-		//if (flag & FLAGS_UNUSED) qRegs->CLAND(FLAGS_ORACLE_Q, false, FLAGS_ORACLE_Q);
 	}
 }
 
@@ -3111,7 +3109,7 @@ void MKCpu::OpCodeClo()
 {
 	// CLear Oracle, Implied ($1f : CLO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	//SetFlag(false, FLAGS_UNUSED);
+	SetFlag(false, FLAGS_UNUSED);
 	SetFlagQ(false, FLAGS_UNUSED);
 }
 
@@ -3142,7 +3140,7 @@ void MKCpu::OpCodeSeo()
 {
 	// SEear Oracle, Implied ($3f : SEO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	//SetFlag(true, FLAGS_UNUSED);
+	SetFlag(true, FLAGS_UNUSED);
 	SetFlagQ(true, FLAGS_UNUSED);
 }
 
@@ -4685,13 +4683,12 @@ void MKCpu::OpCodeFTX()
 void MKCpu::OpCodeEqo()
 {
 	SetFlag(true, FLAGS_UNUSED);
-	//TODO: Implement classical Fourier transform, here.
 }
 
 /*
  *--------------------------------------------------------------------
  * Method:		OpCodeDqo()
- * Purpose:		Engage Quantum Oracle
+ * Purpose:		Disengage Quantum Oracle
  * Arguments:		n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
@@ -4699,7 +4696,6 @@ void MKCpu::OpCodeEqo()
 void MKCpu::OpCodeDqo()
 {
 	SetFlag(false, FLAGS_UNUSED);
-	//TODO: Implement classical Fourier transform, here.
 }
 
 /*
