@@ -1163,10 +1163,12 @@ int main(int argc, char *argv[]) {
 		if (NULL != pconio) pconio->CloseCursesScr();
 		cout << ex.GetCause() << endl;
 	}
-	catch (...) {
+/*
+    catch (...) {
 		if (NULL != pconio) pconio->CloseCursesScr();
 		cout << "ERROR: Fatal." << endl;
 	}
+*/
 	return 0;
 }
 

@@ -38,7 +38,7 @@
 #include <queue>
 #include "system.h"
 #include "Memory.h"
-#include "qrack.hpp"
+#include "qregister.hpp"
 
 using namespace std;
 
