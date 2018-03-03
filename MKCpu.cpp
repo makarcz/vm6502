@@ -136,36 +136,36 @@ void MKCpu::InitCpu()
 		//------------------------------------------------------------------------------------------
 		{OPCODE_BRK,		{OPCODE_BRK,		ADDRMODE_IMP,		7,		"BRK",	&MKCpu::OpCodeBrk 		/*00*/	}},
 		{OPCODE_ORA_IZX,	{OPCODE_ORA_IZX,	ADDRMODE_IZX,		6,		"ORA",	&MKCpu::OpCodeOraIzx		/*01*/	}},
-		{OPCODE_ILL_02,		{OPCODE_ILL_02,		ADDRMODE_ACC,		3,		"HAA",	&MKCpu::OpCodeHadA		/*02*/	}},
-		{OPCODE_ILL_03,		{OPCODE_ILL_03,		ADDRMODE_ACC,		3,		"HAX",	&MKCpu::OpCodeHadX		/*03*/	}},
-		{OPCODE_ILL_04,		{OPCODE_ILL_04,		ADDRMODE_ACC,		3,		"HAY",	&MKCpu::OpCodeDud		/*04*/	}},
+		{OPCODE_HAD_A,		{OPCODE_HAD_A,		ADDRMODE_ACC,		3,		"HAA",	&MKCpu::OpCodeHadA		/*02*/	}},
+		{OPCODE_HAD_X,		{OPCODE_HAD_X,		ADDRMODE_ACC,		3,		"HAX",	&MKCpu::OpCodeHadX		/*03*/	}},
+		{OPCODE_HAD_Y,		{OPCODE_HAD_Y,		ADDRMODE_ACC,		3,		"HAY",	&MKCpu::OpCodeDud		/*04*/	}},
 		{OPCODE_ORA_ZP,		{OPCODE_ORA_ZP,		ADDRMODE_ZP,		3,		"ORA", 	&MKCpu::OpCodeOraZp		/*05*/	}},
 		{OPCODE_ASL_ZP,		{OPCODE_ASL_ZP,		ADDRMODE_ZP,		5,		"ASL",	&MKCpu::OpCodeAslZp		/*06*/	}},
-		{OPCODE_ILL_07,		{OPCODE_ILL_07,		ADDRMODE_ZP,		2,		"HAO",	&MKCpu::OpCodeHao		/*07*/	}},
+		{OPCODE_HAD_O,		{OPCODE_HAD_O,		ADDRMODE_ZP,		2,		"HAO",	&MKCpu::OpCodeHao		/*07*/	}},
 		{OPCODE_PHP,		{OPCODE_PHP,		ADDRMODE_IMP,		3,		"PHP",	&MKCpu::OpCodePhp		/*08*/	}},
 		{OPCODE_ORA_IMM,	{OPCODE_ORA_IMM,	ADDRMODE_IMM,		2,		"ORA",	&MKCpu::OpCodeOraImm 		/*09*/	}},
 		{OPCODE_ASL,		{OPCODE_ASL,		ADDRMODE_ACC,		2,		"ASL",	&MKCpu::OpCodeAslAcc		/*0a*/	}},
-		{OPCODE_ILL_0B,		{OPCODE_ILL_0B,		ADDRMODE_IMP,		2,		"EQO",	&MKCpu::OpCodeEqo 		/*0b*/	}},
-		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_IMP,		2,		"DQO",	&MKCpu::OpCodeDqo		/*0c*/	}},
+		{OPCODE_ILL_0B,		{OPCODE_ILL_0B,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 		/*0b*/	}},
+		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud		/*0c*/	}},
 		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 		/*0d*/	}},
 		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 		/*0e*/	}},
 		{OPCODE_ILL_0F,		{OPCODE_ILL_0F,		ADDRMODE_ABS,		6,		"SLO",	&MKCpu::OpCodeDud 		/*0f*/	}},
 		{OPCODE_BPL_REL,	{OPCODE_BPL_REL,	ADDRMODE_REL,		2,		"BPL",	&MKCpu::OpCodeBplRel 		/*10*/	}},
 		{OPCODE_ORA_IZY,	{OPCODE_ORA_IZY,	ADDRMODE_IZY,		5,		"ORA",	&MKCpu::OpCodeOraIzy 		/*11*/	}},
-		{OPCODE_ILL_12,		{OPCODE_ILL_12,		ADDRMODE_ACC,		3,		"PXA",	&MKCpu::OpCodeXA 		/*12*/	}},
-		{OPCODE_ILL_13,		{OPCODE_ILL_13,		ADDRMODE_ACC,		3,		"PXX",	&MKCpu::OpCodeXX 		/*13*/	}},
-		{OPCODE_ILL_14,		{OPCODE_ILL_14,		ADDRMODE_ACC,		3,		"NOP",	&MKCpu::OpCodeDud 		/*14*/	}},
+		{OPCODE_PAX_A,		{OPCODE_PAX_A,		ADDRMODE_ACC,		3,		"PXA",	&MKCpu::OpCodeXA 		/*12*/	}},
+		{OPCODE_PAX_X,		{OPCODE_PAX_X,		ADDRMODE_ACC,		3,		"PXX",	&MKCpu::OpCodeXX 		/*13*/	}},
+		{OPCODE_PAX_O,		{OPCODE_PAX_O,		ADDRMODE_ACC,		3,		"PXO",	&MKCpu::OpCodeXO 		/*14*/	}},
 		{OPCODE_ORA_ZPX,	{OPCODE_ORA_ZPX,	ADDRMODE_ZPX,		4,		"ORA",	&MKCpu::OpCodeOraZpx 		/*15*/	}},
 		{OPCODE_ASL_ZPX,	{OPCODE_ASL_ZPX,	ADDRMODE_ZPX,		6,		"ASL",	&MKCpu::OpCodeAslZpx 		/*16*/	}},
-		{OPCODE_ILL_17,		{OPCODE_ILL_17,		ADDRMODE_IMP,		4,		"HAC",	&MKCpu::OpCodeHac 		/*17*/	}},
+		{OPCODE_HAD_C,		{OPCODE_HAD_C,		ADDRMODE_IMP,		4,		"HAC",	&MKCpu::OpCodeHac 		/*17*/	}},
 		{OPCODE_CLC,		{OPCODE_CLC,		ADDRMODE_IMP,		2,		"CLC",	&MKCpu::OpCodeClc 		/*18*/	}},
 		{OPCODE_ORA_ABY,	{OPCODE_ORA_ABY,	ADDRMODE_ABY,		4,		"ORA",	&MKCpu::OpCodeOraAby 		/*19*/	}},
-		{OPCODE_ILL_1A,		{OPCODE_ILL_1A,		ADDRMODE_ACC,		2,		"PYA",	&MKCpu::OpCodeYA 		/*1a*/	}},
-		{OPCODE_ILL_1B,		{OPCODE_ILL_1B,		ADDRMODE_ACC,		7,		"PYX",	&MKCpu::OpCodeYX 		/*1b*/	}},
+		{OPCODE_PAY_A,		{OPCODE_PAY_A,		ADDRMODE_ACC,		2,		"PYA",	&MKCpu::OpCodeYA 		/*1a*/	}},
+		{OPCODE_PAY_X,		{OPCODE_PAY_X,		ADDRMODE_ACC,		7,		"PYX",	&MKCpu::OpCodeYX 		/*1b*/	}},
 		{OPCODE_ILL_1C,		{OPCODE_ILL_1C,		ADDRMODE_ACC,		4,		"PYY",	&MKCpu::OpCodeDud 		/*1c*/	}},
 		{OPCODE_ORA_ABX,	{OPCODE_ORA_ABX,	ADDRMODE_ABX,		4,		"ORA",	&MKCpu::OpCodeOraAbx 		/*1d*/	}},
 		{OPCODE_ASL_ABX,	{OPCODE_ASL_ABX,	ADDRMODE_ABX,		7,		"ASL",	&MKCpu::OpCodeAslAbx 		/*1e*/	}},
-		{OPCODE_ILL_1F,		{OPCODE_ILL_1F,		ADDRMODE_IMP,		2,		"CLO",	&MKCpu::OpCodeClo 		/*1f*/	}},
+		{OPCODE_CLO,		{OPCODE_CLO,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeClo 		/*1f*/	}},
 		{OPCODE_JSR_ABS,	{OPCODE_JSR_ABS,	ADDRMODE_ABS,		6,		"JSR",	&MKCpu::OpCodeJsrAbs 		/*20*/	}},
 		{OPCODE_AND_IZX,	{OPCODE_AND_IZX,	ADDRMODE_IZX,		6,		"AND",	&MKCpu::OpCodeAndIzx 		/*21*/	}},
 		{OPCODE_ILL_22,		{OPCODE_ILL_22,		ADDRMODE_UND,		0,		"ILL",	&MKCpu::OpCodeDud 		/*22*/	}},
@@ -184,24 +184,24 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_2F,		{OPCODE_ILL_2F,		ADDRMODE_ABS,		6,		"RLA",	&MKCpu::OpCodeDud 		/*2f*/	}},
 		{OPCODE_BMI_REL,	{OPCODE_BMI_REL,	ADDRMODE_REL,		2,		"BMI",	&MKCpu::OpCodeBmiRel 		/*30*/	}},
 		{OPCODE_AND_IZY,	{OPCODE_AND_IZY,	ADDRMODE_IZY,		5,		"AND",	&MKCpu::OpCodeAndIzy 		/*31*/	}},
-		{OPCODE_ILL_32,		{OPCODE_ILL_32,		ADDRMODE_ACC,		3,		"PZA",	&MKCpu::OpCodeZA 		/*32*/	}},
-		{OPCODE_ILL_33,		{OPCODE_ILL_33,		ADDRMODE_ACC,		3,		"PZX",	&MKCpu::OpCodeZX 		/*33*/	}},
+		{OPCODE_PAZ_A,		{OPCODE_PAZ_A,		ADDRMODE_ACC,		3,		"PZA",	&MKCpu::OpCodeZA 		/*32*/	}},
+		{OPCODE_PAZ_X,		{OPCODE_PAZ_X,		ADDRMODE_ACC,		3,		"PZX",	&MKCpu::OpCodeZX 		/*33*/	}},
 		{OPCODE_ILL_34,		{OPCODE_ILL_34,		ADDRMODE_ACC,		3,		"PZY",	&MKCpu::OpCodeDud 		/*34*/	}},
 		{OPCODE_AND_ZPX,	{OPCODE_AND_ZPX,	ADDRMODE_ZPX,		4,		"AND",	&MKCpu::OpCodeAndZpx 		/*35*/	}},
 		{OPCODE_ROL_ZPX,	{OPCODE_ROL_ZPX,	ADDRMODE_ZPX,		6,		"ROL",	&MKCpu::OpCodeRolZpx 		/*36*/	}},
 		{OPCODE_ILL_37,		{OPCODE_ILL_37,		ADDRMODE_ZPX,		6,		"RLA",	&MKCpu::OpCodeDud 		/*37*/	}},
 		{OPCODE_SEC,		{OPCODE_SEC,		ADDRMODE_IMP,		2,		"SEC",	&MKCpu::OpCodeSec		/*38*/	}},
 		{OPCODE_AND_ABY,	{OPCODE_AND_ABY,	ADDRMODE_ABY,		4,		"AND",	&MKCpu::OpCodeAndAby 		/*39*/	}},
-		{OPCODE_ILL_3A,		{OPCODE_ILL_3A,		ADDRMODE_ACC,		2,		"R1A",	&MKCpu::OpCodeR1A 		/*3a*/	}},
-		{OPCODE_ILL_3B,		{OPCODE_ILL_3B,		ADDRMODE_ACC,		7,		"R1X",	&MKCpu::OpCodeR1X 		/*3b*/	}},
+		{OPCODE_ROT_A,		{OPCODE_ROT_A,		ADDRMODE_ACC,		2,		"R1A",	&MKCpu::OpCodeR1A 		/*3a*/	}},
+		{OPCODE_ROT_X,		{OPCODE_ROT_X,		ADDRMODE_ACC,		7,		"R1X",	&MKCpu::OpCodeR1X 		/*3b*/	}},
 		{OPCODE_ILL_3C,		{OPCODE_ILL_3C,		ADDRMODE_ACC,		4,		"R1Y",	&MKCpu::OpCodeDud 		/*3c*/	}},
 		{OPCODE_AND_ABX,	{OPCODE_AND_ABX,	ADDRMODE_ABX,		4,		"AND",	&MKCpu::OpCodeAndAbx 		/*3d*/	}},
 		{OPCODE_ROL_ABX,	{OPCODE_ROL_ABX,	ADDRMODE_ABX,		7,		"ROL",	&MKCpu::OpCodeRolAbx 		/*3e*/	}},
-		{OPCODE_ILL_3F,		{OPCODE_ILL_3F,		ADDRMODE_IMP,		2,		"SEO",	&MKCpu::OpCodeSeo 		/*3f*/	}},
+		{OPCODE_SEO,		{OPCODE_SEO,		ADDRMODE_IMP,		2,		"SEO",	&MKCpu::OpCodeSeo		/*3f*/	}},
 		{OPCODE_RTI,		{OPCODE_RTI,		ADDRMODE_IMP,		6,		"RTI",	&MKCpu::OpCodeRti		/*40*/	}},
 		{OPCODE_EOR_IZX,	{OPCODE_EOR_IZX,	ADDRMODE_IZX,		6,		"EOR",	&MKCpu::OpCodeEorIzx 		/*41*/	}},
-		{OPCODE_ILL_42,		{OPCODE_ILL_42,		ADDRMODE_ACC,		3,		"RXA",	&MKCpu::OpCodeRXA 		/*42*/	}},
-		{OPCODE_ILL_43,		{OPCODE_ILL_43,		ADDRMODE_ACC,		3,		"RXX",	&MKCpu::OpCodeRXX 		/*43*/	}},
+		{OPCODE_ROTX_A,		{OPCODE_ROTX_A,		ADDRMODE_ACC,		3,		"RXA",	&MKCpu::OpCodeRXA 		/*42*/	}},
+		{OPCODE_ROTX_X,		{OPCODE_ROTX_X,		ADDRMODE_ACC,		3,		"RXX",	&MKCpu::OpCodeRXX 		/*43*/	}},
 		{OPCODE_ILL_44,		{OPCODE_ILL_44,		ADDRMODE_ACC,		3,		"RXY",	&MKCpu::OpCodeDud 		/*44*/	}},
 		{OPCODE_EOR_ZP,		{OPCODE_EOR_ZP,		ADDRMODE_ZP,		3,		"EOR",	&MKCpu::OpCodeEorZp 		/*45*/	}},
 		{OPCODE_LSR_ZP,		{OPCODE_LSR_ZP,		ADDRMODE_ZP,		5,		"LSR",	&MKCpu::OpCodeLsrZp 		/*46*/	}},
@@ -216,24 +216,24 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_4F,		{OPCODE_ILL_4F,		ADDRMODE_ABS,		6,		"SRE",	&MKCpu::OpCodeDud 		/*4f*/	}},
 		{OPCODE_BVC_REL,	{OPCODE_BVC_REL,	ADDRMODE_REL,		2,		"BVC",	&MKCpu::OpCodeBvcRel 		/*50*/	}},
 		{OPCODE_EOR_IZY,	{OPCODE_EOR_IZY,	ADDRMODE_IZY,		5,		"EOR",	&MKCpu::OpCodeEorIzy 		/*51*/	}},
-		{OPCODE_ILL_52,		{OPCODE_ILL_52,		ADDRMODE_ACC,		3,		"RYA",	&MKCpu::OpCodeRYA 		/*52*/	}},
-		{OPCODE_ILL_53,		{OPCODE_ILL_53,		ADDRMODE_ACC,		3,		"RYX",	&MKCpu::OpCodeRYX 		/*53*/	}},
+		{OPCODE_ROTY_A,		{OPCODE_ROTY_A,		ADDRMODE_ACC,		3,		"RYA",	&MKCpu::OpCodeRYA 		/*52*/	}},
+		{OPCODE_ROTY_X,		{OPCODE_ROTY_X,		ADDRMODE_ACC,		3,		"RYX",	&MKCpu::OpCodeRYX 		/*53*/	}},
 		{OPCODE_ILL_54,		{OPCODE_ILL_54,		ADDRMODE_ACC,		3,		"RYY",	&MKCpu::OpCodeDud 		/*54*/	}},
 		{OPCODE_EOR_ZPX,	{OPCODE_EOR_ZPX,	ADDRMODE_ZPX,		4,		"EOR",	&MKCpu::OpCodeEorZpx 		/*55*/	}},
 		{OPCODE_LSR_ZPX,	{OPCODE_LSR_ZPX,	ADDRMODE_ZPX,		6,		"LSR",	&MKCpu::OpCodeLsrZpx 		/*56*/	}},
 		{OPCODE_ILL_57,		{OPCODE_ILL_57,		ADDRMODE_ZPX,		6,		"SRE",	&MKCpu::OpCodeDud 		/*57*/	}},
 		{OPCODE_CLI,		{OPCODE_CLI,		ADDRMODE_IMP,		2,		"CLI",	&MKCpu::OpCodeCli		/*58*/	}},
 		{OPCODE_EOR_ABY,	{OPCODE_EOR_ABY,	ADDRMODE_ABY,		4,		"EOR",	&MKCpu::OpCodeEorAby 		/*59*/	}},
-		{OPCODE_ILL_5A,		{OPCODE_ILL_5A,		ADDRMODE_ACC,		2,		"RZA",	&MKCpu::OpCodeRZA 		/*5a*/	}},
-		{OPCODE_ILL_5B,		{OPCODE_ILL_5B,		ADDRMODE_ACC,		7,		"RZX",	&MKCpu::OpCodeRZX 		/*5b*/	}},
+		{OPCODE_ROTZ_A,		{OPCODE_ROTZ_A,		ADDRMODE_ACC,		2,		"RZA",	&MKCpu::OpCodeRZA 		/*5a*/	}},
+		{OPCODE_ROTZ_X,		{OPCODE_ROTZ_X,		ADDRMODE_ACC,		7,		"RZX",	&MKCpu::OpCodeRZX 		/*5b*/	}},
 		{OPCODE_ILL_5C,		{OPCODE_ILL_5C,		ADDRMODE_ACC,		4,		"RZY",	&MKCpu::OpCodeDud 		/*5c*/	}},
 		{OPCODE_EOR_ABX,	{OPCODE_EOR_ABX,	ADDRMODE_ABX,		4,		"EOR",	&MKCpu::OpCodeEorAbx 		/*5d*/	}},
 		{OPCODE_LSR_ABX,	{OPCODE_LSR_ABX,	ADDRMODE_ABX,		7,		"LSR",	&MKCpu::OpCodeLsrAbx 		/*5e*/	}},
 		{OPCODE_ILL_5F,		{OPCODE_ILL_5F,		ADDRMODE_ABX,		7,		"SRE",	&MKCpu::OpCodeDud 		/*5f*/	}},
 		{OPCODE_RTS,		{OPCODE_RTS,		ADDRMODE_IMP,		6,		"RTS",	&MKCpu::OpCodeRts		/*60*/	}},
 		{OPCODE_ADC_IZX,	{OPCODE_ADC_IZX,	ADDRMODE_IZX,		6,		"ADC",	&MKCpu::OpCodeAdcIzx 		/*61*/	}},
-		{OPCODE_ILL_62,		{OPCODE_ILL_62,		ADDRMODE_ACC,		4,		"FTA",	&MKCpu::OpCodeFTA 		/*62*/	}},
-		{OPCODE_ILL_63,		{OPCODE_ILL_63,		ADDRMODE_ACC,		4,		"FTX",	&MKCpu::OpCodeFTX 		/*63*/	}},
+		{OPCODE_QFT_A,		{OPCODE_QFT_A,		ADDRMODE_ACC,		4,		"FTA",	&MKCpu::OpCodeFTA 		/*62*/	}},
+		{OPCODE_QFT_X,		{OPCODE_QFT_X,		ADDRMODE_ACC,		4,		"FTX",	&MKCpu::OpCodeFTX 		/*63*/	}},
 		{OPCODE_ILL_64,		{OPCODE_ILL_64,		ADDRMODE_ACC,		4,		"FTY",	&MKCpu::OpCodeDud 		/*64*/	}},
 		{OPCODE_ADC_ZP,		{OPCODE_ADC_ZP,		ADDRMODE_ZP,		3,		"ADC",	&MKCpu::OpCodeAdcZp 		/*65*/	}},
 		{OPCODE_ROR_ZP,		{OPCODE_ROR_ZP,		ADDRMODE_ZP,		5,		"ROR",	&MKCpu::OpCodeRorZp 		/*66*/	}},
@@ -381,12 +381,12 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_F4,		{OPCODE_ILL_F4,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 		/*f4*/	}},
 		{OPCODE_SBC_ZPX,	{OPCODE_SBC_ZPX,	ADDRMODE_ZPX,		4,		"SBC",	&MKCpu::OpCodeSbcZpx 		/*f5*/	}},
 		{OPCODE_INC_ZPX,	{OPCODE_INC_ZPX,	ADDRMODE_ZPX,		6,		"INC",	&MKCpu::OpCodeIncZpx 		/*f6*/	}},
-		{OPCODE_ILL_F7,		{OPCODE_ILL_F7,		ADDRMODE_ZPX,		6,		"ISC",	&MKCpu::OpCodeDud 		/*f7*/	}},
+		{OPCODE_OCN_Z,		{OPCODE_OCN_Z,		ADDRMODE_ZPX,		6,		"OCZ",	&MKCpu::OpCodeOcnZero 		/*f7*/	}},
 		{OPCODE_SED,		{OPCODE_SED,		ADDRMODE_IMP,		2,		"SED",	&MKCpu::OpCodeSed 		/*f8*/	}},
 		{OPCODE_SBC_ABY,	{OPCODE_SBC_ABY,	ADDRMODE_ABY,		4,		"SBC",	&MKCpu::OpCodeSbcAby 		/*f9*/	}},
-		{OPCODE_ILL_FA,		{OPCODE_ILL_FA,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud 		/*fa*/	}},
-		{OPCODE_ILL_FB,		{OPCODE_ILL_FB,		ADDRMODE_ABY,		7,		"ISC",	&MKCpu::OpCodeDud 		/*fb*/	}},
-		{OPCODE_ILL_FC,		{OPCODE_ILL_FC,		ADDRMODE_ABX,		4,		"NOP",	&MKCpu::OpCodeDud 		/*fc*/	}},
+		{OPCODE_OCN_S,		{OPCODE_OCN_S,		ADDRMODE_IMP,		2,		"OCS",	&MKCpu::OpCodeOcnSign 		/*fa*/	}},
+		{OPCODE_OCN_C,		{OPCODE_OCN_C,		ADDRMODE_ABY,		7,		"OCC",	&MKCpu::OpCodeOcnCarry 		/*fb*/	}},
+		{OPCODE_OCN_O,		{OPCODE_OCN_O,		ADDRMODE_ABX,		4,		"OCO",	&MKCpu::OpCodeOcnOver 		/*fc*/	}},
 		{OPCODE_SBC_ABX,	{OPCODE_SBC_ABX,	ADDRMODE_ABX,		4,		"SBC",	&MKCpu::OpCodeSbcAbx 		/*fd*/	}},
 		{OPCODE_INC_ABX,	{OPCODE_INC_ABX,	ADDRMODE_ABX,		7,		"INC",	&MKCpu::OpCodeIncAbx 		/*fe*/	}},
 		{OPCODE_ILL_FF,		{OPCODE_ILL_FF,		ADDRMODE_ABX,		7,		"ISC",	&MKCpu::OpCodeDud 		/*ff*/	}}
@@ -394,8 +394,7 @@ void MKCpu::InitCpu()
 	mOpCodesMap = myOpCodesMap;
 	mReg.Acc = 0;
 	mReg.Acc16 = 0;
-	mReg.Flags = 0;// FLAGS_UNUSED;
-	//qRegs->SetBit(FLAGS_ORACLE_Q, true);
+	mReg.Flags = 0;
 	mReg.IndX = 0;
 	mReg.IndY = 0;
 	mReg.Ptr16 = 0;
@@ -465,22 +464,21 @@ void MKCpu::SetFlags(unsigned char reg)
 
 	SetFlag((0 == reg), FLAGS_ZERO);
 	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
-	SetFlag((mReg.Flags & FLAGS_UNUSED), FLAGS_UNUSED);
-	//SetFlag(true, FLAGS_UNUSED);
+	SetFlag((mReg.Flags & FLAGS_ORACLE), FLAGS_ORACLE);
 }
 
 void MKCpu::SetFlagsRegQ(unsigned char start)
 {
 	qRegs->SetZeroFlag(start, REG_LEN, FLAGS_ZERO_Q);
 	qRegs->SetSignFlag(start + REG_LEN - 1, FLAGS_SIGN_Q);
-	if (mReg.Flags & FLAGS_UNUSED) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	if (mReg.Flags & FLAGS_ORACLE) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
 	qRegs->SetBit(FLAGS_ZERO_Q, (0 == reg));
 	qRegs->SetBit(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
-	if (mReg.Flags & FLAGS_UNUSED) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	if (mReg.Flags & FLAGS_ORACLE) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 /*
@@ -494,11 +492,12 @@ void MKCpu::SetFlagsQ(unsigned char reg)
  */
 void MKCpu::MeasureFlagsQ()
 {
-	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_UNUSED);
+	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_ORACLE);
 	mReg.Flags |= qRegs->M(FLAGS_CARRY_Q) ? 	FLAGS_CARRY : 0;
 	mReg.Flags |= qRegs->M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
 	mReg.Flags |= qRegs->M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
 	mReg.Flags |= qRegs->M(FLAGS_SIGN_Q) ? 		FLAGS_SIGN : 0;
+	mReg.Flags |= qRegs->M(FLAGS_ORACLE_Q) ? 	FLAGS_ORACLE : 0;
 }
 
 /*
@@ -699,7 +698,7 @@ void MKCpu::CompareOpAcc(unsigned char val)
 	qRegs->DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
 	qRegs->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
 	qRegs->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
-	if (mReg.Flags & FLAGS_UNUSED) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
+	if (mReg.Flags & FLAGS_ORACLE) qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 	qRegs->INC(val, REGS_ACC_Q, REG_LEN);
 
 	SetFlag((mReg.Acc >= val), FLAGS_CARRY);
@@ -914,7 +913,6 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	}
-	//SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
 }
 
@@ -968,7 +966,6 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	
 	}
-	//SetFlag(true, FLAGS_UNUSED);
 	return mReg.Acc;
 }
 
@@ -3034,7 +3031,7 @@ void MKCpu::OpCodePhp()
 	arg16 = 0x100;
 	arg16 += mReg.PtrStack--;
 	MeasureFlagsQ();
-	arg8 = mReg.Flags | FLAGS_BRK;// | FLAGS_UNUSED;
+	arg8 = mReg.Flags | FLAGS_BRK;
 	mpMem->Poke8bit(arg16, arg8);
 }
 
@@ -3072,7 +3069,7 @@ void MKCpu::OpCodePlp()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	arg16 = 0x100;
 	arg16 += ++mReg.PtrStack;
-	mReg.Flags = mpMem->Peek8bit(arg16);// | FLAGS_UNUSED;
+	mReg.Flags = mpMem->Peek8bit(arg16);
 	SetFlagsQ(mReg.Flags);
 }
 
@@ -3109,8 +3106,8 @@ void MKCpu::OpCodeClo()
 {
 	// CLear Oracle, Implied ($1f : CLO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_UNUSED);
-	SetFlagQ(false, FLAGS_UNUSED);
+	SetFlag(false, FLAGS_ORACLE);
+	SetFlagQ(false, FLAGS_ORACLE);
 }
 
 /*
@@ -3140,8 +3137,8 @@ void MKCpu::OpCodeSeo()
 {
 	// SEear Oracle, Implied ($3f : SEO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(true, FLAGS_UNUSED);
-	SetFlagQ(true, FLAGS_UNUSED);
+	SetFlag(true, FLAGS_ORACLE);
+	SetFlagQ(true, FLAGS_ORACLE);
 }
 
 /*
@@ -3310,7 +3307,6 @@ void MKCpu::OpCodeRti()
 	arg16 += ++mReg.PtrStack;
 	mReg.Flags = mpMem->Peek8bit(arg16);
 	SetFlagsQ(mReg.Flags);
-	//SetFlag(true,FLAGS_UNUSED);
 	arg16++; mReg.PtrStack++;
 	mReg.PtrAddr = mpMem->Peek8bit(arg16);
 	arg16++; mReg.PtrStack++;
@@ -4464,6 +4460,19 @@ void MKCpu::OpCodeXX()
 
 /*
  *--------------------------------------------------------------------
+ * Method:		OpCodeXO()
+ * Purpose:		Apply Pauli X to the Oracle Flag
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeXO()
+{
+	qRegs->X(FLAGS_ORACLE_Q);
+}
+
+/*
+ *--------------------------------------------------------------------
  * Method:		OpCodeYA()
  * Purpose:		Apply Pauli Y to each bit in Acc and set flags
  * Arguments:		n/a
@@ -4674,28 +4683,54 @@ void MKCpu::OpCodeFTX()
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeEqo()
- * Purpose:		Engage Quantum Oracle
+ * Method:		OpCodeOcnZero()
+ * Purpose:		CCNOT(Zero, Oracle)
  * Arguments:		n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeEqo()
+void MKCpu::OpCodeOcnZero()
 {
-	SetFlag(true, FLAGS_UNUSED);
+	qRegs->CNOT(FLAGS_ZERO_Q, FLAGS_ORACLE_Q);
 }
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeDqo()
- * Purpose:		Disengage Quantum Oracle
+ * Method:		OpCodeOcnSign()
+ * Purpose:		CCNOT(Sign, Oracle)
  * Arguments:		n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeDqo()
+void MKCpu::OpCodeOcnSign()
 {
-	SetFlag(false, FLAGS_UNUSED);
+	qRegs->CNOT(FLAGS_SIGN_Q, FLAGS_ORACLE_Q);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeOcnCarry()
+ * Purpose:		CCNOT(Carry, Oracle)
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeOcnCarry()
+{
+	qRegs->CNOT(FLAGS_CARRY_Q, FLAGS_ORACLE_Q);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeOcnOver()
+ * Purpose:		CCNOT(Over, Oracle)
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeOcnOver()
+{
+	qRegs->CNOT(FLAGS_OVERFLOW_Q, FLAGS_ORACLE_Q);
 }
 
 /*

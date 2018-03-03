@@ -45,7 +45,7 @@ $(QRACKLIBS):
 
 clean: clean-custom
 	${RM} $(OBJ) testall.o $(BIN) bin2hex
-	#ENABLE_OPENCL=$(ENABLE_OPENCL) make -C clean
+	ENABLE_OPENCL=$(ENABLE_OPENCL) make -C qrack clean
 
 $(BIN): $(OBJ) ${QRACKLIBS}
 	$(CPP) $(LINKOBJ) $(QRACKLIBS) -o $(BIN) $(LDFLAGS) $(LIBS) $(SDLLIBS)
