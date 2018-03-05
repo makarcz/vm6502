@@ -381,7 +381,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_F4,		{OPCODE_ILL_F4,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 		/*f4*/	}},
 		{OPCODE_SBC_ZPX,	{OPCODE_SBC_ZPX,	ADDRMODE_ZPX,		4,		"SBC",	&MKCpu::OpCodeSbcZpx 		/*f5*/	}},
 		{OPCODE_INC_ZPX,	{OPCODE_INC_ZPX,	ADDRMODE_ZPX,		6,		"INC",	&MKCpu::OpCodeIncZpx 		/*f6*/	}},
-		{OPCODE_OCN_Z,		{OPCODE_OCN_Z,		ADDRMODE_ZPX,		6,		"OCZ",	&MKCpu::OpCodeOcnZero 		/*f7*/	}},
+		{OPCODE_OCN_Z,		{OPCODE_OCN_Z,		ADDRMODE_IMP,		6,		"OCZ",	&MKCpu::OpCodeOcnZero 		/*f7*/	}},
 		{OPCODE_SED,		{OPCODE_SED,		ADDRMODE_IMP,		2,		"SED",	&MKCpu::OpCodeSed 		/*f8*/	}},
 		{OPCODE_SBC_ABY,	{OPCODE_SBC_ABY,	ADDRMODE_ABY,		4,		"SBC",	&MKCpu::OpCodeSbcAby 		/*f9*/	}},
 		{OPCODE_OCN_S,		{OPCODE_OCN_S,		ADDRMODE_IMP,		2,		"OCS",	&MKCpu::OpCodeOcnSign 		/*fa*/	}},
