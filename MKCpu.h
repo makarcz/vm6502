@@ -78,13 +78,11 @@ struct Regs {
 
 #define REGS_ACC_Q		0
 #define REGS_INDX_Q		8
-#define REGS_CMPW_Q		20
 #define REG_LEN			8
 #define FLAGS_CARRY_Q		16
 #define FLAGS_ZERO_Q		17
 #define FLAGS_OVERFLOW_Q	18
 #define FLAGS_SIGN_Q		19
-#define FLAGS_ORACLE_Q		20
 
 /*
  * Virtual CPU, 6502 addressing modes:
@@ -181,7 +179,7 @@ enum eOpCodes {
 	OPCODE_ILL_1C		= 0x1C,	// illegal opcode
 	OPCODE_ORA_ABX	= 0x1D,	// bitwise OR with Accumulator, Absolute Indexed, X ($1D addrlo addrhi : ORA addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ASL_ABX	= 0x1E,	// Arithmetic Shift Left, Absolute Indexed, X ($1E addrlo addrhi : ASL addr,X ;addr=0..$FFFF), MEM=addr+X
-	OPCODE_CLO			= 0x1F,	// 6502Q: Clear Oracle Qubit
+	OPCODE_CLQ			= 0x1F,	// 6502Q: Clear Quantum Mode Flag
 	OPCODE_JSR_ABS	= 0x20,	// Jump to SubRoutine, Absolute ($20 addrlo addrhi : JSR addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_AND_IZX	=	0x21,	// bitwise AND with accumulator, Indexed Indirect ($21 arg : AND (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_ILL_22		= 0x22,	// illegal opcode
@@ -213,7 +211,7 @@ enum eOpCodes {
 	OPCODE_ILL_3C		= 0x3C,	// illegal opcode	
 	OPCODE_AND_ABX	=	0x3D,	// bitwise AND with accumulator, Absolute Indexed, X ($3D addrlo addrhi : AND addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ROL_ABX	= 0x3E,	// ROtate Left, Absolute Indexed, X ($3E addrlo addrhi : ROL addr,X ;addr=0..$FFFF), MEM=addr+X
-	OPCODE_SEO		= 0x3F,	// 6502Q: Set Oracle Flag
+	OPCODE_SEQ		= 0x3F,	// 6502Q: Set Quantum Mode Flag
 	OPCODE_RTI			= 0x40,	// ReTurn from Interrupt, Implied ($40 : RTI)
 	OPCODE_EOR_IZX	= 0x41,	// bitwise Exclusive OR, Indexed Indirect ($41 arg : EOR (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_ROTX_A		= 0x42,	// 6502Q: Quarter rotation on X axis for Accumulator
@@ -397,12 +395,12 @@ enum eOpCodes {
 	OPCODE_ILL_F4		= 0xF4,	// illegal opcode
 	OPCODE_SBC_ZPX	= 0xF5,	// SuBtract with Carry, Zero Page Indexed, X ($F5 arg : SBC arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_INC_ZPX	= 0xF6,	// INCrement memory, Zero Page Indexed, X ($F6 arg : INC arg,X ;arg=0..$FF), MEM=arg+X
-	OPCODE_OCN_Z		= 0xF7,	// 6502Q: CNot the oracle qubit with control: zero flag
+	OPCODE_QXN_Z		= 0xF7,	// 6502Q: CNot the oracle qubit with control: zero flag
 	OPCODE_SED			= 0xF8,	// SEt Decimal, Implied ($F8 : SED)
 	OPCODE_SBC_ABY	= 0xF9,	// SuBtract with Carry, Absolute Indexed, Y ($F9 addrlo addrhi : SBC addr,Y ;addr=0..$FFFF), MEM=addr+Y
-	OPCODE_OCN_S		= 0xFA,	// 6502Q: CNot the oracle qubit with control: sign flag
-	OPCODE_OCN_C		= 0xFB,	// 6502Q: CNot the oracle qubit with control: carry flag
-	OPCODE_OCN_O		= 0xFC,	// 6502Q: CNot the oracle qubit with control: overflow flag
+	OPCODE_QXN_S		= 0xFA,	// 6502Q: CNot the oracle qubit with control: sign flag
+	OPCODE_QXN_C		= 0xFB,	// 6502Q: CNot the oracle qubit with control: carry flag
+	OPCODE_ILL_FC		= 0xFC,	// illegal opcode
 	OPCODE_SBC_ABX	= 0xFD,	// SuBtract with Carry, Absolute Indexed, X ($FD addrlo addrhi : SBC addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_INC_ABX	= 0xFE,	// INCrement memory, Absolute Indexed, X ($FE addrlo addrhi : INC addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ILL_FF		= 0xFF	// illegal opcode
@@ -456,7 +454,7 @@ enum eCpuFlagMasks {
 	FLAGS_IRQ				= 0x04,		// 2: I
 	FLAGS_DEC				= 0x08,		// 3: D
 	FLAGS_BRK				= 0x10,		// 4: B (Clear if interrupt vectoring, set if BRK or PHP)
-	FLAGS_ORACLE		= 0x20,		// 5: 6502Q: Oracle Qubit Flag
+	FLAGS_QUANTUM		= 0x20,		// 5: 6502Q: Quantum mode flag
 	FLAGS_OVERFLOW 	= 0x40,		// 6: V
 	FLAGS_SIGN 			= 0x80		// 7: N
 };
@@ -733,15 +731,16 @@ class MKCpu
 		//void OpCodeCXA();
 		//void OpCodeCAX();
 		void OpCodeLdaAba();
-		void OpCodeHao();
+		void OpCodeHaz();
+		void OpCodeHas();
 		void OpCodeHac();
 		void OpCodeHav();
-		void OpCodeClo();
-		void OpCodeSeo();
-		void OpCodeOcnZero();
-		void OpCodeOcnSign();
-		void OpCodeOcnCarry();
-		void OpCodeOcnOver();
+		void OpCodeClq();
+		void OpCodeSeq();
+		void OpCodeQxZero();
+		void OpCodeQxSign();
+		void OpCodeQxCarry();
+		void OpCodeQxOver();
 };
 
 } // namespace MKBasic
