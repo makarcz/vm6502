@@ -36,7 +36,7 @@
 #include <string.h>
 #include "MKCpu.h"
 #include "MKGenException.h"
-//#include <iostream>
+#include <iostream>
 
 #if ENABLE_OPENCL
 Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL;
@@ -703,7 +703,8 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 void MKCpu::CompareOpAcc(unsigned char val)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		qReg->DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
+		qReg->DECC(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+		qReg->X(FLAGS_CARRY_Q);
 		qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
 		qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
@@ -729,11 +730,16 @@ void MKCpu::CompareOpAcc(unsigned char val)
  */
 void MKCpu::CompareOpIndX(unsigned char val)
 {	
-	qReg->SetBit(FLAGS_CARRY_Q, false);
-	qReg->DECSC(val, REGS_INDX_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
-	qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
-	qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
-	qReg->INC(val, REGS_INDX_Q, REG_LEN);
+	if (mReg.Flags & FLAGS_QUANTUM) {
+		qReg->DECC(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
+		qReg->X(FLAGS_CARRY_Q);
+		qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
+		qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+		qReg->INC(val, REGS_INDX_Q, REG_LEN);
+	}
+	else {
+		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+	}
 
 	SetFlag((mReg.IndX >= val), FLAGS_CARRY);
 	val = mReg.IndX - val;
@@ -4850,11 +4856,11 @@ Regs *MKCpu::ExecOpcode(unsigned short memaddr)
 		Add2History(histentry);
 	}
 
-	//for (int i = 0; i < 8; i++) {
-	//	std::cout << "Bit " << i <<" , chance of 1: " << qReg->Prob(i) << std::endl;
-	//}
+	for (int i = 0; i < 8; i++) {
+		std::cout << "Bit " << i <<" , chance of 1: " << qReg->Prob(i) << std::endl;
+	}
 
-	//std::cout << "Bit " << FLAGS_ZERO_Q <<" , chance of 1: " << qReg->Prob(FLAGS_ZERO_Q) << std::endl;
+	std::cout << "Bit " << FLAGS_ZERO_Q <<" , chance of 1: " << qReg->Prob(FLAGS_ZERO_Q) << std::endl;
 	
 	return &mReg;
 }

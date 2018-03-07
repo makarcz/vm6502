@@ -404,7 +404,7 @@ $0b00
 ;		haa
 ;		qxz
 ;		haa
-;		cmp #00
+;		adc #00
 ;		clq
 ;		dey
 ;		bne GITER
@@ -414,7 +414,7 @@ $0b00
 ;		brk
 ;
 $1f $a0 $0c $a9 $00 $69 $00 $07 $b7 $02 $3f $c9 $64 $02 $f7 $02
-$c9 $00 $1f $88 $d0 $f4 $c9 $64 $d0 $e6 $81 $ff $0b $00 
+$69 $00 $1f $88 $d0 $f4 $c9 $64 $d0 $e6 $81 $ff $0b $00 
 ORG
 $0f00
 $ff $fe $fd $fc $fb $fa $f9 $f8 $f7 $f6 $f5 $f4 $f3 $f2 $f1 $f0
