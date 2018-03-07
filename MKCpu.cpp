@@ -36,6 +36,7 @@
 #include <string.h>
 #include "MKCpu.h"
 #include "MKGenException.h"
+#include <iostream>
 
 #if ENABLE_OPENCL
 Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL;
@@ -473,21 +474,15 @@ void MKCpu::SetFlags(unsigned char reg)
 
 void MKCpu::SetFlagsRegQ(unsigned char start)
 {
-	if (!(mReg.Flags & FLAGS_QUANTUM)) {
-		qReg->SetBit(FLAGS_ZERO_Q, false);
-		qReg->SetBit(FLAGS_SIGN_Q, false);
+	if (mReg.Flags & FLAGS_QUANTUM) {
+		qReg->SetZeroFlag(start, REG_LEN, FLAGS_ZERO_Q);
+		qReg->SetSignFlag(start + REG_LEN - 1, FLAGS_SIGN_Q);
 	}
-	qReg->SetZeroFlag(start, REG_LEN, FLAGS_ZERO_Q);
-	qReg->SetSignFlag(start + REG_LEN - 1, FLAGS_SIGN_Q);
 }
 
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		if (0 == reg) qReg->X(FLAGS_ZERO_Q);
-		if ((reg & FLAGS_SIGN) == FLAGS_SIGN) qReg->X(FLAGS_SIGN_Q);
-	}
-	else {
 		qReg->SetBit(FLAGS_ZERO_Q, (0 == reg));
 		qReg->SetBit(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
 	}
@@ -504,11 +499,13 @@ void MKCpu::SetFlagsQ(unsigned char reg)
  */
 void MKCpu::MeasureFlagsQ()
 {
-	mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_QUANTUM);
-	mReg.Flags |= qReg->M(FLAGS_CARRY_Q) ? 	FLAGS_CARRY : 0;
-	mReg.Flags |= qReg->M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
-	mReg.Flags |= qReg->M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
-	mReg.Flags |= qReg->M(FLAGS_SIGN_Q) ? 		FLAGS_SIGN : 0;
+	if (mReg.Flags & FLAGS_QUANTUM) {
+		mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_QUANTUM);
+		mReg.Flags |= qReg->M(FLAGS_CARRY_Q) ? 	FLAGS_CARRY : 0;
+		mReg.Flags |= qReg->M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
+		mReg.Flags |= qReg->M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
+		mReg.Flags |= qReg->M(FLAGS_SIGN_Q) ? 		FLAGS_SIGN : 0;
+	}
 }
 
 /*
@@ -704,12 +701,17 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
  *--------------------------------------------------------------------
  */
 void MKCpu::CompareOpAcc(unsigned char val)
-{	
-	qReg->SetBit(FLAGS_CARRY_Q, false);
-	qReg->DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
-	qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
-	qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
-	qReg->INC(val, REGS_ACC_Q, REG_LEN);
+{
+	if (mReg.Flags & FLAGS_QUANTUM) {
+		qReg->SetBit(FLAGS_CARRY_Q, false);
+		qReg->DECSC(val, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
+		qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
+		qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+		qReg->INC(val, REGS_ACC_Q, REG_LEN);
+	}
+	else {
+		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+	}
 
 	SetFlag((mReg.Acc >= val), FLAGS_CARRY);
 	val = mReg.Acc - val;
@@ -839,18 +841,20 @@ unsigned short MKCpu::Bcd2Num(unsigned char v)
 bool MKCpu::CheckFlag(unsigned char flag)
 {
 	unsigned char partFlag;
-	if (flag & FLAGS_CARRY) partFlag = qReg->M(FLAGS_CARRY_Q) ? FLAGS_CARRY : 0;
-	mReg.Flags &= ~FLAGS_CARRY;
-	mReg.Flags |= partFlag;
-	if (flag & FLAGS_SIGN) partFlag = qReg->M(FLAGS_SIGN_Q) ? FLAGS_SIGN : 0;
-	mReg.Flags &= ~FLAGS_SIGN;
-	mReg.Flags |= partFlag;
-	if (flag & FLAGS_ZERO) partFlag = qReg->M(FLAGS_ZERO_Q) ? FLAGS_ZERO : 0;
-	mReg.Flags &= ~FLAGS_SIGN;
-	mReg.Flags |= partFlag;
-	if (flag & FLAGS_OVERFLOW) partFlag = qReg->M(FLAGS_OVERFLOW_Q) ? FLAGS_SIGN : 0;
-	mReg.Flags &= ~FLAGS_SIGN;
-	mReg.Flags |= partFlag;
+	if (mReg.Flags & FLAGS_QUANTUM) {
+		if (flag & FLAGS_CARRY) partFlag = qReg->M(FLAGS_CARRY_Q) ? FLAGS_CARRY : 0;
+		mReg.Flags &= ~FLAGS_CARRY;
+		mReg.Flags |= partFlag;
+		if (flag & FLAGS_SIGN) partFlag = qReg->M(FLAGS_SIGN_Q) ? FLAGS_SIGN : 0;
+		mReg.Flags &= ~FLAGS_SIGN;
+		mReg.Flags |= partFlag;
+		if (flag & FLAGS_ZERO) partFlag = qReg->M(FLAGS_ZERO_Q) ? FLAGS_ZERO : 0;
+		mReg.Flags &= ~FLAGS_SIGN;
+		mReg.Flags |= partFlag;
+		if (flag & FLAGS_OVERFLOW) partFlag = qReg->M(FLAGS_OVERFLOW_Q) ? FLAGS_SIGN : 0;
+		mReg.Flags &= ~FLAGS_SIGN;
+		mReg.Flags |= partFlag;
+        }
 	return ((mReg.Flags & flag) == flag);
 }
 
@@ -4846,6 +4850,12 @@ Regs *MKCpu::ExecOpcode(unsigned short memaddr)
 		histentry.LastArg = mReg.LastArg;
 		Add2History(histentry);
 	}
+
+	for (int i = 0; i < 8; i++) {
+		std::cout << "Bit " << i <<" , chance of 1: " << qReg->Prob(i) << std::endl;
+	}
+
+	std::cout << "Bit " << FLAGS_ZERO_Q <<" , chance of 1: " << qReg->Prob(FLAGS_ZERO_Q) << std::endl;
 	
 	return &mReg;
 }

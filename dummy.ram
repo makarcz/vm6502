@@ -392,30 +392,26 @@ $0b00
 ; perform Grover's search on $0f00 to $0fff
 ; store result in $0bff
 ;
-; GINIT:	seo
-;		hao
-; 		ldx #$00
-; 		hax
-; 		lda $0f00,X
+; GINIT:	clq
 ;		ldy #$08
-;		sbc #$64
-; GITER:	ocz
+; 		lda #00
 ;		haa
-;		pxa
-;		r1a
-;		r1a
-;		pxa
+; GITER:	seq
+;		cmp #64
 ;		haa
+;		qxz
+;		haa
+;		cmp #00
+;		clq
 ;		dey
 ;		bne GITER
-;		adc #64
 ;		cmp #64
 ;		bne GINIT
-;		stx $0bff
+;		sta $0bff
 ;		brk
 ;
-$3f $07 $a2 $00 $03 $bd $00 $0f $a0 $08 $e9 $64 $f7 $02 $12 $3a
-$3a $12 $02 $88 $d0 $f6 $69 $64 $c9 $64 $d0 $e4 $8e $ff $0b $00
+$1f $a0 $0c $a9 $00 $02 $3f $c9 $64 $02 $f7 $02 $c9 $00 $1f $88
+$d0 $f3 $c9 $64 $d0 $ea $81 $ff $0b $00 
 ORG
 $0f00
 $ff $fe $fd $fc $fb $fa $f9 $f8 $f7 $f6 $f5 $f4 $f3 $f2 $f1 $f0
