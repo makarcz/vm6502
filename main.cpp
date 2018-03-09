@@ -377,7 +377,7 @@ bool ShowRegs(Regs *preg, VMachine *pvm, bool ioecho, bool showiostat)
 	cout << sBuf << endl;
 	cout << "*-------------*-----------------------*----------*----------*";
 	cout << endl;
-	cout << "|  NV-BDIZC   |";
+	cout << "|  NVQBDIZC   |";
 	cout << " : " << diss_buf << "          " << endl;
 	cout << "|  " << bitset<8>((int)preg->Flags) << "   |";
 	cout << " : " << curr_buf << "          " << endl;
@@ -1163,10 +1163,12 @@ int main(int argc, char *argv[]) {
 		if (NULL != pconio) pconio->CloseCursesScr();
 		cout << ex.GetCause() << endl;
 	}
-	catch (...) {
+/*
+    catch (...) {
 		if (NULL != pconio) pconio->CloseCursesScr();
 		cout << "ERROR: Fatal." << endl;
 	}
+*/
 	return 0;
 }
 
