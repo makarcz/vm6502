@@ -150,7 +150,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_IMP,		2,		"NOP",	&MKCpu::OpCodeDud		/*0c*/	}},
 		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 		/*0d*/	}},
 		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 		/*0e*/	}},
-		{OPCODE_ILL_0F,		{OPCODE_ILL_0F,		ADDRMODE_ABS,		6,		"SLO",	&MKCpu::OpCodeDud 		/*0f*/	}},
+		{OPCODE_SEN,		{OPCODE_SEN,		ADDRMODE_IMP,		6,		"SEN",	&MKCpu::OpCodeSen 		/*0f*/	}},
 		{OPCODE_BPL_REL,	{OPCODE_BPL_REL,	ADDRMODE_REL,		2,		"BPL",	&MKCpu::OpCodeBplRel 		/*10*/	}},
 		{OPCODE_ORA_IZY,	{OPCODE_ORA_IZY,	ADDRMODE_IZY,		5,		"ORA",	&MKCpu::OpCodeOraIzy 		/*11*/	}},
 		{OPCODE_PAX_A,		{OPCODE_PAX_A,		ADDRMODE_IMP,		3,		"PXA",	&MKCpu::OpCodeXA 		/*12*/	}},
@@ -174,15 +174,15 @@ void MKCpu::InitCpu()
 		{OPCODE_BIT_ZP,		{OPCODE_BIT_ZP,		ADDRMODE_ZP,		3,		"BIT",	&MKCpu::OpCodeBitZp 		/*24*/	}},
 		{OPCODE_AND_ZP,		{OPCODE_AND_ZP,		ADDRMODE_ZP,		3,		"AND",	&MKCpu::OpCodeAndZp 		/*25*/	}},
 		{OPCODE_ROL_ZP,		{OPCODE_ROL_ZP,		ADDRMODE_ZP,		5,		"ROL",	&MKCpu::OpCodeRolZp 		/*26*/	}},
-		{OPCODE_ILL_27,		{OPCODE_ILL_27,		ADDRMODE_ZP,		5,		"RLA",	&MKCpu::OpCodeDud 		/*27*/	}},
+		{OPCODE_SEV,		{OPCODE_SEV,		ADDRMODE_IMP,		2,		"SEV",	&MKCpu::OpCodeSev 		/*27*/	}},
 		{OPCODE_PLP,		{OPCODE_PLP,		ADDRMODE_IMP,		4,		"PLP",	&MKCpu::OpCodePlp		/*28*/	}},
 		{OPCODE_AND_IMM,	{OPCODE_AND_IMM,	ADDRMODE_IMM,		2,		"AND",	&MKCpu::OpCodeAndImm 		/*29*/	}},
 		{OPCODE_ROL,		{OPCODE_ROL,		ADDRMODE_ACC,		2,		"ROL",	&MKCpu::OpCodeRolAcc		/*2a*/	}},
-		{OPCODE_ILL_2B,		{OPCODE_ILL_2B,		ADDRMODE_IMM,		2,		"ANC",	&MKCpu::OpCodeDud 		/*2b*/	}},
+		{OPCODE_SEZ,		{OPCODE_SEZ,		ADDRMODE_IMP,		2,		"SEZ",	&MKCpu::OpCodeSez 		/*2b*/	}},
 		{OPCODE_BIT_ABS,	{OPCODE_BIT_ABS,	ADDRMODE_ABS,		4,		"BIT",	&MKCpu::OpCodeBitAbs 		/*2c*/	}},
 		{OPCODE_AND_ABS,	{OPCODE_AND_ABS,	ADDRMODE_ABS,		4,		"AND",	&MKCpu::OpCodeAndAbs 		/*2d*/	}},
 		{OPCODE_ROL_ABS,	{OPCODE_ROL_ABS,	ADDRMODE_ABS,		6,		"ROL",	&MKCpu::OpCodeRolAbs 		/*2e*/	}},
-		{OPCODE_ILL_2F,		{OPCODE_ILL_2F,		ADDRMODE_ABS,		6,		"RLA",	&MKCpu::OpCodeDud 		/*2f*/	}},
+		{OPCODE_CLN,		{OPCODE_CLN,		ADDRMODE_IMP,		2,		"CLN",	&MKCpu::OpCodeCln 		/*2f*/	}},
 		{OPCODE_BMI_REL,	{OPCODE_BMI_REL,	ADDRMODE_REL,		2,		"BMI",	&MKCpu::OpCodeBmiRel 		/*30*/	}},
 		{OPCODE_AND_IZY,	{OPCODE_AND_IZY,	ADDRMODE_IZY,		5,		"AND",	&MKCpu::OpCodeAndIzy 		/*31*/	}},
 		{OPCODE_PAZ_A,		{OPCODE_PAZ_A,		ADDRMODE_IMP,		3,		"PZA",	&MKCpu::OpCodeZA 		/*32*/	}},
@@ -190,7 +190,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_34,		{OPCODE_ILL_34,		ADDRMODE_IMP,		3,		"PZY",	&MKCpu::OpCodeDud 		/*34*/	}},
 		{OPCODE_AND_ZPX,	{OPCODE_AND_ZPX,	ADDRMODE_ZPX,		4,		"AND",	&MKCpu::OpCodeAndZpx 		/*35*/	}},
 		{OPCODE_ROL_ZPX,	{OPCODE_ROL_ZPX,	ADDRMODE_ZPX,		6,		"ROL",	&MKCpu::OpCodeRolZpx 		/*36*/	}},
-		{OPCODE_ILL_37,		{OPCODE_ILL_37,		ADDRMODE_ZPX,		6,		"RLA",	&MKCpu::OpCodeDud 		/*37*/	}},
+		{OPCODE_ILL_37,		{OPCODE_ILL_37,		ADDRMODE_ZPX,		2,		"RLA",	&MKCpu::OpCodeDud  		/*37*/	}},
 		{OPCODE_SEC,		{OPCODE_SEC,		ADDRMODE_IMP,		2,		"SEC",	&MKCpu::OpCodeSec		/*38*/	}},
 		{OPCODE_AND_ABY,	{OPCODE_AND_ABY,	ADDRMODE_ABY,		4,		"AND",	&MKCpu::OpCodeAndAby 		/*39*/	}},
 		{OPCODE_ROT_A,		{OPCODE_ROT_A,		ADDRMODE_IMP,		2,		"R1A",	&MKCpu::OpCodeR1A 		/*3a*/	}},
@@ -206,7 +206,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_44,		{OPCODE_ILL_44,		ADDRMODE_IMP,		3,		"RXY",	&MKCpu::OpCodeDud 		/*44*/	}},
 		{OPCODE_EOR_ZP,		{OPCODE_EOR_ZP,		ADDRMODE_ZP,		3,		"EOR",	&MKCpu::OpCodeEorZp 		/*45*/	}},
 		{OPCODE_LSR_ZP,		{OPCODE_LSR_ZP,		ADDRMODE_ZP,		5,		"LSR",	&MKCpu::OpCodeLsrZp 		/*46*/	}},
-		{OPCODE_ILL_47,		{OPCODE_ILL_47,		ADDRMODE_ZP,		5,		"SRE",	&MKCpu::OpCodeDud 		/*47*/	}},
+		{OPCODE_CLZ,		{OPCODE_CLZ,		ADDRMODE_IMP,		2,		"CLZ",	&MKCpu::OpCodeClz 		/*47*/	}},
 		{OPCODE_PHA,		{OPCODE_PHA,		ADDRMODE_IMP,		3,		"PHA",	&MKCpu::OpCodePha 		/*48*/	}},
 		{OPCODE_EOR_IMM,	{OPCODE_EOR_IMM,	ADDRMODE_IMM,		2,		"EOR",	&MKCpu::OpCodeEorImm 		/*49*/	}},
 		{OPCODE_LSR,		{OPCODE_LSR,		ADDRMODE_ACC,		2,		"LSR",	&MKCpu::OpCodeLsrAcc		/*4a*/	}},
@@ -382,12 +382,12 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_F4,		{OPCODE_ILL_F4,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 		/*f4*/	}},
 		{OPCODE_SBC_ZPX,	{OPCODE_SBC_ZPX,	ADDRMODE_ZPX,		4,		"SBC",	&MKCpu::OpCodeSbcZpx 		/*f5*/	}},
 		{OPCODE_INC_ZPX,	{OPCODE_INC_ZPX,	ADDRMODE_ZPX,		6,		"INC",	&MKCpu::OpCodeIncZpx 		/*f6*/	}},
-		{OPCODE_QXN_Z,		{OPCODE_QXN_Z,		ADDRMODE_IMP,		6,		"QXZ",	&MKCpu::OpCodeQxZero 		/*f7*/	}},
+		{OPCODE_QZN_Z,		{OPCODE_QZN_Z,		ADDRMODE_IMP,		6,		"QZZ",	&MKCpu::OpCodeQzZero 		/*f7*/	}},
 		{OPCODE_SED,		{OPCODE_SED,		ADDRMODE_IMP,		2,		"SED",	&MKCpu::OpCodeSed 		/*f8*/	}},
 		{OPCODE_SBC_ABY,	{OPCODE_SBC_ABY,	ADDRMODE_ABY,		4,		"SBC",	&MKCpu::OpCodeSbcAby 		/*f9*/	}},
-		{OPCODE_QXN_S,		{OPCODE_QXN_S,		ADDRMODE_IMP,		2,		"QXS",	&MKCpu::OpCodeQxSign 		/*fa*/	}},
-		{OPCODE_QXN_C,		{OPCODE_QXN_C,		ADDRMODE_IMP,		2,		"QXC",	&MKCpu::OpCodeQxCarry 		/*fb*/	}},
-		{OPCODE_ILL_FC,		{OPCODE_ILL_FC,		ADDRMODE_IMP,		2,		"QXO",	&MKCpu::OpCodeQxOver 		/*fc*/	}},
+		{OPCODE_QZN_S,		{OPCODE_QZN_S,		ADDRMODE_IMP,		2,		"QZS",	&MKCpu::OpCodeQzSign 		/*fa*/	}},
+		{OPCODE_QZN_C,		{OPCODE_QZN_C,		ADDRMODE_IMP,		2,		"QZC",	&MKCpu::OpCodeQzCarry 		/*fb*/	}},
+		{OPCODE_ILL_FC,		{OPCODE_ILL_FC,		ADDRMODE_IMP,		2,		"QZO",	&MKCpu::OpCodeQzOver 		/*fc*/	}},
 		{OPCODE_SBC_ABX,	{OPCODE_SBC_ABX,	ADDRMODE_ABX,		4,		"SBC",	&MKCpu::OpCodeSbcAbx 		/*fd*/	}},
 		{OPCODE_INC_ABX,	{OPCODE_INC_ABX,	ADDRMODE_ABX,		7,		"INC",	&MKCpu::OpCodeIncAbx 		/*fe*/	}},
 		{OPCODE_ILL_FF,		{OPCODE_ILL_FF,		ADDRMODE_ABX,		7,		"ISC",	&MKCpu::OpCodeDud 		/*ff*/	}}
@@ -462,11 +462,7 @@ unsigned char MKCpu::RotateClassical(unsigned char reg) {
  */
 void MKCpu::SetFlags(unsigned char reg)
 {
-	if (mReg.Flags & FLAGS_QUANTUM) {
-		SetFlag((0 == reg) != (mReg.Flags & FLAGS_ZERO), FLAGS_ZERO);
-		SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN) != (mReg.Flags & FLAGS_SIGN), FLAGS_SIGN);
-	}
-	else {
+	if (!(mReg.Flags & FLAGS_QUANTUM)) {
 		SetFlag((0 == reg), FLAGS_ZERO);
 		SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
 	}
@@ -703,8 +699,9 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 void MKCpu::CompareOpAcc(unsigned char val)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		qReg->DECC(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
-		qReg->X(FLAGS_CARRY_Q);
+		//qReg->DECC(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+		//qReg->X(FLAGS_CARRY_Q);
+		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
 		qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
 		qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
@@ -3269,66 +3266,62 @@ void MKCpu::OpCodeHaz()
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeQxZero()
- * Purpose:		X operator on zero flag qubit, IMPlied addressing mode.
+ * Method:		OpCodeQzZero()
+ * Purpose:		Z operator on zero flag qubit, IMPlied addressing mode.
  * Arguments:	n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeQxZero()
+void MKCpu::OpCodeQzZero()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->X(FLAGS_ZERO_Q);
-	if (mReg.Flags & FLAGS_QUANTUM) mReg.Flags ^= FLAGS_ZERO;
+	qReg->Z(FLAGS_ZERO_Q);
 }
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeQxSign()
- * Purpose:		X operator on sign flag qubit, IMPlied addressing mode.
+ * Method:		OpCodeQzSign()
+ * Purpose:		Z operator on sign flag qubit, IMPlied addressing mode.
  * Arguments:	n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeQxSign()
+void MKCpu::OpCodeQzSign()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->X(FLAGS_SIGN_Q);
-	if (mReg.Flags & FLAGS_QUANTUM) mReg.Flags ^= FLAGS_SIGN;
+	qReg->Z(FLAGS_SIGN_Q);
 }
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeQxCarry()
- * Purpose:		X operator on carry flag qubit, IMPlied addressing mode.
+ * Method:		OpCodeQzCarry()
+ * Purpose:		Z operator on carry flag qubit, IMPlied addressing mode.
  * Arguments:	n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeQxCarry()
+void MKCpu::OpCodeQzCarry()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->X(FLAGS_CARRY_Q);
-	if (mReg.Flags & FLAGS_QUANTUM) mReg.Flags ^= FLAGS_CARRY;
+	qReg->Z(FLAGS_CARRY_Q);
 }
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeQxOver()
- * Purpose:		X operator on overflow flag qubit, IMPlied addressing mode.
+ * Method:		OpCodeQzOver()
+ * Purpose:		Z operator on overflow flag qubit, IMPlied addressing mode.
  * Arguments:	n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeQxOver()
+void MKCpu::OpCodeQzOver()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->X(FLAGS_OVERFLOW_Q);
-	if (mReg.Flags & FLAGS_QUANTUM) mReg.Flags ^= FLAGS_OVERFLOW;
+	qReg->Z(FLAGS_OVERFLOW_Q);
 }
 
 /*
@@ -4780,6 +4773,76 @@ void MKCpu::OpCodeFTX()
 	qReg->QFT(REGS_INDX_Q, REG_LEN);
 	SetFlagsRegQ(REGS_INDX_Q);
 	//TODO: Implement classical Fourier transform, here.
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeSen()
+ * Purpose:		SEt Negative flag, for quantum mode
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeSen()
+{
+	mReg.Flags |= FLAGS_SIGN;
+	qReg->SetBit(FLAGS_SIGN_Q, true);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeCln()
+ * Purpose:		CLear Negative flag, for quantum mode
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeCln()
+{
+	mReg.Flags &= (~FLAGS_SIGN);
+	qReg->SetBit(FLAGS_SIGN_Q, false);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeSev()
+ * Purpose:		SEt oVerflow flag, for quantum mode
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeSev()
+{
+	mReg.Flags |= FLAGS_OVERFLOW;
+	qReg->SetBit(FLAGS_OVERFLOW_Q, true);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeSez()
+ * Purpose:		SEt Zero flag, for quantum mode
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeSez()
+{
+	mReg.Flags |= FLAGS_ZERO;
+	qReg->SetBit(FLAGS_ZERO_Q, true);
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeClz()
+ * Purpose:		CLear Zero flag, for quantum mode
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeClz()
+{
+	mReg.Flags &= (~FLAGS_ZERO);
+	qReg->SetBit(FLAGS_ZERO_Q, false);
 }
 
 /*

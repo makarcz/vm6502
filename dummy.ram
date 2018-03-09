@@ -396,15 +396,14 @@ $0b00
 ;		ldy #$08
 ; 		lda #00
 ;		adc #00 	;clear flags
-;		hav		;disengage overflow
-;		has		;disengage sign
 ;		haa
 ; GITER:	seq
+;		sez
 ;		cmp #64
 ;		haa
-;		qxz
+;		qzz
+;		clz
 ;		haa
-;		adc #00
 ;		clq
 ;		dey
 ;		bne GITER
@@ -413,8 +412,8 @@ $0b00
 ;		sta $0bff
 ;		brk
 ;
-$1f $a0 $0c $a9 $00 $69 $00 $07 $b7 $02 $3f $c9 $64 $02 $f7 $02
-$69 $00 $1f $88 $d0 $f4 $c9 $64 $d0 $e6 $81 $ff $0b $00 
+$1f $a0 $0c $a9 $00 $69 $00 $02 $3f $2b $c9 $64 $02 $f7 $47 $02
+$1f $88 $d0 $f4 $c9 $64 $d0 $e8 $81 $ff $0b $00 
 ORG
 $0f00
 $ff $fe $fd $fc $fb $fa $f9 $f8 $f7 $f6 $f5 $f4 $f3 $f2 $f1 $f0
