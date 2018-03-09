@@ -395,11 +395,11 @@ enum eOpCodes {
 	OPCODE_ILL_F4		= 0xF4,	// illegal opcode
 	OPCODE_SBC_ZPX	= 0xF5,	// SuBtract with Carry, Zero Page Indexed, X ($F5 arg : SBC arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_INC_ZPX	= 0xF6,	// INCrement memory, Zero Page Indexed, X ($F6 arg : INC arg,X ;arg=0..$FF), MEM=arg+X
-	OPCODE_QZN_Z		= 0xF7,	// 6502Q: CNot the oracle qubit with control: zero flag
+	OPCODE_QZN_Z		= 0xF7,	// 6502Q: Apply Z operator to zero flag
 	OPCODE_SED			= 0xF8,	// SEt Decimal, Implied ($F8 : SED)
 	OPCODE_SBC_ABY	= 0xF9,	// SuBtract with Carry, Absolute Indexed, Y ($F9 addrlo addrhi : SBC addr,Y ;addr=0..$FFFF), MEM=addr+Y
-	OPCODE_QZN_S		= 0xFA,	// 6502Q: CNot the oracle qubit with control: sign flag
-	OPCODE_QZN_C		= 0xFB,	// 6502Q: CNot the oracle qubit with control: carry flag
+	OPCODE_QZN_S		= 0xFA,	// 6502Q: Apply Z operator to negative flag
+	OPCODE_QZN_C		= 0xFB,	// 6502Q: Apply Z operator to carry flag
 	OPCODE_ILL_FC		= 0xFC,	// illegal opcode
 	OPCODE_SBC_ABX	= 0xFD,	// SuBtract with Carry, Absolute Indexed, X ($FD addrlo addrhi : SBC addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_INC_ABX	= 0xFE,	// INCrement memory, Absolute Indexed, X ($FE addrlo addrhi : INC addr,X ;addr=0..$FFFF), MEM=addr+X
