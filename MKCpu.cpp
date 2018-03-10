@@ -699,20 +699,19 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 void MKCpu::CompareOpAcc(unsigned char val)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		//qReg->DECC(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
-		//qReg->X(FLAGS_CARRY_Q);
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
+		qReg->SetLessThanFlag(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+		qReg->Z(FLAGS_CARRY_Q);
 		qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
 		qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
 	}
 	else {
 		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+		SetFlag((mReg.Acc >= val), FLAGS_CARRY);
+		val = mReg.Acc - val;
+		SetFlags(val);
 	}
-
-	SetFlag((mReg.Acc >= val), FLAGS_CARRY);
-	val = mReg.Acc - val;
-	SetFlags(val);
 }
 
 /*
@@ -728,19 +727,19 @@ void MKCpu::CompareOpAcc(unsigned char val)
 void MKCpu::CompareOpIndX(unsigned char val)
 {	
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		qReg->DECC(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
-		qReg->X(FLAGS_CARRY_Q);
+		qReg->DEC(val, REGS_INDX_Q, REG_LEN);
+		qReg->SetLessThanFlag(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
+		qReg->Z(FLAGS_CARRY_Q);
 		qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
 		qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
 		qReg->INC(val, REGS_INDX_Q, REG_LEN);
 	}
 	else {
-		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		SetFlag((mReg.IndX >= val), FLAGS_CARRY);
+		val = mReg.IndX - val;
+		SetFlags(val);
 	}
-
-	SetFlag((mReg.IndX >= val), FLAGS_CARRY);
-	val = mReg.IndX - val;
-	SetFlags(val);
 }
 
 /*
