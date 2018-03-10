@@ -36,7 +36,6 @@
 #include <string.h>
 #include "MKCpu.h"
 #include "MKGenException.h"
-#include <iostream>
 
 #if ENABLE_OPENCL
 Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL;
@@ -4917,12 +4916,6 @@ Regs *MKCpu::ExecOpcode(unsigned short memaddr)
 		histentry.LastArg = mReg.LastArg;
 		Add2History(histentry);
 	}
-
-	for (int i = 0; i < 8; i++) {
-		std::cout << "Bit " << i <<" , chance of 1: " << qReg->Prob(i) << std::endl;
-	}
-
-	std::cout << "Bit " << FLAGS_ZERO_Q <<" , chance of 1: " << qReg->Prob(FLAGS_ZERO_Q) << std::endl;
 	
 	return &mReg;
 }
