@@ -441,14 +441,14 @@ void MKCpu::InitCpu()
  *--------------------------------------------------------------------
  */
 unsigned char MKCpu::RotateClassical(unsigned char reg) {
-	unsigned char offset = reg & 0x7F;
-	bool sign = reg & 0x80;
-	if (sign && offset >= 0x40) reg = 0x80 | ((~offset) & 0x7F); 
-	else if (sign && offset < 0x40) reg = offset;
-	else if ((!sign) && offset >= 0x40) reg |= 0x80;
-	else if ((!sign) && offset < 0x40) reg = ((~offset) & 0x7F);
-
-	return reg;
+	//unsigned char offset = reg & 0x7F;
+	//bool sign = reg & 0x80;
+	//if (sign && offset >= 0x40) reg = 0x80 | ((~offset) & 0x7F); 
+	//else if (sign && offset < 0x40) reg = offset;
+	//else if ((!sign) && offset >= 0x40) reg |= 0x80;
+	//else if ((!sign) && offset < 0x40) reg = ((~offset) & 0x7F);
+	//return reg;
+	return reg + 0x80;
 }	
 
 /*
