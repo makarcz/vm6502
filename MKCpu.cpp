@@ -426,7 +426,7 @@ void MKCpu::InitCpu()
 	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 
 	// Initialize the quantum coherent register
-	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 21, 0);
+	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 20, 0);
 	if (NULL == qReg) {
 		throw MKGenException("Unable to acquire CoherentUnit");
 	}
