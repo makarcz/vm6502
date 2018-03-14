@@ -159,7 +159,7 @@ enum eOpCodes {
 	OPCODE_PHP			= 0x08,	// PusH Processor status on Stack, Implied ($08 : PHP)
 	OPCODE_ORA_IMM	= 0x09,	// bitwise OR with Accumulator, Immediate ($09 arg : ORA #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_ASL			= 0x0A,	// Arithmetic Shift Left, Accumulator ($0A : ASL)
-	OPCODE_ILL_0B		= 0x0B,	// illegal opcode
+	OPCODE_EHX		= 0x0B,	// 6502Q: "Entangled Hadamard" on X register, Hadamard-like operation on X while entangled with the accumulator.
 	OPCODE_ILL_0C		= 0x0C,	// illegal opcode
 	OPCODE_ORA_ABS	= 0x0D,	// bitwise OR with Accumulator, Absolute ($0D addrlo addrhi : ORA addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_ASL_ABS	= 0x0E,	// Arithmetic Shift Left, Absolute ($0E addrlo addrhi : ASL addr ;addr=0..$FFFF), MEM=addr
@@ -746,6 +746,7 @@ class MKCpu
 		void OpCodeSev();
 		void OpCodeSez();
 		void OpCodeClz();
+		void OpCodeEhx();
 };
 
 } // namespace MKBasic
