@@ -389,32 +389,65 @@ $0b00
 ;
 ; test program #11
 ; address: $0b00
-; perform Grover's search on $0f00 to $0fff
+; perform Grover's search on "subroutine"
 ; store result in $0bff
 ;
 ; GINIT:	clq
-;		ldy #$08
-; 		lda #00
-;		adc #00 	;clear flags
+;		ldy #$0c
+; 		lda #$00
+;		adc #$00 	;clear flags
 ;		haa
 ; GITER:	seq
 ;		sez
 ;		clc
-;		cmp #64
+;		cmp #$64
 ;		haa
-;		qzz
 ;		clz
 ;		haa
+;               qzz
 ;		clq
 ;		dey
 ;		bne GITER
-;		cmp #64
+;		cmp #$64
 ;		bne GINIT
 ;		sta $0bff
 ;		brk
 ;
-$1f $a0 $0c $a9 $00 $69 $00 $02 $3f $2b $18 $c9 $64 $02 $f7 $47
-$02 $1f $88 $d0 $f3 $c9 $64 $d0 $e7 $81 $ff $0b $00 
+$1f $a0 $0c $a9 $00 $69 $00 $02 $3f $2b $18 $c9 $64 $02 $47 $02
+$f7 $1f $88 $d0 $f3 $c9 $64 $d0 $e7 $81 $ff $0b $00
+ORG
+$0c00
+;
+; test program #12
+; address: $0c00
+; Search lookup table in $0f00 to $0fff with amplitude amplification
+; store result in $0bff
+;
+; GINIT:	clq
+;		ldy #$0c
+; 		ldx #$00
+;               hax
+;               lda $0f00,X
+;               cln
+;               clv
+; GITER:	seq
+;		sez
+;		clc
+;		cmp #$64
+;		ehx
+;		qzz
+;		clz
+;		ehx
+;		clq
+;		dey
+;		bne GITER
+;		cmp #$64
+;		bne GINIT
+;		stx $0cff
+;		brk
+;
+$1f $a0 $0c $a2 $00 $03 $bd $00 $0f $2f $b8 $3f $2b $18 $c9 $64
+$0b $47 $0b $f7 $1f $88 $d0 $f3 $c9 $64 $d0 $e4 $8e $ff $0c $00 
 ORG
 $0f00
 $ff $fe $fd $fc $fb $fa $f9 $f8 $f7 $f6 $f5 $f4 $f3 $f2 $f1 $f0
