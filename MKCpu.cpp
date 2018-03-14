@@ -146,7 +146,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ORA_IMM,	{OPCODE_ORA_IMM,	ADDRMODE_IMM,		2,		"ORA",	&MKCpu::OpCodeOraImm 		/*09*/	}},
 		{OPCODE_ASL,		{OPCODE_ASL,		ADDRMODE_ACC,		2,		"ASL",	&MKCpu::OpCodeAslAcc		/*0a*/	}},
 		{OPCODE_EHX,		{OPCODE_EHX,		ADDRMODE_IMP,		2,		"EHX",	&MKCpu::OpCodeEhx 		/*0b*/	}},
-		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_IMP,		2,		"EHY",	&MKCpu::OpCodeDud		/*0c*/	}},
+		{OPCODE_EHY,		{OPCODE_EHY,		ADDRMODE_IMP,		2,		"EHY",	&MKCpu::OpCodeDud		/*0c*/	}},
 		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 		/*0d*/	}},
 		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 		/*0e*/	}},
 		{OPCODE_SEN,		{OPCODE_SEN,		ADDRMODE_IMP,		6,		"SEN",	&MKCpu::OpCodeSen 		/*0f*/	}},
@@ -4853,11 +4853,11 @@ void MKCpu::OpCodeClz()
  */
 void MKCpu::OpCodeEhx()
 {
-        qReg->EntangledH(REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
+	qReg->EntangledH(REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
 	mReg.IndX = RotateClassical(mReg.IndX);
-        mReg.Acc = RotateClassical(mReg.Acc);
-        SetFlagsRegQ(REGS_INDX_Q);
-        SetFlags(mReg.IndX);
+	mReg.Acc = RotateClassical(mReg.Acc);
+	SetFlagsRegQ(REGS_INDX_Q);
+	SetFlags(mReg.IndX);
 }
 
 /*

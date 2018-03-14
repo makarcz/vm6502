@@ -418,7 +418,7 @@ $f7 $1f $88 $d0 $f3 $c9 $64 $d0 $e7 $81 $ff $0b $00
 ORG
 $0c00
 ;
-; test program #11
+; test program #12
 ; address: $0c00
 ; Search lookup table in $0f00 to $0fff with amplitude amplification
 ; store result in $0bff

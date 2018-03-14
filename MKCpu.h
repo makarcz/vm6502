@@ -159,11 +159,11 @@ enum eOpCodes {
 	OPCODE_PHP			= 0x08,	// PusH Processor status on Stack, Implied ($08 : PHP)
 	OPCODE_ORA_IMM	= 0x09,	// bitwise OR with Accumulator, Immediate ($09 arg : ORA #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_ASL			= 0x0A,	// Arithmetic Shift Left, Accumulator ($0A : ASL)
-	OPCODE_EHX		= 0x0B,	// 6502Q: "Entangled Hadamard" on X register, Hadamard-like operation on X while entangled with the accumulator.
-	OPCODE_ILL_0C		= 0x0C,	// illegal opcode
+	OPCODE_EHX			= 0x0B,	// 6502Q: "Entangled Hadamard" on X register, Hadamard-like operation on X while entangled with the accumulator.
+	OPCODE_EHY			= 0x0C,	// 6502Q: "Entangled Hadamard" on Y register, Hadamard-like operation on Y while entangled with the accumulator.
 	OPCODE_ORA_ABS	= 0x0D,	// bitwise OR with Accumulator, Absolute ($0D addrlo addrhi : ORA addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_ASL_ABS	= 0x0E,	// Arithmetic Shift Left, Absolute ($0E addrlo addrhi : ASL addr ;addr=0..$FFFF), MEM=addr
-	OPCODE_SEN		= 0x0F,	// 6502Q: SEt Negative
+	OPCODE_SEN			= 0x0F,	// 6502Q: SEt Negative
 	OPCODE_BPL_REL	= 0x10,	// Branch on PLus, Relative ($10 signoffs : BPL signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_ORA_IZY	= 0x11,	// bitwise OR with Accumulator, Indirect Indexed ($11 arg : ORA (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	OPCODE_PAX_A		= 0x12,	// 6502Q: Pauli X on Accumulator
@@ -187,15 +187,15 @@ enum eOpCodes {
 	OPCODE_BIT_ZP		= 0x24,	// test BITs, Zero Page ($24 arg : BIT arg ;arg=0..$FF), MEM=arg
 	OPCODE_AND_ZP		=	0x25,	// bitwise AND with accumulator, Zero Page ($25 arg : AND arg ;arg=0..$FF), MEM=arg
 	OPCODE_ROL_ZP		= 0x26,	// ROtate Left, Zero Page ($26 arg : ROL arg ;arg=0..$FF), MEM=arg
-	OPCODE_SEV		= 0x27,	// 6502Q: SEt oVerflow
+	OPCODE_SEV			= 0x27,	// 6502Q: SEt oVerflow
 	OPCODE_PLP			= 0x28,	// PuLl Processor status, Implied ($28 : PLP)
 	OPCODE_AND_IMM	= 0x29,	// bitwise AND with accumulator, Immediate ($29 arg : AND #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_ROL			= 0x2A,	// ROtate Left, Accumulator ($2A : ROL)
-	OPCODE_SEZ		= 0x2B,	// 6502Q: SEt Zero
+	OPCODE_SEZ			= 0x2B,	// 6502Q: SEt Zero
 	OPCODE_BIT_ABS	= 0x2C,	// test BITs, Absolute ($2C addrlo addrhi : BIT addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_AND_ABS	= 0x2D,	// bitwise AND with accumulator, Absolute ($2D addrlo addrhi : AND addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_ROL_ABS	= 0x2E,	// ROtate Left, Absolute ($2E addrlo addrhi : ROL addr ;addr=0..$FFFF), MEM=addr
-	OPCODE_CLN		= 0x2F,	// 6502Q: SEt Negative
+	OPCODE_CLN			= 0x2F,	// 6502Q: SEt Negative
 	OPCODE_BMI_REL	= 0x30,	// Branch on MInus, Relative ($30 signoffs : BMI signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_AND_IZY	= 0x31,	// bitwise AND with accumulator, Indirect Indexed ($31 arg : AND (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	OPCODE_PAZ_A		= 0x32,	// 6502Q: Pauli Z on Accumulator
@@ -211,7 +211,7 @@ enum eOpCodes {
 	OPCODE_ILL_3C		= 0x3C,	// illegal opcode	
 	OPCODE_AND_ABX	=	0x3D,	// bitwise AND with accumulator, Absolute Indexed, X ($3D addrlo addrhi : AND addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ROL_ABX	= 0x3E,	// ROtate Left, Absolute Indexed, X ($3E addrlo addrhi : ROL addr,X ;addr=0..$FFFF), MEM=addr+X
-	OPCODE_SEQ		= 0x3F,	// 6502Q: Set Quantum Mode Flag
+	OPCODE_SEQ			= 0x3F,	// 6502Q: Set Quantum Mode Flag
 	OPCODE_RTI			= 0x40,	// ReTurn from Interrupt, Implied ($40 : RTI)
 	OPCODE_EOR_IZX	= 0x41,	// bitwise Exclusive OR, Indexed Indirect ($41 arg : EOR (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_ROTX_A		= 0x42,	// 6502Q: Quarter rotation on X axis for Accumulator
@@ -219,7 +219,7 @@ enum eOpCodes {
 	OPCODE_ILL_44		= 0x44,	// illegal opcode
 	OPCODE_EOR_ZP		= 0x45,	// bitwise Exclusive OR, Zero Page ($45 arg : EOR arg ;arg=0..$FF), MEM=arg
 	OPCODE_LSR_ZP		= 0x46,	// Logical Shift Right, Zero Page ($46 arg : LSR arg ;arg=0..$FF), MEM=arg
-	OPCODE_CLZ		= 0x47,	// 6502Q: CLear Zero
+	OPCODE_CLZ			= 0x47,	// 6502Q: CLear Zero
 	OPCODE_PHA			= 0x48,	// PusH Accumulator, Implied ($48 : PHA)
 	OPCODE_EOR_IMM	= 0x49,	// bitwise Exclusive OR, Immediate ($49 arg : EOR #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_LSR			= 0x4A,	// Logical Shift Right, Accumulator ($4A : LSR)
