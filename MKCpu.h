@@ -728,13 +728,8 @@ class MKCpu
 		void OpCodeRZX();
 		void OpCodeFTA();
 		void OpCodeFTX();
-		//void OpCodeCXA();
-		//void OpCodeCAX();
 		void OpCodeLdaAba();
-		void OpCodeHaz();
-		void OpCodeHas();
 		void OpCodeHac();
-		void OpCodeHav();
 		void OpCodeClq();
 		void OpCodeSeq();
 		void OpCodeQzZero();
