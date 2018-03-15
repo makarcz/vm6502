@@ -903,7 +903,7 @@ void MKCpu::SetFlagQ(bool set, unsigned char flag)
  */
 unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 {
-	if (CheckFlag(FLAGS_QUANTUM)) {
+	if (CheckFlag(FLAGS_QUANTUM)) { //quantum mode
 		if (CheckFlag(FLAGS_DEC)) {
 			qReg->INCBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
@@ -913,31 +913,39 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		SetFlagsRegQ(REGS_ACC_Q);
 	}
 	else {
+		//In classical mode, collapse the accumulator state when necessary.
 		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
-		// This algorithm was adapted from Frodo emulator code.
-		unsigned short utmp16 = mReg.Acc + mem8 + ((mReg.Flags & FLAGS_CARRY) ? 1 : 0);
-		if (mReg.Flags & FLAGS_DEC) {	// BCD mode
+	}
 	
-			unsigned short al = (mReg.Acc & 0x0F) + (mem8 & 0x0F) + ((mReg.Flags & FLAGS_CARRY) ? 1 : 0);
-			if (al > 9) al += 6;
-			unsigned short ah = (mReg.Acc >> 4) + (mem8 >> 4);
-			if (al > 0x0F) ah++;
-			SetFlag((utmp16 == 0), FLAGS_ZERO);
-			SetFlag(((((ah << 4) ^ mReg.Acc) & 0x80) && !((mReg.Acc ^ mem8) & 0x80)),
-								 FLAGS_OVERFLOW);
-			if (ah > 9) ah += 6;
-			SetFlag((ah > 0x0F), FLAGS_CARRY);
-			mReg.Acc = (ah << 4) | (al & 0x0f);
-			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-		} else {	// binary mode
+	//Classical operation is always carried out to mirror the quantum register via Ehrenfest's theorem.
+
+	// This algorithm was adapted from Frodo emulator code.
+	unsigned short utmp16 = mReg.Acc + mem8 + ((mReg.Flags & FLAGS_CARRY) ? 1 : 0);
+	if (mReg.Flags & FLAGS_DEC) {	// BCD mode
 	
-			SetFlag((utmp16 > 0xff), FLAGS_CARRY);
-			SetFlag((!((mReg.Acc ^ mem8) & 0x80) && ((mReg.Acc ^ utmp16) & 0x80)),
+		unsigned short al = (mReg.Acc & 0x0F) + (mem8 & 0x0F) + ((mReg.Flags & FLAGS_CARRY) ? 1 : 0);
+		if (al > 9) al += 6;
+		unsigned short ah = (mReg.Acc >> 4) + (mem8 >> 4);
+		if (al > 0x0F) ah++;
+		SetFlag((utmp16 == 0), FLAGS_ZERO);
+		SetFlag(((((ah << 4) ^ mReg.Acc) & 0x80) && !((mReg.Acc ^ mem8) & 0x80)),
 								 FLAGS_OVERFLOW);
-			mReg.Acc = utmp16 & 0xFF;
-			SetFlag((mReg.Acc == 0), FLAGS_ZERO);
-			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-		}
+		if (ah > 9) ah += 6;
+		SetFlag((ah > 0x0F), FLAGS_CARRY);
+		mReg.Acc = (ah << 4) | (al & 0x0f);
+		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+	} else {	// binary mode
+	
+		SetFlag((utmp16 > 0xff), FLAGS_CARRY);
+		SetFlag((!((mReg.Acc ^ mem8) & 0x80) && ((mReg.Acc ^ utmp16) & 0x80)),
+							 FLAGS_OVERFLOW);
+		mReg.Acc = utmp16 & 0xFF;
+		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
+		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+	}
+
+	if (!CheckFlag(FLAGS_QUANTUM)) {
+		//If we're in classical mode, the quantum register should be updated with the classical result.
 		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
 	}
 	return mReg.Acc;
@@ -953,7 +961,7 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
  */
 unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 {
-	if (CheckFlag(FLAGS_QUANTUM)) {
+	if (CheckFlag(FLAGS_QUANTUM)) { //quantum mode
 		if (CheckFlag(FLAGS_DEC)) {
 			qReg->DECBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
@@ -963,35 +971,42 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 		SetFlagsRegQ(REGS_ACC_Q);
 	}
 	else {
+		//In classical mode, collapse the accumulator state when necessary.
 		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
-		unsigned short utmp16 = mReg.Acc - mem8 - ((mReg.Flags & FLAGS_CARRY) ? 0 : 1);
+	}
 
-		// This algorithm was adapted from Frodo emulator code.
-		if (mReg.Flags & FLAGS_DEC) {	// BCD mode
+	//Classical operation is always carried out to mirror the quantum register via Ehrenfest's theorem.
+
+	// This algorithm was adapted from Frodo emulator code.
+	unsigned short utmp16 = mReg.Acc - mem8 - ((mReg.Flags & FLAGS_CARRY) ? 0 : 1);
+	if (mReg.Flags & FLAGS_DEC) {	// BCD mode
 	
-			unsigned char al = (mReg.Acc & 0x0F) - (mem8 & 0x0F) - ((mReg.Flags & FLAGS_CARRY) ? 0 : 1);
-			unsigned char ah = (mReg.Acc >> 4) - (mem8 >> 4);
-			if (al & 0x10) {
-				al -= 6; ah--;
-			}
-			if (ah & 0x10) ah -= 6;
-			SetFlag((utmp16 < 0x100), FLAGS_CARRY);
-			SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80), 
-								FLAGS_OVERFLOW);
-			SetFlag((utmp16 == 0), FLAGS_ZERO);
-			mReg.Acc = (ah << 4) | (al & 0x0f);
-			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-		
-		} else { // binary mode
-	
-			SetFlag((utmp16 < 0x100), FLAGS_CARRY);
-			SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80),
-							 FLAGS_OVERFLOW);
-			mReg.Acc = utmp16 & 0xFF;
-			SetFlag((mReg.Acc == 0), FLAGS_ZERO);
-			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-	
+		unsigned char al = (mReg.Acc & 0x0F) - (mem8 & 0x0F) - ((mReg.Flags & FLAGS_CARRY) ? 0 : 1);
+		unsigned char ah = (mReg.Acc >> 4) - (mem8 >> 4);
+		if (al & 0x10) {
+			al -= 6; ah--;
 		}
+		if (ah & 0x10) ah -= 6;
+		SetFlag((utmp16 < 0x100), FLAGS_CARRY);
+		SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80), 
+							FLAGS_OVERFLOW);
+		SetFlag((utmp16 == 0), FLAGS_ZERO);
+		mReg.Acc = (ah << 4) | (al & 0x0f);
+		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		
+	} else { // binary mode
+	
+		SetFlag((utmp16 < 0x100), FLAGS_CARRY);
+		SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80),
+							 FLAGS_OVERFLOW);
+		mReg.Acc = utmp16 & 0xFF;
+		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
+			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+	
+	}
+
+	if (!CheckFlag(FLAGS_QUANTUM)) {
+		//If we're in classical mode, the quantum register should be updated with the classical result.
 		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
 	}
 	return mReg.Acc;
