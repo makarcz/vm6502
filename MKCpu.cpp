@@ -938,6 +938,7 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 			SetFlag((mReg.Acc == 0), FLAGS_ZERO);
 			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 		}
+		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
 	}
 	return mReg.Acc;
 }
@@ -991,6 +992,7 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	
 		}
+		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
 	}
 	return mReg.Acc;
 }
