@@ -2402,8 +2402,7 @@ void MKCpu::OpCodeInx()
 {
 	// INcrement X, Implied ($E8 : INX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->INCSC(1, REGS_INDX_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
-	qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
+	qReg->INC(1, REGS_INDX_Q, REG_LEN);
 	mReg.IndX++;
 	SetFlags(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
@@ -2421,8 +2420,7 @@ void MKCpu::OpCodeDex()
 {
 	// DEcrement X, Implied ($CA : DEX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->DECSC(1, REGS_INDX_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
-	qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
+	qReg->DEC(1, REGS_INDX_Q, REG_LEN);
 	mReg.IndX--;
 	SetFlags(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
