@@ -559,6 +559,9 @@ class MKCpu
 											unsigned short endaddr);					// detect if page boundary was crossed
 		void CollapseAccQ();	//Collapse Acc register state if it is in superposition
 		void CollapseXQ();	//Collapse X register state if it is in superposition
+		void PrepareAccQ();	//Prepare Acc register qubit state for quantum operations
+		void PrepareXQ();	//Prepare X register qubit state for quantum operations
+
 		// opcode execute methods
 		void OpCodeBrk();
 		void OpCodeNop();

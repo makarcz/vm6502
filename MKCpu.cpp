@@ -437,7 +437,7 @@ void MKCpu::InitCpu()
 
 /*
  *--------------------------------------------------------------------
- * Method:		CollapseXQ()
+ * Method:		CollapseAccQ()
  * Purpose:		Collapse Acc register state if it is in superposition
  * Arguments:		n/a
  * Returns:		n/a
@@ -465,6 +465,36 @@ void MKCpu::CollapseXQ() {
 	}
 	mReg.isXQ = false;
 	mReg.isAccQX = false;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		PrepareAccQ()
+ * Purpose:		Prepare Acc register qubit state for quantum operations
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::PrepareAccQ() {
+	if (!(mReg.isAccQ)) {
+		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
+	}
+	mReg.isAccQ = true;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		PrepareXQ()
+ * Purpose:		Prepare X register qubit state for quantum operations
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::PrepareXQ() {
+	if (!(mReg.isXQ)) {
+		qReg->SetReg(REGS_INDX_Q, REG_LEN, mReg.IndX);
+	}
+	mReg.isXQ = true;
 }
 
 /*
@@ -708,7 +738,9 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 	
 	val = mpMem->Peek8bit(addr);
 	
-	mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+	if (mReg.isAccQ) {
+		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+	}
 
 	switch (logop) {
 		case LOGOP_OR:
@@ -724,10 +756,8 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 			break;
 	}
 
-	qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
-
 	SetFlags(mReg.Acc);
-	SetFlagsRegQ(REGS_ACC_Q);		
+	SetFlagsQ(mReg.Acc);		
 }
 
 /*
@@ -1001,12 +1031,6 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	}
 
-	if ((!CheckFlag(FLAGS_QUANTUM)) && mReg.isAccQ) {
-		//If we're in classical mode, the quantum register should be updated with the classical result.
-		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
-		mReg.isAccQ = false;
-		mReg.isAccQX = false;
-	}
 	return mReg.Acc;
 }
 
@@ -1064,12 +1088,6 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 	
 	}
 
-	if ((!CheckFlag(FLAGS_QUANTUM)) && mReg.isAccQ) {
-		//If we're in classical mode, the quantum register should be updated with the classical result.
-		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
-		mReg.isAccQ = false;
-		mReg.isAccQX = false;
-	}
 	return mReg.Acc;
 }
 
@@ -1445,14 +1463,11 @@ void MKCpu::OpCodeLdaIzx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
-		mReg.Acc = qReg->SuperposeReg8(REG_LEN, REGS_ACC_Q, toLoad);
-
-		mReg.isAccQ = true;
-		mReg.isXQ = true;
+		PrepareAccQ();
+		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
 		mReg.isAccQX = true;
 	}
 	else {
-		CollapseXQ();
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
 		CollapseAccQ();
 		mReg.Acc = mpMem->Peek8bit(arg16);
@@ -1571,14 +1586,11 @@ void MKCpu::OpCodeLdaZpx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
-
-		mReg.isAccQ = true;
-		mReg.isXQ = true;
 		mReg.isAccQX = true;
 	}
 	else {
-		CollapseXQ();
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
 		CollapseAccQ();
 		mReg.Acc = mpMem->Peek8bit(arg16);
@@ -1609,9 +1621,8 @@ void MKCpu::OpCodeLdaAby()
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	CollapseAccQ();
 	mReg.Acc = mpMem->Peek8bit(arg16);
-	qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
 	SetFlags(mReg.Acc);
-	SetFlagsRegQ(REGS_ACC_Q);
+	SetFlagsRegQ(mReg.Acc);
 }
 
 /*
@@ -1633,14 +1644,11 @@ void MKCpu::OpCodeLdaAbx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit(arg16 + i);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
-
-		mReg.isAccQ = true;
-		mReg.isXQ = true;
 		mReg.isAccQX = true;
 	}
 	else {
-		CollapseXQ();
 		arg16 = arg16 + mReg.IndX;
 		CollapseAccQ();
 		mReg.Acc = mpMem->Peek8bit(arg16);
@@ -1955,8 +1963,6 @@ void MKCpu::OpCodeTya()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	CollapseAccQ();
 	mReg.Acc = mReg.IndY;
-	mReg.isAccQ = false;
-	mReg.isAccQX = false;
 	SetFlags(mReg.Acc);
 	SetFlagsQ(mReg.Acc);
 }
@@ -3045,12 +3051,12 @@ void MKCpu::OpCodeBitZp()
 	// test BITs, Zero Page ($24 arg : BIT arg ;arg=0..$FF), MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
+	CollapseAccQ();
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	//arg8 &= mReg.Acc;
-	CollapseAccQ();
 	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
 	SetFlagQ((arg8 == 0), FLAGS_ZERO);
@@ -3072,12 +3078,12 @@ void MKCpu::OpCodeBitAbs()
 	// ($2C addrlo addrhi : BIT addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
+	CollapseAccQ();
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);		
 	//arg8 &= mReg.Acc;
-	CollapseAccQ();
 	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
 	SetFlagQ((arg8 == 0), FLAGS_ZERO);
@@ -3803,7 +3809,9 @@ void MKCpu::OpCodeAdcIzx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3812,7 +3820,6 @@ void MKCpu::OpCodeAdcIzx()
 		}
 	}
 	else {
-		CollapseXQ();
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
 		unsigned char toAdd = mpMem->Peek8bit(arg16);
 		AddWithCarry(toAdd);
@@ -3909,7 +3916,9 @@ void MKCpu::OpCodeAdcZpx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3918,7 +3927,6 @@ void MKCpu::OpCodeAdcZpx()
 		}
 	}
 	else {
-		CollapseXQ();
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
 		unsigned char toAdd = mpMem->Peek8bit(arg16);
 		AddWithCarry(toAdd);
@@ -3963,7 +3971,9 @@ void MKCpu::OpCodeAdcAbx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit(arg16 + i);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3972,7 +3982,6 @@ void MKCpu::OpCodeAdcAbx()
 		}
 	}
 	else {
-		CollapseXQ();
 		arg16 += mReg.IndX;
 		unsigned char toAdd = mpMem->Peek8bit(arg16);
 		AddWithCarry(toAdd);
@@ -4498,7 +4507,9 @@ void MKCpu::OpCodeSbcIzx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4507,7 +4518,6 @@ void MKCpu::OpCodeSbcIzx()
 		}
 	}
 	else {
-		CollapseXQ();
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
 		unsigned char toSub = mpMem->Peek8bit(arg16);
 		SubWithCarry(toSub);
@@ -4552,7 +4562,9 @@ void MKCpu::OpCodeSbcZpx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4561,7 +4573,6 @@ void MKCpu::OpCodeSbcZpx()
 		}
 	}
 	else {
-		CollapseXQ();
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
 		unsigned char toSub = mpMem->Peek8bit(arg16);
 		SubWithCarry(toSub);
@@ -4606,7 +4617,9 @@ void MKCpu::OpCodeSbcAbx()
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
+		PrepareAccQ();
 		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4663,6 +4676,7 @@ void MKCpu::OpCodeDud()
 void MKCpu::OpCodeHadA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->H(REGS_ACC_Q, REG_LEN);
 	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);
@@ -4680,6 +4694,7 @@ void MKCpu::OpCodeHadA()
 void MKCpu::OpCodeHadX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->H(REGS_INDX_Q, REG_LEN);
 	CollapseXQ();
 	SetFlagsRegQ(REGS_INDX_Q);
@@ -4697,7 +4712,10 @@ void MKCpu::OpCodeHadX()
 void MKCpu::OpCodeXA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->X(REGS_ACC_Q, REG_LEN);
+	mReg.Acc = ~mReg.Acc;
+	if (mReg.isAccQ) {
+		qReg->X(REGS_ACC_Q, REG_LEN);
+	}
 	SetFlagsRegQ(REGS_ACC_Q);
 }
 
@@ -4712,7 +4730,10 @@ void MKCpu::OpCodeXA()
 void MKCpu::OpCodeXX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->X(REGS_INDX_Q, REG_LEN);
+	mReg.IndX = ~mReg.IndX;
+	if (mReg.isXQ) {
+		qReg->X(REGS_INDX_Q, REG_LEN);
+	}
 	SetFlagsRegQ(REGS_INDX_Q);
 }
 
@@ -4727,6 +4748,7 @@ void MKCpu::OpCodeXX()
 void MKCpu::OpCodeYA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->Y(REGS_ACC_Q, REG_LEN);
 	SetFlagsRegQ(REGS_ACC_Q);
 }
@@ -4742,6 +4764,7 @@ void MKCpu::OpCodeYA()
 void MKCpu::OpCodeYX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->Y(REGS_INDX_Q, REG_LEN);
 	SetFlagsRegQ(REGS_INDX_Q);
 }
@@ -4757,6 +4780,7 @@ void MKCpu::OpCodeYX()
 void MKCpu::OpCodeZA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->Z(REGS_ACC_Q, REG_LEN);
 	SetFlagsRegQ(REGS_ACC_Q);
 }
@@ -4772,6 +4796,7 @@ void MKCpu::OpCodeZA()
 void MKCpu::OpCodeZX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->Z(REGS_INDX_Q, REG_LEN);
 	SetFlagsRegQ(REGS_INDX_Q);
 }
@@ -4787,6 +4812,7 @@ void MKCpu::OpCodeZX()
 void MKCpu::OpCodeR1A()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->R1(M_PI / 2.0, REGS_ACC_Q, REG_LEN);
 	SetFlagsRegQ(REGS_ACC_Q);
 }
@@ -4802,6 +4828,7 @@ void MKCpu::OpCodeR1A()
 void MKCpu::OpCodeR1X()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->R1(M_PI / 2.0, REGS_INDX_Q, REG_LEN);
 	SetFlagsRegQ(REGS_INDX_Q);
 }
@@ -4817,6 +4844,7 @@ void MKCpu::OpCodeR1X()
 void MKCpu::OpCodeRXA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->RX(M_PI / 2.0, REGS_ACC_Q, REG_LEN);
 	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);
@@ -4834,6 +4862,7 @@ void MKCpu::OpCodeRXA()
 void MKCpu::OpCodeRXX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->RX(M_PI / 2.0, REGS_INDX_Q, REG_LEN);
 	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
@@ -4851,6 +4880,7 @@ void MKCpu::OpCodeRXX()
 void MKCpu::OpCodeRYA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->RY(M_PI / 2.0, REGS_ACC_Q, REG_LEN);
 	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);
@@ -4868,6 +4898,7 @@ void MKCpu::OpCodeRYA()
 void MKCpu::OpCodeRYX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->RY(M_PI / 2.0, REGS_INDX_Q, REG_LEN);
 	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
@@ -4885,6 +4916,7 @@ void MKCpu::OpCodeRYX()
 void MKCpu::OpCodeRZA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->RZ(M_PI / 2.0, REGS_ACC_Q, REG_LEN);
 	mReg.Acc = RotateClassical(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);
@@ -4902,6 +4934,7 @@ void MKCpu::OpCodeRZA()
 void MKCpu::OpCodeRZX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->RZ(M_PI / 2.0, REGS_INDX_Q, REG_LEN);
 	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
@@ -4919,6 +4952,7 @@ void MKCpu::OpCodeRZX()
 void MKCpu::OpCodeFTA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareAccQ();
 	qReg->QFT(REGS_ACC_Q, REG_LEN);
 	SetFlagsRegQ(REGS_ACC_Q);
 	//TODO: Implement classical Fourier transform, here.
@@ -4935,6 +4969,7 @@ void MKCpu::OpCodeFTA()
 void MKCpu::OpCodeFTX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareXQ();
 	qReg->QFT(REGS_INDX_Q, REG_LEN);
 	SetFlagsRegQ(REGS_INDX_Q);
 	//TODO: Implement classical Fourier transform, here.
@@ -5020,6 +5055,8 @@ void MKCpu::OpCodeClz()
  */
 void MKCpu::OpCodeEhx()
 {
+	PrepareAccQ();
+	PrepareXQ();
 	qReg->EntangledH(REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
 	mReg.IndX = RotateClassical(mReg.IndX);
 	mReg.Acc = RotateClassical(mReg.Acc);
