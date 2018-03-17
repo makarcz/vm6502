@@ -478,8 +478,12 @@ void MKCpu::SetFlagsRegQ(unsigned char start)
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		qReg->SetZeroFlag(FLAGS_ZERO_Q, (0 == reg));
-		qReg->SetSignFlag(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
+		if (0 == reg) {
+			qReg->R1(M_PI, FLAGS_ZERO_Q);
+		}
+		if ((reg & FLAGS_SIGN) == FLAGS_SIGN) {
+			qReg->R1(M_PI, FLAGS_SIGN_Q);
+		}
 	}
 }
 
