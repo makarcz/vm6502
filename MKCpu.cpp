@@ -669,22 +669,24 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
 	
 	val = mpMem->Peek8bit(addr);
 	
+	mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+
 	switch (logop) {
 		case LOGOP_OR:
 			mReg.Acc |= val;
-			qReg->CLOR(REGS_ACC_Q, val, REGS_ACC_Q, REG_LEN);
 			break;
 		case LOGOP_AND:
 			mReg.Acc &= val;
-			qReg->CLAND(REGS_ACC_Q, val, REGS_ACC_Q, REG_LEN);
 			break;
 		case LOGOP_EOR:
 			mReg.Acc ^= val;
-			qReg->CLXOR(REGS_ACC_Q, val, REGS_ACC_Q, REG_LEN);
 			break;
 		default:
 			break;
 	}
+
+	qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
+
 	SetFlags(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);		
 }
@@ -884,16 +886,26 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 
 void MKCpu::SetFlagQ(bool set, unsigned char flag)
 {
-	if (set) {
-		if (flag & FLAGS_CARRY) qReg->CLOR(FLAGS_CARRY_Q, true, FLAGS_CARRY_Q);
-		if (flag & FLAGS_ZERO) qReg->CLOR(FLAGS_ZERO_Q, true, FLAGS_ZERO_Q);
-		if (flag & FLAGS_OVERFLOW) qReg->CLOR(FLAGS_OVERFLOW_Q, true, FLAGS_OVERFLOW_Q);
-		if (flag & FLAGS_SIGN) qReg->CLOR(FLAGS_SIGN_Q, true, FLAGS_SIGN_Q);
-	} else {
-		if (flag & FLAGS_CARRY) qReg->CLAND(FLAGS_CARRY_Q, false, FLAGS_CARRY_Q);
-		if (flag & FLAGS_ZERO) qReg->CLAND(FLAGS_ZERO_Q, false, FLAGS_ZERO_Q);
-		if (flag & FLAGS_OVERFLOW) qReg->CLAND(FLAGS_OVERFLOW_Q, false, FLAGS_OVERFLOW_Q);
-		if (flag & FLAGS_SIGN) qReg->CLAND(FLAGS_SIGN_Q, false, FLAGS_SIGN_Q);
+	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
+		if (set) {
+			if (flag & FLAGS_CARRY) qReg->R1(M_PI, FLAGS_CARRY_Q);
+			if (flag & FLAGS_ZERO) qReg->R1(M_PI, FLAGS_ZERO_Q);
+			if (flag & FLAGS_OVERFLOW) qReg->R1(M_PI, FLAGS_OVERFLOW_Q);
+			if (flag & FLAGS_SIGN) qReg->R1(M_PI, FLAGS_SIGN_Q);
+		}
+	}
+	else { //classical mode
+		if (set) {
+			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, true);
+			if (flag & FLAGS_ZERO) qReg->SetBit(FLAGS_ZERO_Q, true);
+			if (flag & FLAGS_OVERFLOW) qReg->SetBit(FLAGS_OVERFLOW_Q, true);
+			if (flag & FLAGS_SIGN) qReg->SetBit(FLAGS_SIGN_Q, true);
+		} else {
+			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, false);
+			if (flag & FLAGS_ZERO) qReg->SetBit(FLAGS_ZERO_Q, false);
+			if (flag & FLAGS_OVERFLOW) qReg->SetBit(FLAGS_OVERFLOW_Q, false);
+			if (flag & FLAGS_SIGN) qReg->SetBit(FLAGS_SIGN_Q, false);
+		}
 	}
 }
 
@@ -1570,7 +1582,6 @@ void MKCpu::OpCodeLdaAbx()
 	// ($BD addrlo addrhi : LDA addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
 	if (CheckFlag(FLAGS_QUANTUM)) {
-		if (mReg.PageBoundary) mReg.CyclesLeft++;
 		unsigned char toLoad[256];
 		for (int i = 0; i < 256; i++) {
 			toLoad[i] = mpMem->Peek8bit(arg16 + i);
@@ -1583,6 +1594,7 @@ void MKCpu::OpCodeLdaAbx()
 		mReg.Acc = mpMem->Peek8bit(arg16);
 		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
 	}
+	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	SetFlags(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);
 }
@@ -1805,7 +1817,7 @@ void MKCpu::OpCodeTax()
 	// Transfer A to X, Implied ($AA : TAX)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	qReg->SetReg(REGS_INDX_Q, REG_LEN, 0);
-	qReg->OR(REGS_ACC_Q, REGS_INDX_Q, REGS_INDX_Q, REG_LEN);
+	qReg->CNOT(REGS_ACC_Q, REGS_INDX_Q, REG_LEN);
 	mReg.IndX = mReg.Acc;
 	SetFlags(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
@@ -1843,7 +1855,7 @@ void MKCpu::OpCodeTxa()
 	// Transfer X to A, Implied ($8A : TXA)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	qReg->SetReg(REGS_ACC_Q, REG_LEN, 0);
-	qReg->OR(REGS_ACC_Q, REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
+	qReg->CNOT(REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
 	mReg.Acc = mReg.IndX;
 	SetFlags(mReg.Acc);
 	SetFlagsRegQ(REGS_ACC_Q);
@@ -3687,10 +3699,25 @@ void MKCpu::OpCodeAdcIzx()
 	// ADd with Carry, Indexed Indirect
 	// ($61 arg : ADC (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
-	mReg.IndX = qReg->MReg8(REGS_INDX_Q);
-	arg16 = (arg16 + mReg.IndX) & 0xFF;
-	unsigned char toAdd = mpMem->Peek8bit(arg16);
-	AddWithCarry(toAdd);
+	if (CheckFlag(FLAGS_QUANTUM)) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+		}
+		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_CARRY;
+		}
+	}
+	else {
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		arg16 = (arg16 + mReg.IndX) & 0xFF;
+		unsigned char toAdd = mpMem->Peek8bit(arg16);
+		AddWithCarry(toAdd);
+	}
 }
 
 /*
@@ -3778,10 +3805,25 @@ void MKCpu::OpCodeAdcZpx()
 	// ADd with Carry, Zero Page Indexed, X
 	// ($75 arg : ADC arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
-	mReg.IndX = qReg->MReg8(REGS_INDX_Q);
-	arg16 = (arg16 + mReg.IndX) & 0xFF;
-	unsigned char toAdd = mpMem->Peek8bit(arg16);
-	AddWithCarry(toAdd);
+	if (CheckFlag(FLAGS_QUANTUM)) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+		}
+		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_CARRY;
+		}
+	}
+	else {
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		arg16 = (arg16 + mReg.IndX) & 0xFF;
+		unsigned char toAdd = mpMem->Peek8bit(arg16);
+		AddWithCarry(toAdd);
+	}
 }
 
 /*
@@ -3817,11 +3859,26 @@ void MKCpu::OpCodeAdcAbx()
 	// ADd with Carry, Absolute Indexed, X
 	// ($7D addrlo addrhi : ADC addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
-	mReg.IndX = qReg->MReg8(REGS_INDX_Q);
-	arg16 += mReg.IndX;
+	if (CheckFlag(FLAGS_QUANTUM)) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit(arg16 + i);
+		}
+		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_CARRY;
+		}
+	}
+	else {
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		arg16 += mReg.IndX;
+		unsigned char toAdd = mpMem->Peek8bit(arg16);
+		AddWithCarry(toAdd);
+	}
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	unsigned char toAdd = mpMem->Peek8bit(arg16);
-	AddWithCarry(toAdd);
 }
 
 /*
@@ -4337,10 +4394,25 @@ void MKCpu::OpCodeSbcIzx()
 	// SuBtract with Carry, Indexed Indirect
 	// ($E1 arg : SBC (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	arg16 = GetAddrWithMode(ADDRMODE_IZX);
-	mReg.IndX = qReg->MReg8(REGS_INDX_Q);
-	arg16 = (arg16 + mReg.IndX) & 0xFF;
-	unsigned char toSub = mpMem->Peek8bit(arg16);
-	SubWithCarry(toSub);
+	if (CheckFlag(FLAGS_QUANTUM)) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+		}
+		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_CARRY;
+		}
+	}
+	else {
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		arg16 = (arg16 + mReg.IndX) & 0xFF;
+		unsigned char toSub = mpMem->Peek8bit(arg16);
+		SubWithCarry(toSub);
+	}
 }
 
 /*
@@ -4376,10 +4448,25 @@ void MKCpu::OpCodeSbcZpx()
 	// SuBtract with Carry, Zero Page Indexed, X
 	// ($F5 arg : SBC arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
-	mReg.IndX = qReg->MReg8(REGS_INDX_Q);
-	arg16 = (arg16 + mReg.IndX) & 0xFF;
-	unsigned char toSub = mpMem->Peek8bit(arg16);
-	SubWithCarry(toSub);
+	if (CheckFlag(FLAGS_QUANTUM)) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+		}
+		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_CARRY;
+		}
+	}
+	else {
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		arg16 = (arg16 + mReg.IndX) & 0xFF;
+		unsigned char toSub = mpMem->Peek8bit(arg16);
+		SubWithCarry(toSub);
+	}
 }
 
 /*
@@ -4415,11 +4502,26 @@ void MKCpu::OpCodeSbcAbx()
 	// SuBtract with Carry, Absolute Indexed, X
 	// ($FD addrlo addrhi : SBC addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
-	mReg.IndX = qReg->MReg8(REGS_INDX_Q);
-	arg16 += mReg.IndX;
+	if (CheckFlag(FLAGS_QUANTUM)) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+		}
+		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_CARRY;
+		}
+	}
+	else {
+		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		arg16 += mReg.IndX;
+		unsigned char toSub = mpMem->Peek8bit(arg16);
+		SubWithCarry(toSub);
+	}
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	unsigned char toSub = mpMem->Peek8bit(arg16);
-	SubWithCarry(toSub);
 }
 
 /*
