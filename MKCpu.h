@@ -54,24 +54,29 @@ struct Regs {
 	//qubit index 17: zero flag
 	//qubit index 18: overflow flag
 	//qubit index 19: negative flag
-	unsigned char 	Acc;					// 8-bit accumulator
-	unsigned short 	Acc16;				// 16-bit accumulator
-	unsigned char 	IndX;					// 8-bit index register X
-	unsigned char 	IndY;					// 8-bit index register Y
-	unsigned short 	Ptr16;				// general purpose 16-bit register
-	unsigned short 	PtrAddr;			// cpu code counter (PC) - current read/write address
-	unsigned char 	PtrStack;			// 8-bit stack pointer (0-255).
-	unsigned char 	Flags;				// CPU flags
-	bool						SoftIrq;			// true when interrupted with BRK or trapped opcode
-	bool            LastRTS;			// true if RTS encountered and stack empty.
-	unsigned short	LastAddr;			// PC at the time of previous op-code
-	//string					LastInstr;		// instruction and argument executed in previous step
-	int							LastOpCode;		// op-code of last instruction
-	unsigned short	LastArg;			// argument to the last instruction
-	int							LastAddrMode;	// addressing mode of last instruction
-	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
-	int  						CyclesLeft;		// # of cycles left to complete current opcode
-	bool						PageBoundary;	// true if page boundary was crossed
+	unsigned char 	Acc;		// 8-bit accumulator
+	unsigned short 	Acc16;		// 16-bit accumulator
+	unsigned char 	IndX;		// 8-bit index register X
+	unsigned char 	IndY;		// 8-bit index register Y
+	unsigned short 	Ptr16;		// general purpose 16-bit register
+	unsigned short 	PtrAddr;	// cpu code counter (PC) - current read/write address
+	unsigned char 	PtrStack;	// 8-bit stack pointer (0-255).
+	unsigned char 	Flags;		// CPU flags
+	bool		SoftIrq;	// true when interrupted with BRK or trapped opcode
+	bool            LastRTS;	// true if RTS encountered and stack empty.
+	unsigned short	LastAddr;	// PC at the time of previous op-code
+	//string	LastInstr;	// instruction and argument executed in previous step
+	int		LastOpCode;	// op-code of last instruction
+	unsigned short	LastArg;	// argument to the last instruction
+	int		LastAddrMode;	// addressing mode of last instruction
+	bool		IrqPending;	// pending Interrupt ReQuest (IRQ)
+	int		CyclesLeft;	// # of cycles left to complete current opcode
+	bool		PageBoundary;	// true if page boundary was crossed
+
+	//Quantum metastatus flags:
+	bool 		isAccQ;		// Is accumulator (and potentially carry flag) superposed in permutation basis?
+	bool 		isXQ;		// Is X register superposed in permutation basis?
+	bool 		isAccQX;	// Is the accumulator entangled with the X register?
 };
 
 #define REGS_ACC_Q		0
@@ -518,13 +523,13 @@ class MKCpu
 		void SetFlagsRegQ(unsigned char reg);								// set quantum flags based on quantum register
 		void SetFlagsQ(unsigned char reg);									// set quantum flags based on input
 		void MeasureFlagsQ();										//Measure quantum flags
-		void ShiftLeftQ(bitLenInt start);
+		void ShiftLeftQ();
 		unsigned char ShiftLeft(unsigned char arg8);				// Arithmetic Shift Left, set Carry flag
-		void ShiftRightQ(bitLenInt start);
+		void ShiftRightQ();
 		unsigned char ShiftRight(unsigned char arg8);				// Logical Shift Right, update flags NZC.
-		void RotateLeftQ(bitLenInt reg);
+		void RotateLeftQ();
 		unsigned char RotateLeft(unsigned char arg8);				// Rotate left, Carry to bit 0, bit 7 to Carry, update flags N and Z.
-		void RotateRightQ(bitLenInt reg);
+		void RotateRightQ();
 		unsigned char RotateRight(unsigned char arg8);			// Rotate left, Carry to bit 7, bit 0 to Carry, update flags N and Z.
 		unsigned short GetArg16(unsigned char offs);				// Get 2-byte argument, add offset, increase PC.
 		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory at address and Acc.
@@ -552,7 +557,8 @@ class MKCpu
 		void Add2History(OpCodeHistItem histitem);					// add entry to op-codes execute history
 		bool PageBoundary(unsigned short startaddr,
 											unsigned short endaddr);					// detect if page boundary was crossed
-
+		void CollapseAccQ();	//Collapse Acc register state if it is in superposition
+		void CollapseXQ();	//Collapse X register state if it is in superposition
 		// opcode execute methods
 		void OpCodeBrk();
 		void OpCodeNop();
