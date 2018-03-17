@@ -72,8 +72,6 @@ struct Regs {
 	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
 	int  						CyclesLeft;		// # of cycles left to complete current opcode
 	bool						PageBoundary;	// true if page boundary was crossed
-	bool						qOEngaged;
-	unsigned char CmpW;				//Ehrenfest's mirror of REGS_CMPW_Q
 };
 
 #define REGS_ACC_Q		0
