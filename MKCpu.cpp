@@ -1001,9 +1001,11 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	}
 
-	if (!CheckFlag(FLAGS_QUANTUM)) {
+	if ((!CheckFlag(FLAGS_QUANTUM)) && mReg.isAccQ) {
 		//If we're in classical mode, the quantum register should be updated with the classical result.
 		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
+		mReg.isAccQ = false;
+		mReg.isAccQX = false;
 	}
 	return mReg.Acc;
 }
@@ -1062,9 +1064,11 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 	
 	}
 
-	if (!CheckFlag(FLAGS_QUANTUM)) {
+	if ((!CheckFlag(FLAGS_QUANTUM)) && mReg.isAccQ) {
 		//If we're in classical mode, the quantum register should be updated with the classical result.
 		qReg->SetReg(REGS_ACC_Q, REG_LEN, mReg.Acc);
+		mReg.isAccQ = false;
+		mReg.isAccQX = false;
 	}
 	return mReg.Acc;
 }
