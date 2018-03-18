@@ -394,7 +394,7 @@ void MKCpu::InitCpu()
 	mOpCodesMap = myOpCodesMap;
 	mReg.isAccQ = false;
 	mReg.isXQ = false;
-	mReg.isAccQX = false;
+	mReg.isCarryQ = false;
 	mReg.Acc = 0;
 	mReg.Acc16 = 0;
 	mReg.Flags = 0;
@@ -448,7 +448,6 @@ void MKCpu::CollapseAccQ() {
 		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
 	}
 	mReg.isAccQ = false;
-	mReg.isAccQX = false;
 }
 
 /*
@@ -464,7 +463,24 @@ void MKCpu::CollapseXQ() {
 		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
 	}
 	mReg.isXQ = false;
-	mReg.isAccQX = false;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		CollapseCarryQ()
+ * Purpose:		Collapse carry bit if it is in superposition
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::CollapseCarryQ() {
+	if (mReg.isCarryQ) {
+		mReg.Flags &= ~FLAGS_CARRY;
+		if (qReg->M(FLAGS_CARRY_Q)) {
+			mReg.Flags |= FLAGS_CARRY;
+		}
+	}
+	mReg.isCarryQ = false;
 }
 
 /*
@@ -495,6 +511,21 @@ void MKCpu::PrepareXQ() {
 		qReg->SetReg(REGS_INDX_Q, REG_LEN, mReg.IndX);
 	}
 	mReg.isXQ = true;
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		PrepareCarryQ()
+ * Purpose:		Prepare carry flag qubit state for quantum operations
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::PrepareCarryQ() {
+	if (!(mReg.isCarryQ)) {
+		qReg->SetBit(FLAGS_CARRY_Q, (mReg.Flags & FLAGS_CARRY));
+	}
+	mReg.isCarryQ = true;
 }
 
 /*
@@ -589,7 +620,9 @@ void MKCpu::MeasureFlagsQ()
  */
 void MKCpu::ShiftLeftQ()
 {
-	if (mReg.isAccQ) {
+	if (mReg.isAccQ || mReg.isCarryQ) {
+		PrepareCarryQ();
+		PrepareAccQ();
 		// set Carry flag based on original bit #7
 		qReg->Swap(REGS_ACC_Q + REG_LEN, FLAGS_CARRY_Q);
 		qReg->SetBit(REGS_ACC_Q + REG_LEN, 0);
@@ -619,7 +652,9 @@ unsigned char MKCpu::ShiftLeft(unsigned char arg8)
  */
 void MKCpu::ShiftRightQ()
 {
-	if (mReg.isAccQ) {
+	if (mReg.isAccQ || mReg.isCarryQ) {
+		PrepareCarryQ();
+		PrepareAccQ();
 		// set Carry flag based on original bit #7
 		qReg->Swap(REGS_ACC_Q + REG_LEN, FLAGS_CARRY_Q);
 		qReg->SetBit(REGS_ACC_Q + REG_LEN, false);
@@ -648,7 +683,9 @@ unsigned char MKCpu::ShiftRight(unsigned char arg8)
  */
 void MKCpu::RotateLeftQ()
 {
-	if (mReg.isAccQ) {
+	if (mReg.isAccQ || mReg.isCarryQ) {
+		PrepareCarryQ();
+		PrepareAccQ();
 		// set Carry flag based on original bit #7
 		qReg->Swap(REGS_ACC_Q + REG_LEN, FLAGS_CARRY_Q);
 		qReg->ROL(1, REGS_ACC_Q, REG_LEN + 1);
@@ -685,7 +722,9 @@ unsigned char MKCpu::RotateLeft(unsigned char arg8)
  */
 void MKCpu::RotateRightQ()
 {
-	if (mReg.isAccQ) {
+	if (mReg.isAccQ || mReg.isCarryQ) {
+		PrepareCarryQ();
+		PrepareAccQ();
 		// set Carry flag based on original bit #7
 		qReg->Swap(REGS_ACC_Q + REG_LEN, FLAGS_CARRY_Q);
 		qReg->ROR(1, REGS_ACC_Q, REG_LEN + 1);
@@ -779,7 +818,9 @@ void MKCpu::LogicOpAcc(unsigned short addr, int logop)
  */
 void MKCpu::CompareOpAcc(unsigned char val)
 {
-	if ((mReg.Flags & FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isXQ)) {
+	if ((mReg.Flags & FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isCarryQ)) {
+		PrepareCarryQ();
+		PrepareAccQ();
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
 		qReg->SetLessThanFlag(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
@@ -808,7 +849,9 @@ void MKCpu::CompareOpAcc(unsigned char val)
  */
 void MKCpu::CompareOpIndX(unsigned char val)
 {	
-	if (mReg.Flags & FLAGS_QUANTUM) {
+	if ((mReg.Flags & FLAGS_QUANTUM) && (mReg.isXQ || mReg.isCarryQ)) {
+		PrepareCarryQ();
+		PrepareXQ();
 		qReg->DEC(val, REGS_INDX_Q, REG_LEN);
 		qReg->SetLessThanFlag(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
@@ -925,7 +968,7 @@ unsigned short MKCpu::Bcd2Num(unsigned char v)
 bool MKCpu::CheckFlag(unsigned char flag)
 {
 	mReg.Flags &= ~FLAGS_CARRY;
-	if (flag & FLAGS_CARRY) mReg.Flags |= qReg->M(FLAGS_CARRY_Q) ? FLAGS_CARRY : 0;
+	if (flag & FLAGS_CARRY) CollapseCarryQ();
 	return ((mReg.Flags & flag) == flag);
 }
 
@@ -944,7 +987,14 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
-			if (flag & FLAGS_CARRY) qReg->Z(FLAGS_CARRY_Q);
+			if (flag & FLAGS_CARRY) {
+				if (mReg.isCarryQ) {
+					qReg->Z(FLAGS_CARRY_Q);
+				}
+				else if (mReg.Flags & FLAGS_CARRY) {
+					qReg->PhaseFlip();
+				}
+			}
 			if ((flag & FLAGS_ZERO) && (mReg.Flags & FLAGS_ZERO)) qReg->PhaseFlip();
 			if ((flag & FLAGS_OVERFLOW) && (mReg.Flags & FLAGS_OVERFLOW)) qReg->PhaseFlip();
 			if ((flag & FLAGS_SIGN) && (mReg.Flags & FLAGS_SIGN)) qReg->PhaseFlip();
@@ -952,10 +1002,10 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 	}
 	else { //classical mode
 		if (set) {
-			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, true);
+			if (flag & FLAGS_CARRY) CollapseCarryQ();
 			mReg.Flags |= flag;
 		} else {
-			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, false);
+			if (flag & FLAGS_CARRY) CollapseCarryQ();
 			mReg.Flags &= ~flag;
 		}
 	}
@@ -980,9 +1030,11 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
  */
 unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 {
-	bool isQuantum = CheckFlag(FLAGS_QUANTUM) && mReg.isAccQ;
+	bool isQuantum = CheckFlag(FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isCarryQ);
 
 	if (isQuantum) { //quantum mode
+		PrepareAccQ();
+		PrepareCarryQ();
 		if (CheckFlag(FLAGS_DEC)) {
 			qReg->INCBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
@@ -1049,9 +1101,11 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
  */
 unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 {
-	bool isQuantum = CheckFlag(FLAGS_QUANTUM) && mReg.isAccQ;
+	bool isQuantum = CheckFlag(FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isCarryQ);
 
 	if (isQuantum) { //quantum mode
+		PrepareAccQ();
+		PrepareCarryQ();
 		if (CheckFlag(FLAGS_DEC)) {
 			qReg->DECBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
@@ -1483,7 +1537,6 @@ void MKCpu::OpCodeLdaIzx()
 		}
 		PrepareAccQ();
 		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
-		mReg.isAccQX = true;
 	}
 	else {
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
@@ -1512,8 +1565,6 @@ void MKCpu::OpCodeLdaZp()
 	// MEM=arg
 	CollapseAccQ();
 	mReg.Acc = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_ZP));
-	mReg.isAccQ = false;
-	mReg.isAccQX = false;
 	SetFlags(mReg.Acc);			
 }
 
@@ -1531,8 +1582,6 @@ void MKCpu::OpCodeLdaImm()
 	// MEM=PC+1
 	CollapseAccQ();
 	mReg.Acc = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
-	mReg.isAccQ = false;
-	mReg.isAccQX = false;
 	mReg.LastArg = mReg.Acc;
 	SetFlags(mReg.Acc);
 }
@@ -1553,8 +1602,6 @@ void MKCpu::OpCodeLdaAbs()
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	CollapseAccQ();
 	mReg.Acc = mpMem->Peek8bit(arg16);
-	mReg.isAccQ = false;
-	mReg.isAccQX = false;
 	SetFlags(mReg.Acc);
 }
 
@@ -1575,8 +1622,6 @@ void MKCpu::OpCodeLdaIzy()
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
 	CollapseAccQ();
 	mReg.Acc = mpMem->Peek8bit(arg16);
-	mReg.isAccQ = false;
-	mReg.isAccQX = false;
 	SetFlags(mReg.Acc);
 }
 
@@ -1601,7 +1646,6 @@ void MKCpu::OpCodeLdaZpx()
 		}
 		PrepareAccQ();
 		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
-		mReg.isAccQX = true;
 	}
 	else {
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
@@ -1657,7 +1701,6 @@ void MKCpu::OpCodeLdaAbx()
 		}
 		PrepareAccQ();
 		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
-		mReg.isAccQX = true;
 	}
 	else {
 		arg16 = arg16 + mReg.IndX;
@@ -1879,7 +1922,6 @@ void MKCpu::OpCodeTax()
 		qReg->SetReg(REGS_INDX_Q, REG_LEN, 0);
 		qReg->CNOT(REGS_ACC_Q, REGS_INDX_Q, REG_LEN);
 		mReg.isXQ = true;
-		mReg.isAccQX = true;
 	}
 	else {
 		CollapseXQ();
@@ -1926,7 +1968,6 @@ void MKCpu::OpCodeTxa()
 		qReg->SetReg(REGS_ACC_Q, REG_LEN, 0);
 		qReg->CNOT(REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
 		mReg.isAccQ = true;
-		mReg.isAccQX = true;
 	}
 	else {
 		CollapseAccQ();
@@ -3293,6 +3334,7 @@ void MKCpu::OpCodeHac()
 {
 	// Hadamard Carry, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareCarryQ();
 	qReg->H(FLAGS_CARRY_Q);
 }
 
@@ -3383,6 +3425,7 @@ void MKCpu::OpCodeQzCarry()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
+	PrepareCarryQ();
 	qReg->Z(FLAGS_CARRY_Q);
 }
 
@@ -3775,8 +3818,8 @@ void MKCpu::OpCodeAdcIzx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
+		PrepareCarryQ();
 		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
-		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3882,8 +3925,8 @@ void MKCpu::OpCodeAdcZpx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
+		PrepareCarryQ();
 		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
-		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3937,8 +3980,8 @@ void MKCpu::OpCodeAdcAbx()
 			toLoad[i] = mpMem->Peek8bit(arg16 + i);
 		}
 		PrepareAccQ();
+		PrepareCarryQ();
 		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
-		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4463,8 +4506,8 @@ void MKCpu::OpCodeSbcIzx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
+		PrepareCarryQ();
 		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
-		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4518,8 +4561,8 @@ void MKCpu::OpCodeSbcZpx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
+		PrepareCarryQ();
 		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
-		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4573,8 +4616,8 @@ void MKCpu::OpCodeSbcAbx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
+		PrepareCarryQ();
 		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
-		mReg.isAccQX = true;
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}

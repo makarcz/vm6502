@@ -76,7 +76,7 @@ struct Regs {
 	//Quantum metastatus flags:
 	bool 		isAccQ;		// Is accumulator (and potentially carry flag) superposed in permutation basis?
 	bool 		isXQ;		// Is X register superposed in permutation basis?
-	bool 		isAccQX;	// Is the accumulator entangled with the X register?
+	bool 		isCarryQ;	// Is the accumulator entangled with the X register?
 };
 
 #define REGS_ACC_Q		0
@@ -554,8 +554,10 @@ class MKCpu
 											unsigned short endaddr);					// detect if page boundary was crossed
 		void CollapseAccQ();	//Collapse Acc register state if it is in superposition
 		void CollapseXQ();	//Collapse X register state if it is in superposition
+		void CollapseCarryQ();	//Collapse carry flag state if it is in superposition
 		void PrepareAccQ();	//Prepare Acc register qubit state for quantum operations
 		void PrepareXQ();	//Prepare X register qubit state for quantum operations
+		void PrepareCarryQ();	//Prepare carry flag qubit state for quantum operations
 
 		// opcode execute methods
 		void OpCodeBrk();
