@@ -992,7 +992,9 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
  */
 unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 {
-	if (CheckFlag(FLAGS_QUANTUM) && mReg.isAccQ) { //quantum mode
+	bool isQuantum = CheckFlag(FLAGS_QUANTUM) && mReg.isAccQ;
+
+	if (isQuantum) { //quantum mode
 		if (CheckFlag(FLAGS_DEC)) {
 			qReg->INCBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
@@ -1016,21 +1018,29 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 		if (al > 9) al += 6;
 		unsigned short ah = (mReg.Acc >> 4) + (mem8 >> 4);
 		if (al > 0x0F) ah++;
-		SetFlag((utmp16 == 0), FLAGS_ZERO);
-		SetFlag(((((ah << 4) ^ mReg.Acc) & 0x80) && !((mReg.Acc ^ mem8) & 0x80)),
-								 FLAGS_OVERFLOW);
+		if (!isQuantum) {
+			SetFlag((utmp16 == 0), FLAGS_ZERO);
+			SetFlag(((((ah << 4) ^ mReg.Acc) & 0x80) && !((mReg.Acc ^ mem8) & 0x80)), FLAGS_OVERFLOW);
+		}
 		if (ah > 9) ah += 6;
-		SetFlag((ah > 0x0F), FLAGS_CARRY);
+		if (!isQuantum) {
+			SetFlag((ah > 0x0F), FLAGS_CARRY);
+		}
 		mReg.Acc = (ah << 4) | (al & 0x0f);
-		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		if (!isQuantum) {
+			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		}
 	} else {	// binary mode
-	
-		SetFlag((utmp16 > 0xff), FLAGS_CARRY);
-		SetFlag((!((mReg.Acc ^ mem8) & 0x80) && ((mReg.Acc ^ utmp16) & 0x80)),
+		if (!isQuantum) {
+			SetFlag((utmp16 > 0xff), FLAGS_CARRY);
+			SetFlag((!((mReg.Acc ^ mem8) & 0x80) && ((mReg.Acc ^ utmp16) & 0x80)),
 							 FLAGS_OVERFLOW);
+		}
 		mReg.Acc = utmp16 & 0xFF;
-		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
-		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		if (!isQuantum) {
+			SetFlag((mReg.Acc == 0), FLAGS_ZERO);
+			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		}
 	}
 
 	return mReg.Acc;
@@ -1046,7 +1056,9 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
  */
 unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 {
-	if (CheckFlag(FLAGS_QUANTUM) && mReg.isAccQ) { //quantum mode
+	bool isQuantum = CheckFlag(FLAGS_QUANTUM) && mReg.isAccQ;
+
+	if (isQuantum) { //quantum mode
 		if (CheckFlag(FLAGS_DEC)) {
 			qReg->DECBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
@@ -1072,21 +1084,26 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 			al -= 6; ah--;
 		}
 		if (ah & 0x10) ah -= 6;
-		SetFlag((utmp16 < 0x100), FLAGS_CARRY);
-		SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80), 
-							FLAGS_OVERFLOW);
+		if (!isQuantum) {
+			SetFlag((utmp16 < 0x100), FLAGS_CARRY);
+			SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80), FLAGS_OVERFLOW);
+		}
 		SetFlag((utmp16 == 0), FLAGS_ZERO);
 		mReg.Acc = (ah << 4) | (al & 0x0f);
-		SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		if (!isQuantum) {
+			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		}
 		
 	} else { // binary mode
-	
-		SetFlag((utmp16 < 0x100), FLAGS_CARRY);
-		SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80),
-							 FLAGS_OVERFLOW);
+		if (!isQuantum) {
+			SetFlag((utmp16 < 0x100), FLAGS_CARRY);
+			SetFlag(((mReg.Acc ^ utmp16) & 0x80) && ((mReg.Acc ^ mem8) & 0x80), FLAGS_OVERFLOW);
+		}
 		mReg.Acc = utmp16 & 0xFF;
-		SetFlag((mReg.Acc == 0), FLAGS_ZERO);
+		if (!isQuantum) {
+			SetFlag((mReg.Acc == 0), FLAGS_ZERO);
 			SetFlag((mReg.Acc & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
+		}
 	
 	}
 
