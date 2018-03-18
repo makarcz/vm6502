@@ -519,9 +519,8 @@ class MKCpu
 		
 		void InitCpu();
 		unsigned char RotateClassical(unsigned char reg);								//Perform classical equivalent of quantum rotation
-		void SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on Acc, X or Y
-		void SetFlagsRegQ(unsigned char reg);								// set quantum flags based on quantum register
-		void SetFlagsQ(unsigned char reg);									// set quantum flags based on input
+		void SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on reg
+		void SetFlagsReg(unsigned char regStart);								// set CPU flags ZERO and SIGN based on Acc, X or Y
 		void MeasureFlagsQ();										//Measure quantum flags
 		void ShiftLeftQ();
 		unsigned char ShiftLeft(unsigned char arg8);				// Arithmetic Shift Left, set Carry flag
