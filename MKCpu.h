@@ -83,7 +83,6 @@ struct Regs {
 #define REGS_INDX_Q		8
 #define REG_LEN			8
 #define FLAGS_CARRY_Q		16
-#define FLAGS_ORACLE_Q		17
 
 /*
  * Virtual CPU, 6502 addressing modes:

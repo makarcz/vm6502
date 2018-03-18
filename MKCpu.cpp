@@ -429,12 +429,10 @@ void MKCpu::InitCpu()
 	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 
 	// Initialize the quantum coherent register
-	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 18, 0);
+	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 17, 0);
 	if (NULL == qReg) {
 		throw MKGenException("Unable to acquire CoherentUnit");
 	}
-	// Oracle bit is always equal to one unless temporarily demanded:
-	qReg->X(FLAGS_ORACLE_Q);
 }
 
 /*
@@ -543,8 +541,8 @@ void MKCpu::SetFlags(unsigned char reg)
 void MKCpu::SetFlagsReg(unsigned char regStart)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(regStart, REG_LEN, FLAGS_ORACLE_Q);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(regStart + REG_LEN - 1, FLAGS_ORACLE_Q);
+		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(regStart, REG_LEN);
+		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(regStart + REG_LEN - 1);
 	}
 	else {
 		unsigned char toTest = 0;
@@ -785,8 +783,8 @@ void MKCpu::CompareOpAcc(unsigned char val)
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
 		qReg->SetLessThanFlag(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ORACLE_Q);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_ORACLE_Q);
+		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN);
+		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
 	}
 	else {
@@ -814,8 +812,8 @@ void MKCpu::CompareOpIndX(unsigned char val)
 		qReg->DEC(val, REGS_INDX_Q, REG_LEN);
 		qReg->SetLessThanFlag(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ORACLE_Q);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_ORACLE_Q);
+		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN);
+		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_INDX_Q, REG_LEN);
 	}
 	else {
@@ -989,11 +987,12 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 			qReg->INCBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
 		else {
-			//We use the oracle bit as an extra bit to represent the quantum overflow flag,
-			// then return the oracle to its original state.
-			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
-			qReg->INCSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_ORACLE_Q, FLAGS_CARRY_Q);
-			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
+			if (mReg.Flags & FLAGS_OVERFLOW) {
+				qReg->INCSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+			}
+			else {
+				qReg->INCC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+			}
 		}
 		SetFlagsReg(REGS_ACC_Q);
 	}
@@ -1057,11 +1056,12 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 			qReg->DECBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
 		else {
-			//We use the oracle bit as an extra bit to represent the quantum overflow flag,
-			// then return the oracle to its original state.
-			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
-			qReg->DECSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_ORACLE_Q, FLAGS_CARRY_Q);
-			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
+			if (mReg.Flags & FLAGS_OVERFLOW) {
+				qReg->DECSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+			}
+			else {
+				qReg->DECC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+			}
 		}
 		SetFlagsReg(REGS_ACC_Q);
 	}
