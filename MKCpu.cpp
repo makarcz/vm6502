@@ -429,10 +429,12 @@ void MKCpu::InitCpu()
 	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 
 	// Initialize the quantum coherent register
-	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 20, 0);
+	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 18, 0);
 	if (NULL == qReg) {
 		throw MKGenException("Unable to acquire CoherentUnit");
 	}
+	// Oracle bit is always equal to one unless temporarily demanded:
+	qReg->X(FLAGS_ORACLE_Q);
 }
 
 /*
@@ -541,8 +543,8 @@ void MKCpu::SetFlags(unsigned char reg)
 void MKCpu::SetFlagsReg(unsigned char regStart)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(regStart, REG_LEN, FLAGS_ZERO_Q);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(regStart + REG_LEN - 1, FLAGS_SIGN_Q);
+		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(regStart, REG_LEN, FLAGS_ORACLE_Q);
+		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(regStart + REG_LEN - 1, FLAGS_ORACLE_Q);
 	}
 	else {
 		unsigned char toTest = 0;
@@ -570,12 +572,11 @@ void MKCpu::SetFlagsReg(unsigned char regStart)
  */
 void MKCpu::MeasureFlagsQ()
 {
-	if ((mReg.Flags & FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isXQ)) {
-		mReg.Flags &= (FLAGS_BRK | FLAGS_IRQ | FLAGS_DEC | FLAGS_QUANTUM);
-		mReg.Flags |= qReg->M(FLAGS_CARRY_Q) ? 	FLAGS_CARRY : 0;
-		mReg.Flags |= qReg->M(FLAGS_ZERO_Q) ? 		FLAGS_ZERO : 0;
-		mReg.Flags |= qReg->M(FLAGS_OVERFLOW_Q) ? 	FLAGS_OVERFLOW : 0;
-		mReg.Flags |= qReg->M(FLAGS_SIGN_Q) ? 		FLAGS_SIGN : 0;
+	if (qReg->M(FLAGS_CARRY_Q)) {
+		mReg.Flags |= FLAGS_CARRY;
+	}
+	else {
+		mReg.Flags &= ~FLAGS_CARRY;
 	}
 }
 
@@ -784,8 +785,8 @@ void MKCpu::CompareOpAcc(unsigned char val)
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
 		qReg->SetLessThanFlag(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
-		qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ZERO_Q);
-		qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN, FLAGS_ORACLE_Q);
+		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1, FLAGS_ORACLE_Q);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
 	}
 	else {
@@ -813,8 +814,8 @@ void MKCpu::CompareOpIndX(unsigned char val)
 		qReg->DEC(val, REGS_INDX_Q, REG_LEN);
 		qReg->SetLessThanFlag(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
-		qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ZERO_Q);
-		qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_SIGN_Q);
+		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN, FLAGS_ORACLE_Q);
+		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1, FLAGS_ORACLE_Q);
 		qReg->INC(val, REGS_INDX_Q, REG_LEN);
 	}
 	else {
@@ -925,21 +926,8 @@ unsigned short MKCpu::Bcd2Num(unsigned char v)
  */
 bool MKCpu::CheckFlag(unsigned char flag)
 {
-	unsigned char partFlag;
-	if (mReg.Flags & FLAGS_QUANTUM) {
-		if (flag & FLAGS_CARRY) partFlag = qReg->M(FLAGS_CARRY_Q) ? FLAGS_CARRY : 0;
-		mReg.Flags &= ~FLAGS_CARRY;
-		mReg.Flags |= partFlag;
-		if (flag & FLAGS_SIGN) partFlag = qReg->M(FLAGS_SIGN_Q) ? FLAGS_SIGN : 0;
-		mReg.Flags &= ~FLAGS_SIGN;
-		mReg.Flags |= partFlag;
-		if (flag & FLAGS_ZERO) partFlag = qReg->M(FLAGS_ZERO_Q) ? FLAGS_ZERO : 0;
-		mReg.Flags &= ~FLAGS_SIGN;
-		mReg.Flags |= partFlag;
-		if (flag & FLAGS_OVERFLOW) partFlag = qReg->M(FLAGS_OVERFLOW_Q) ? FLAGS_SIGN : 0;
-		mReg.Flags &= ~FLAGS_SIGN;
-		mReg.Flags |= partFlag;
-        }
+	mReg.Flags &= ~FLAGS_CARRY;
+	if (flag & FLAGS_CARRY) mReg.Flags |= qReg->M(FLAGS_CARRY_Q) ? FLAGS_CARRY : 0;
 	return ((mReg.Flags & flag) == flag);
 }
 
@@ -959,25 +947,17 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
 			if (flag & FLAGS_CARRY) qReg->Z(FLAGS_CARRY_Q);
-			if (flag & FLAGS_ZERO) qReg->Z(FLAGS_ZERO_Q);
-			if (flag & FLAGS_OVERFLOW) qReg->Z(FLAGS_OVERFLOW_Q);
-			if (flag & FLAGS_SIGN) qReg->Z(FLAGS_SIGN_Q);
+			if ((flag & FLAGS_ZERO) && (mReg.Flags & FLAGS_ZERO)) qReg->PhaseFlip();
+			if ((flag & FLAGS_OVERFLOW) && (mReg.Flags & FLAGS_OVERFLOW)) qReg->PhaseFlip();
+			if ((flag & FLAGS_SIGN) && (mReg.Flags & FLAGS_SIGN)) qReg->PhaseFlip();
 		}
 	}
 	else { //classical mode
 		if (set) {
 			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, true);
-			if (flag & FLAGS_ZERO) qReg->SetBit(FLAGS_ZERO_Q, true);
-			if (flag & FLAGS_OVERFLOW) qReg->SetBit(FLAGS_OVERFLOW_Q, true);
-			if (flag & FLAGS_SIGN) qReg->SetBit(FLAGS_SIGN_Q, true);
-
 			mReg.Flags |= flag;
 		} else {
 			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, false);
-			if (flag & FLAGS_ZERO) qReg->SetBit(FLAGS_ZERO_Q, false);
-			if (flag & FLAGS_OVERFLOW) qReg->SetBit(FLAGS_OVERFLOW_Q, false);
-			if (flag & FLAGS_SIGN) qReg->SetBit(FLAGS_SIGN_Q, false);
-
 			mReg.Flags &= ~flag;
 		}
 	}
@@ -1009,7 +989,11 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 			qReg->INCBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
 		else {
-			qReg->INCSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
+			//We use the oracle bit as an extra bit to represent the quantum overflow flag,
+			// then return the oracle to its original state.
+			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
+			qReg->INCSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_ORACLE_Q, FLAGS_CARRY_Q);
+			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
 		}
 		SetFlagsReg(REGS_ACC_Q);
 	}
@@ -1073,7 +1057,11 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 			qReg->DECBCDC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		}
 		else {
-			qReg->DECSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_OVERFLOW_Q, FLAGS_CARRY_Q);
+			//We use the oracle bit as an extra bit to represent the quantum overflow flag,
+			// then return the oracle to its original state.
+			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
+			qReg->DECSC(mem8, REGS_ACC_Q, REG_LEN, FLAGS_ORACLE_Q, FLAGS_CARRY_Q);
+			if (!(mReg.Flags & FLAGS_OVERFLOW)) qReg->X(FLAGS_ORACLE_Q);
 		}
 		SetFlagsReg(REGS_ACC_Q);
 	}
@@ -3365,7 +3353,7 @@ void MKCpu::OpCodeQzZero()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->Z(FLAGS_ZERO_Q);
+	if (mReg.Flags & FLAGS_ZERO) qReg->PhaseFlip();
 }
 
 /*
@@ -3380,7 +3368,7 @@ void MKCpu::OpCodeQzSign()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->Z(FLAGS_SIGN_Q);
+	if (mReg.Flags & FLAGS_SIGN) qReg->PhaseFlip();
 }
 
 /*
@@ -3410,7 +3398,7 @@ void MKCpu::OpCodeQzOver()
 {
 	// Hadamard overflow, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	qReg->Z(FLAGS_OVERFLOW_Q);
+	if (mReg.Flags & FLAGS_OVERFLOW) qReg->PhaseFlip();
 }
 
 /*
@@ -4951,7 +4939,6 @@ void MKCpu::OpCodeFTX()
 void MKCpu::OpCodeSen()
 {
 	mReg.Flags |= FLAGS_SIGN;
-	qReg->SetBit(FLAGS_SIGN_Q, true);
 }
 
 /*
@@ -4965,7 +4952,6 @@ void MKCpu::OpCodeSen()
 void MKCpu::OpCodeCln()
 {
 	mReg.Flags &= (~FLAGS_SIGN);
-	qReg->SetBit(FLAGS_SIGN_Q, false);
 }
 
 /*
@@ -4979,7 +4965,6 @@ void MKCpu::OpCodeCln()
 void MKCpu::OpCodeSev()
 {
 	mReg.Flags |= FLAGS_OVERFLOW;
-	qReg->SetBit(FLAGS_OVERFLOW_Q, true);
 }
 
 /*
@@ -4993,7 +4978,6 @@ void MKCpu::OpCodeSev()
 void MKCpu::OpCodeSez()
 {
 	mReg.Flags |= FLAGS_ZERO;
-	qReg->SetBit(FLAGS_ZERO_Q, true);
 }
 
 /*
@@ -5007,7 +4991,6 @@ void MKCpu::OpCodeSez()
 void MKCpu::OpCodeClz()
 {
 	mReg.Flags &= (~FLAGS_ZERO);
-	qReg->SetBit(FLAGS_ZERO_Q, false);
 }
 
 /*
