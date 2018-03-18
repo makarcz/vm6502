@@ -4682,6 +4682,7 @@ void MKCpu::OpCodeHadX()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	PrepareXQ();
 	qReg->H(REGS_INDX_Q, REG_LEN);
+	mReg.IndX = RotateClassical(mReg.IndX);
 	SetFlagsRegQ(REGS_INDX_Q);
 	SetFlags(mReg.IndX);
 }
