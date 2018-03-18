@@ -541,8 +541,8 @@ void MKCpu::SetFlagsRegQ(unsigned char start)
 void MKCpu::SetFlagsQ(unsigned char reg)
 {
 	if ((mReg.Flags & FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isXQ)) {
-		qReg->SetBit(FLAGS_ZERO_Q, (0 == reg));
-		qReg->SetBit(FLAGS_SIGN_Q, ((reg & FLAGS_SIGN) == FLAGS_SIGN));
+		if (0 == reg) qReg->Z(FLAGS_ZERO_Q);
+		if ((reg & FLAGS_SIGN) == FLAGS_SIGN) qReg->Z(FLAGS_SIGN_Q);
 	}
 }
 
@@ -957,10 +957,10 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
-			if (flag & FLAGS_CARRY) qReg->R1(M_PI, FLAGS_CARRY_Q);
-			if (flag & FLAGS_ZERO) qReg->R1(M_PI, FLAGS_ZERO_Q);
-			if (flag & FLAGS_OVERFLOW) qReg->R1(M_PI, FLAGS_OVERFLOW_Q);
-			if (flag & FLAGS_SIGN) qReg->R1(M_PI, FLAGS_SIGN_Q);
+			if (flag & FLAGS_CARRY) qReg->Z(FLAGS_CARRY_Q);
+			if (flag & FLAGS_ZERO) qReg->Z(FLAGS_ZERO_Q);
+			if (flag & FLAGS_OVERFLOW) qReg->Z(FLAGS_OVERFLOW_Q);
+			if (flag & FLAGS_SIGN) qReg->Z(FLAGS_SIGN_Q);
 		}
 	}
 	else { //classical mode
