@@ -1051,6 +1051,7 @@ unsigned char MKCpu::AddWithCarry(unsigned char mem8)
 	else {
 		//In classical mode, collapse the accumulator state when necessary.
 		CollapseAccQ();
+		CollapseCarryQ();
 	}
 	
 	//Classical operation is always carried out to mirror the quantum register via Ehrenfest's theorem.
@@ -1122,6 +1123,7 @@ unsigned char MKCpu::SubWithCarry(unsigned char mem8)
 	else {
 		//In classical mode, collapse the accumulator state when necessary.
 		CollapseAccQ();
+		CollapseCarryQ();
 	}
 
 	//Classical operation is always carried out to mirror the quantum register via Ehrenfest's theorem.
