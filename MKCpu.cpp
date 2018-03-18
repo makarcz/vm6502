@@ -526,10 +526,8 @@ unsigned char MKCpu::RotateClassical(unsigned char reg) {
  */
 void MKCpu::SetFlags(unsigned char reg)
 {
-	if ((mReg.Flags & FLAGS_QUANTUM) && (mReg.isAccQ || mReg.isXQ)) {
-		SetFlag((0 == reg), FLAGS_ZERO);
-		SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
-	}
+	SetFlag((0 == reg), FLAGS_ZERO);
+	SetFlag(((reg & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_SIGN);
 }
 
 void MKCpu::SetFlagsRegQ(unsigned char start)
@@ -948,15 +946,15 @@ bool MKCpu::CheckFlag(unsigned char flag)
 
 void MKCpu::SetFlag(bool set, unsigned char flag)
 {
-	if (set) {
-		mReg.Flags |= flag;
-	} else {
-		mReg.Flags &= ~flag;
+	if (flag & FLAGS_QUANTUM) {
+		if (set) {
+			mReg.Flags |= FLAGS_QUANTUM;
+		}
+		else {
+			mReg.Flags &= ~FLAGS_QUANTUM;
+		}
 	}
-}
 
-void MKCpu::SetFlagQ(bool set, unsigned char flag)
-{
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
 			if (flag & FLAGS_CARRY) qReg->R1(M_PI, FLAGS_CARRY_Q);
@@ -971,11 +969,15 @@ void MKCpu::SetFlagQ(bool set, unsigned char flag)
 			if (flag & FLAGS_ZERO) qReg->SetBit(FLAGS_ZERO_Q, true);
 			if (flag & FLAGS_OVERFLOW) qReg->SetBit(FLAGS_OVERFLOW_Q, true);
 			if (flag & FLAGS_SIGN) qReg->SetBit(FLAGS_SIGN_Q, true);
+
+			mReg.Flags |= flag;
 		} else {
 			if (flag & FLAGS_CARRY) qReg->SetBit(FLAGS_CARRY_Q, false);
 			if (flag & FLAGS_ZERO) qReg->SetBit(FLAGS_ZERO_Q, false);
 			if (flag & FLAGS_OVERFLOW) qReg->SetBit(FLAGS_OVERFLOW_Q, false);
 			if (flag & FLAGS_SIGN) qReg->SetBit(FLAGS_SIGN_Q, false);
+
+			mReg.Flags &= ~flag;
 		}
 	}
 }
@@ -2771,7 +2773,7 @@ void MKCpu::OpCodeAslZp()
 	// MEM=arg	
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);	
+	SetFlag(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);	
 	SetFlags(arg8);
 	SetFlagsQ(arg8);
 	arg8 = ShiftLeft(arg8);
@@ -2810,7 +2812,7 @@ void MKCpu::OpCodeAslAbs()
 	// ($0E addrlo addrhi : ASL addr ;addr=0..$FFFF), MEM=addr	
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
+	SetFlag(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -2833,7 +2835,7 @@ void MKCpu::OpCodeAslZpx()
 	CollapseXQ();
 	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
+	SetFlag(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -2856,7 +2858,7 @@ void MKCpu::OpCodeAslAbx()
 	CollapseXQ();
 	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
+	SetFlag(((arg8 & FLAGS_SIGN) == FLAGS_SIGN), FLAGS_CARRY);
 	arg8 = ShiftLeft(arg8);
 	mpMem->Poke8bit(arg16, arg8);
 }
@@ -3054,12 +3056,9 @@ void MKCpu::OpCodeBitZp()
 	CollapseAccQ();
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
-	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
 	//arg8 &= mReg.Acc;
 	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
-	SetFlagQ((arg8 == 0), FLAGS_ZERO);
 }
 
 /*
@@ -3080,13 +3079,10 @@ void MKCpu::OpCodeBitAbs()
 	arg8 = mpMem->Peek8bit(arg16);
 	CollapseAccQ();
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
-	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-	SetFlagQ((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
-	SetFlagQ((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);		
+	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);	
 	//arg8 &= mReg.Acc;
 	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
-	SetFlagQ((arg8 == 0), FLAGS_ZERO);
 }
 
 /*
@@ -3311,7 +3307,6 @@ void MKCpu::OpCodeClc()
 	// CLear Carry, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_CARRY);
-	SetFlagQ(false, FLAGS_CARRY);
 }
 
 /*
@@ -3342,7 +3337,6 @@ void MKCpu::OpCodeSec()
 	// SEt Carry, Implied ($38 : SEC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(true, FLAGS_CARRY);
-	SetFlagQ(true, FLAGS_CARRY);
 }
 
 /*
@@ -3358,7 +3352,6 @@ void MKCpu::OpCodeCli()
 	// CLear Interrupt, Implied ($58 : CLI)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_IRQ);
-	SetFlagQ(false, FLAGS_IRQ);
 }
 
 /*
@@ -3374,7 +3367,6 @@ void MKCpu::OpCodeClv()
 	// CLear oVerflow, Implied ($B8 : CLV)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_OVERFLOW);
-	SetFlagQ(false, FLAGS_OVERFLOW);
 }
 
 /*
@@ -3450,7 +3442,6 @@ void MKCpu::OpCodeCld()
 	// CLear Decimal, Implied ($D8 : CLD)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(false, FLAGS_DEC);
-	SetFlagQ(false, FLAGS_DEC);
 }
 
 /*
@@ -3466,7 +3457,6 @@ void MKCpu::OpCodeSed()
 	// SEt Decimal, Implied ($F8 : SED)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(true, FLAGS_DEC);
-	SetFlagQ(true, FLAGS_DEC);
 }
 
 /*
@@ -3482,7 +3472,6 @@ void MKCpu::OpCodeSei()
 	// SEt Interrupt, Implied ($78 : SEI)
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	SetFlag(true, FLAGS_IRQ);
-	SetFlagQ(true, FLAGS_IRQ);
 }
 
 /*
@@ -3702,7 +3691,7 @@ void MKCpu::OpCodeLsrZp()
 	// MEM=arg
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
+	SetFlag(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3739,7 +3728,7 @@ void MKCpu::OpCodeLsrAbs()
 	// ($4E addrlo addrhi : LSR addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
+	SetFlag(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3762,7 +3751,7 @@ void MKCpu::OpCodeLsrZpx()
 	CollapseXQ();
 	arg16 = (arg16 + mReg.IndX) & 0xFF;
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
+	SetFlag(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -3785,7 +3774,7 @@ void MKCpu::OpCodeLsrAbx()
 	CollapseXQ();
 	arg16 += mReg.IndX;
 	arg8 = mpMem->Peek8bit(arg16);
-	SetFlagQ(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
+	SetFlag(((arg8 & 0x01) == 0x01), FLAGS_CARRY);
 	arg8 = ShiftRight(arg8);
 	mpMem->Poke8bit(arg16, arg8);		
 }
@@ -4099,7 +4088,6 @@ void MKCpu::OpCodeCpyImm()
 	// MEM=PC+1
 	mReg.LastArg = arg8 = mpMem->Peek8bit(GetAddrWithMode(ADDRMODE_IMM));
 	SetFlag((mReg.IndY >= arg8), FLAGS_CARRY);
-	SetFlagQ((mReg.IndY >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndY - arg8;
 	SetFlags(arg8);
 	SetFlagsQ(arg8);
@@ -4121,7 +4109,6 @@ void MKCpu::OpCodeCpyZp()
 	arg16 = GetAddrWithMode(ADDRMODE_ZP);
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlag((mReg.IndY >= arg8), FLAGS_CARRY);
-	SetFlagQ((mReg.IndY >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndY - arg8;
 	SetFlags(arg8);
 	SetFlagsQ(arg8);	
@@ -4144,7 +4131,6 @@ void MKCpu::OpCodeCpyAbs()
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	arg8 = mpMem->Peek8bit(arg16);
 	SetFlag((mReg.IndY >= arg8), FLAGS_CARRY);
-	SetFlagQ((mReg.IndY >= arg8), FLAGS_CARRY);
 	arg8 = mReg.IndY - arg8;
 	SetFlags(arg8);
 	SetFlagsQ(arg8);
@@ -4696,7 +4682,6 @@ void MKCpu::OpCodeHadX()
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	PrepareXQ();
 	qReg->H(REGS_INDX_Q, REG_LEN);
-	CollapseXQ();
 	SetFlagsRegQ(REGS_INDX_Q);
 	SetFlags(mReg.IndX);
 }

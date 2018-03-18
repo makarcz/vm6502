@@ -544,7 +544,6 @@ class MKCpu
 		bool CheckFlag(unsigned char flag);									// Return true if given CPU status flag is set, false otherwise.
 		bool CheckFlagQ(unsigned char flag);									// Return true if given quantum CPU status flag is set, false otherwise.
 		void SetFlag(bool set, unsigned char flag);					// Set or unset processor status flag.
-		void SetFlagQ(bool set, unsigned char flag);
 		unsigned char AddWithCarry(unsigned char mem8);			// Add With Carry, update flags and Acc.
 		void AddWithCarryQ(unsigned char mem8);
 		unsigned char SubWithCarry(unsigned char mem8);			// Subtract With Carry, update flags and Acc.
