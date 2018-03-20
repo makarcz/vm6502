@@ -1218,14 +1218,6 @@ unsigned short MKCpu::GetAddrWithMode(int mode)
 			mReg.LastArg = arg16 = mpMem->Peek16bit(mReg.PtrAddr++);
 			arg16 = mpMem->Peek16bit(arg16);
 			break;
-		
-		//case ADDRMODE_ABA:
-		//	mReg.LastArg = tmp = GetArg16(0);
-		//	//mReg.IndX = qReg->MReg8(8);
-		//	//arg16 = tmp + mReg.IndX;
-		//	arg16 = tmp;
-		//	mReg.PageBoundary = PageBoundary(tmp, arg16 + 255);
-		//	break;
 	
 		case ADDRMODE_ABX:
 			mReg.LastArg = tmp = GetArg16(0);
@@ -1321,10 +1313,6 @@ unsigned short MKCpu::GetArgWithMode(unsigned short addr, int mode)
 		case ADDRMODE_IND:
 			arg16 = mpMem->Peek16bit(addr);
 			break;
-		
-		//case ADDRMODE_ABA:
-		//	arg16 = mpMem->Peek16bit(addr);
-		//	break;
 	
 		case ADDRMODE_ABX:
 			arg16 = mpMem->Peek16bit(addr);
@@ -2029,7 +2017,6 @@ void MKCpu::OpCodeTxs()
 {
 	// Transfer X to Stack ptr, Implied ($9A : TXS)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	//mReg.PtrStack = mReg.IndX;
 	CollapseXQ();
 	mReg.PtrStack = mReg.IndX;
 }
@@ -3071,7 +3058,6 @@ void MKCpu::OpCodeBitZp()
 	CollapseAccQ();
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);
-	//arg8 &= mReg.Acc;
 	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
 }
@@ -3095,7 +3081,6 @@ void MKCpu::OpCodeBitAbs()
 	CollapseAccQ();
 	SetFlag((arg8 & FLAGS_OVERFLOW) == FLAGS_OVERFLOW, FLAGS_OVERFLOW);
 	SetFlag((arg8 & FLAGS_SIGN) == FLAGS_SIGN, FLAGS_SIGN);	
-	//arg8 &= mReg.Acc;
 	arg8 = (mpMem->Peek8bit(arg16)) & mReg.Acc;
 	SetFlag((arg8 == 0), FLAGS_ZERO);
 }
