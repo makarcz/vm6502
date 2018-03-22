@@ -2,7 +2,7 @@ language:
   - c
 install:
   - sudo apt-get update
-  - sudo apt-get install linuxdoc-tools linuxdoc-tools-info binutils-mingw-w64-i686 gcc-mingw-w64-i686 sshpass ncurses-dev libsdl2-dev
+  - sudo apt-get install linuxdoc-tools linuxdoc-tools-info binutils-mingw-w64-i686 gcc-mingw-w64-i686 sshpass libncurses5-dev libsdl2-dev libegl1-mesa-dev libgles2-mesa-dev
 before_script:
   - git clone https://github.com/vm6502q/qrack.git qrack
 script:
