@@ -192,8 +192,8 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_37,		{OPCODE_ILL_37,		ADDRMODE_ZPX,		6,		"RLA",	&MKCpu::OpCodeDud  		/*37*/	}},
 		{OPCODE_SEC,		{OPCODE_SEC,		ADDRMODE_IMP,		2,		"SEC",	&MKCpu::OpCodeSec		/*38*/	}},
 		{OPCODE_AND_ABY,	{OPCODE_AND_ABY,	ADDRMODE_ABY,		4,		"AND",	&MKCpu::OpCodeAndAby 		/*39*/	}},
-		{OPCODE_ROT_A,		{OPCODE_ROT_A,		ADDRMODE_IMP,		2,		"R1A",	&MKCpu::OpCodeR1A 		/*3a*/	}},
-		{OPCODE_ROT_X,		{OPCODE_ROT_X,		ADDRMODE_IMP,		7,		"R1X",	&MKCpu::OpCodeR1X 		/*3b*/	}},
+		{OPCODE_ROT_A,		{OPCODE_ROT_A,		ADDRMODE_IMP,		2,		"RTA",	&MKCpu::OpCodeRTA 		/*3a*/	}},
+		{OPCODE_ROT_X,		{OPCODE_ROT_X,		ADDRMODE_IMP,		7,		"RTX",	&MKCpu::OpCodeRTX 		/*3b*/	}},
 		{OPCODE_ILL_3C,		{OPCODE_ILL_3C,		ADDRMODE_IMP,		4,		"NOP",	&MKCpu::OpCodeDud 		/*3c*/	}},
 		{OPCODE_AND_ABX,	{OPCODE_AND_ABX,	ADDRMODE_ABX,		4,		"AND",	&MKCpu::OpCodeAndAbx 		/*3d*/	}},
 		{OPCODE_ROL_ABX,	{OPCODE_ROL_ABX,	ADDRMODE_ABX,		7,		"ROL",	&MKCpu::OpCodeRolAbx 		/*3e*/	}},
@@ -572,8 +572,8 @@ void MKCpu::SetFlags(unsigned char reg)
 void MKCpu::SetFlagsReg(unsigned char regStart)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(regStart, REG_LEN);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(regStart + REG_LEN - 1);
+		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(regStart, REG_LEN);
+		if (mReg.Flags & FLAGS_SIGN) qReg->CPhaseFlip(regStart + REG_LEN - 1);
 	}
 	else {
 		unsigned char toTest = 0;
@@ -822,10 +822,10 @@ void MKCpu::CompareOpAcc(unsigned char val)
 		PrepareCarryQ();
 		PrepareAccQ();
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
-		qReg->SetLessThanFlag(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
+		qReg->CPhaseFlipIfLess(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_ACC_Q, REG_LEN);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_ACC_Q + REG_LEN - 1);
+		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(REGS_ACC_Q, REG_LEN);
+		if (mReg.Flags & FLAGS_SIGN) qReg->CPhaseFlip(REGS_ACC_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
 	}
 	else {
@@ -853,10 +853,10 @@ void MKCpu::CompareOpIndX(unsigned char val)
 		PrepareCarryQ();
 		PrepareXQ();
 		qReg->DEC(val, REGS_INDX_Q, REG_LEN);
-		qReg->SetLessThanFlag(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
+		qReg->CPhaseFlipIfLess(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
-		if (mReg.Flags & FLAGS_ZERO) qReg->SetZeroFlag(REGS_INDX_Q, REG_LEN);
-		if (mReg.Flags & FLAGS_SIGN) qReg->SetSignFlag(REGS_INDX_Q + REG_LEN - 1);
+		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(REGS_INDX_Q, REG_LEN);
+		if (mReg.Flags & FLAGS_SIGN) qReg->CPhaseFlip(REGS_INDX_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_INDX_Q, REG_LEN);
 	}
 	else {
@@ -4792,33 +4792,33 @@ void MKCpu::OpCodeZX()
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeR1A()
+ * Method:		OpCodeRTA()
  * Purpose:		Apply quarter rotation around |1> axis to each bit in Acc and set flags
  * Arguments:		n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeR1A()
+void MKCpu::OpCodeRTA()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	PrepareAccQ();
-	qReg->R1(M_PI / 2.0, REGS_ACC_Q, REG_LEN);
+	qReg->RT(M_PI / 2.0, REGS_ACC_Q, REG_LEN);
 	SetFlagsReg(REGS_ACC_Q);
 }
 
 /*
  *--------------------------------------------------------------------
- * Method:		OpCodeR1X()
+ * Method:		OpCodeRTX()
  * Purpose:		Apply quarter rotation around |1> axis to each bit in IndX and set flags
  * Arguments:		n/a
  * Returns:		n/a
  *--------------------------------------------------------------------
  */
-void MKCpu::OpCodeR1X()
+void MKCpu::OpCodeRTX()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	PrepareXQ();
-	qReg->R1(M_PI / 2.0, REGS_INDX_Q, REG_LEN);
+	qReg->RT(M_PI / 2.0, REGS_INDX_Q, REG_LEN);
 	SetFlagsReg(REGS_INDX_Q);
 }
 

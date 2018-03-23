@@ -722,8 +722,8 @@ class MKCpu
 		void OpCodeYX();
 		void OpCodeZA();
 		void OpCodeZX();
-		void OpCodeR1A();
-		void OpCodeR1X();
+		void OpCodeRTA();
+		void OpCodeRTX();
 		void OpCodeRXA();
 		void OpCodeRXX();
 		void OpCodeRYA();
