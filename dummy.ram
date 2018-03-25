@@ -427,19 +427,19 @@ $0c00
 ;		ldy #$0c
 ; 		ldx #$00
 ;		seq
+;               clv
+;               clc
 ;               hax
 ;               lda $0f00,X
-;               cln
-;               clv
+;		;sec ; Set carry here instead of Z and N to search >=
 ; GITER:	seq
-;		sez
-;		clc
+;		sez  ; Set Z here instead of N and C to search =
+;		;sen ; Set N here instead of Z and C to search <
 ;		cmp #$64
 ;		ehx
 ;		qzz
-;		clz
-;		ehx
 ;		clq
+;		ehx
 ;		dey
 ;		bne GITER
 ;		cmp #$64
@@ -447,9 +447,8 @@ $0c00
 ;		stx $0cff
 ;		brk
 ;
-$1f $a0 $0c $a2 $00 $3f $03 $bd $00 $0f $2f $b8 $3f $2b $18 $c9
-$64 $0b $47 $0b $f7 $1f $88 $d0 $f3 $c9 $64 $d0 $e3 $8e $ff $0c
-$00 
+$1f $a0 $0c $a2 $00 $3f $b8 $18 $03 $bd $00 $0f $3f $2b $c9 $64
+$0b $f7 $1f $0b $88 $d0 $f5 $c9 $64 $d0 $e3 $8e $ff $0c $00 
 ORG
 $0f00
 $ff $fe $fd $fc $fb $fa $f9 $f8 $f7 $f6 $f5 $f4 $f3 $f2 $f1 $f0
