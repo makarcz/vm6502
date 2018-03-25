@@ -3276,7 +3276,7 @@ void MKCpu::OpCodeClq()
 {
 	// CLear Oracle, Implied ($1f : CLO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_QUANTUM);
+	mReg.Flags &= ~FLAGS_QUANTUM;
 }
 
 /*
@@ -3291,7 +3291,7 @@ void MKCpu::OpCodeSeq()
 {
 	// SEear Oracle, Implied ($3f : SEO)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(true, FLAGS_QUANTUM);
+	mReg.Flags |= FLAGS_QUANTUM;
 }
 
 /*
@@ -3306,7 +3306,8 @@ void MKCpu::OpCodeClc()
 {
 	// CLear Carry, Implied ($18 : CLC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_CARRY);
+	if (mReg.isCarryQ) CollapseCarryQ();
+	mReg.Flags &= ~FLAGS_CARRY;
 }
 
 /*
@@ -3337,7 +3338,8 @@ void MKCpu::OpCodeSec()
 {
 	// SEt Carry, Implied ($38 : SEC)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(true, FLAGS_CARRY);
+	if (mReg.isCarryQ) CollapseCarryQ();
+	mReg.Flags |= FLAGS_CARRY;
 }
 
 /*
@@ -3352,7 +3354,7 @@ void MKCpu::OpCodeCli()
 {
 	// CLear Interrupt, Implied ($58 : CLI)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_IRQ);
+	mReg.Flags &= ~FLAGS_IRQ;
 }
 
 /*
@@ -3367,7 +3369,7 @@ void MKCpu::OpCodeClv()
 {
 	// CLear oVerflow, Implied ($B8 : CLV)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_OVERFLOW);
+	mReg.Flags &= ~FLAGS_OVERFLOW;
 }
 
 /*
@@ -3443,7 +3445,7 @@ void MKCpu::OpCodeCld()
 {
 	// CLear Decimal, Implied ($D8 : CLD)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(false, FLAGS_DEC);
+	mReg.Flags &= ~FLAGS_DEC;
 }
 
 /*
@@ -3458,7 +3460,7 @@ void MKCpu::OpCodeSed()
 {
 	// SEt Decimal, Implied ($F8 : SED)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(true, FLAGS_DEC);
+	mReg.Flags |= FLAGS_DEC;
 }
 
 /*
@@ -3473,7 +3475,7 @@ void MKCpu::OpCodeSei()
 {
 	// SEt Interrupt, Implied ($78 : SEI)
 	mReg.LastAddrMode = ADDRMODE_IMP;
-	SetFlag(true, FLAGS_IRQ);
+	mReg.Flags |= FLAGS_IRQ;
 }
 
 /*
@@ -4968,6 +4970,7 @@ void MKCpu::OpCodeFTX()
  */
 void MKCpu::OpCodeSen()
 {
+	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.Flags |= FLAGS_SIGN;
 }
 
@@ -4981,7 +4984,8 @@ void MKCpu::OpCodeSen()
  */
 void MKCpu::OpCodeCln()
 {
-	mReg.Flags &= (~FLAGS_SIGN);
+	mReg.LastAddrMode = ADDRMODE_IMP;
+	mReg.Flags &= ~FLAGS_SIGN;
 }
 
 /*
@@ -4994,6 +4998,7 @@ void MKCpu::OpCodeCln()
  */
 void MKCpu::OpCodeSev()
 {
+	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.Flags |= FLAGS_OVERFLOW;
 }
 
@@ -5007,6 +5012,7 @@ void MKCpu::OpCodeSev()
  */
 void MKCpu::OpCodeSez()
 {
+	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.Flags |= FLAGS_ZERO;
 }
 
@@ -5020,7 +5026,8 @@ void MKCpu::OpCodeSez()
  */
 void MKCpu::OpCodeClz()
 {
-	mReg.Flags &= (~FLAGS_ZERO);
+	mReg.LastAddrMode = ADDRMODE_IMP;
+	mReg.Flags &= ~FLAGS_ZERO;
 }
 
 /*
