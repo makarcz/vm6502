@@ -145,7 +145,7 @@ void MKCpu::InitCpu()
 		{OPCODE_PHP,		{OPCODE_PHP,		ADDRMODE_IMP,		3,		"PHP",	&MKCpu::OpCodePhp		/*08*/	}},
 		{OPCODE_ORA_IMM,	{OPCODE_ORA_IMM,	ADDRMODE_IMM,		2,		"ORA",	&MKCpu::OpCodeOraImm 		/*09*/	}},
 		{OPCODE_ASL,		{OPCODE_ASL,		ADDRMODE_ACC,		2,		"ASL",	&MKCpu::OpCodeAslAcc		/*0a*/	}},
-		{OPCODE_EHX,		{OPCODE_EHX,		ADDRMODE_IMP,		2,		"EHX",	&MKCpu::OpCodeEhx 		/*0b*/	}},
+		{OPCODE_ILL_0B,		{OPCODE_ILL_0B,		ADDRMODE_IMM,		2,		"ANC",	&MKCpu::OpCodeDud 		/*0b*/	}},
 		{OPCODE_ILL_0C,		{OPCODE_ILL_0C,		ADDRMODE_ABS,		4,		"NOP",	&MKCpu::OpCodeDud		/*0c*/	}},
 		{OPCODE_ORA_ABS,	{OPCODE_ORA_ABS,	ADDRMODE_ABS,		4,		"ORA",	&MKCpu::OpCodeOraAbs 		/*0d*/	}},
 		{OPCODE_ASL_ABS,	{OPCODE_ASL_ABS,	ADDRMODE_ABS,		6,		"ASL",	&MKCpu::OpCodeAslAbs 		/*0e*/	}},
@@ -5028,24 +5028,6 @@ void MKCpu::OpCodeClz()
 {
 	mReg.LastAddrMode = ADDRMODE_IMP;
 	mReg.Flags &= ~FLAGS_ZERO;
-}
-
-/*
- *--------------------------------------------------------------------
- * Method:		OpCodeEhx()
- * Purpose:		"Entangled Hadamard" on X
- * Arguments:		n/a
- * Returns:		n/a
- *--------------------------------------------------------------------
- */
-void MKCpu::OpCodeEhx()
-{
-	PrepareAccQ();
-	PrepareXQ();
-	qReg->EntangledH(REGS_INDX_Q, REGS_ACC_Q, REG_LEN);
-	mReg.IndX = RotateClassical(mReg.IndX);
-	mReg.Acc = RotateClassical(mReg.Acc);
-	SetFlagsReg(REGS_INDX_Q);
 }
 
 /*
