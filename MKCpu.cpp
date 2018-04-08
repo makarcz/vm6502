@@ -573,7 +573,7 @@ void MKCpu::SetFlagsReg(unsigned char regStart)
 {
 	if (mReg.Flags & FLAGS_QUANTUM) {
 		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(regStart, REG_LEN);
-		if (mReg.Flags & FLAGS_SIGN) qReg->CPhaseFlip(regStart + REG_LEN - 1);
+		if (mReg.Flags & FLAGS_SIGN) qReg->Z(regStart + REG_LEN - 1);
 	}
 	else {
 		unsigned char toTest = 0;
@@ -825,7 +825,7 @@ void MKCpu::CompareOpAcc(unsigned char val)
 		qReg->CPhaseFlipIfLess(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
 		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(REGS_ACC_Q, REG_LEN);
-		if (mReg.Flags & FLAGS_SIGN) qReg->CPhaseFlip(REGS_ACC_Q + REG_LEN - 1);
+		if (mReg.Flags & FLAGS_SIGN) qReg->Z(REGS_ACC_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
 	}
 	else {
@@ -856,7 +856,7 @@ void MKCpu::CompareOpIndX(unsigned char val)
 		qReg->CPhaseFlipIfLess(val, REGS_INDX_Q, REG_LEN, FLAGS_CARRY_Q);
 		qReg->Z(FLAGS_CARRY_Q);
 		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(REGS_INDX_Q, REG_LEN);
-		if (mReg.Flags & FLAGS_SIGN) qReg->CPhaseFlip(REGS_INDX_Q + REG_LEN - 1);
+		if (mReg.Flags & FLAGS_SIGN) qReg->Z(REGS_INDX_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_INDX_Q, REG_LEN);
 	}
 	else {
