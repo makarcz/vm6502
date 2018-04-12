@@ -12,8 +12,8 @@ LIBS     = -static-libgcc -m64 -g3 -ltermcap -lncurses -lpthread -lm
 CLIBS    = -static-libgcc -m64 -g3
 INCS     =
 
-QRACKLIBS= qrack/libqrack.a
-QRACKINCS= -Iqrack
+QRACKLIBS= qrack/build/libqrack.a
+QRACKINCS= -Iqrack/include
 
 CXXINCS  = $(SDLINCS) $(QRACKINCS)
 CXXFLAGS = $(CXXINCS) -m64 -std=c++11 -Wall -pedantic -g3 -fpermissive
@@ -41,11 +41,11 @@ endif
 all: all-before $(BIN) bin2hex all-after
 
 $(QRACKLIBS):
-	ENABLE_OPENCL=$(ENABLE_OPENCL) ${MAKE} -C qrack
+	ENABLE_OPENCL=$(ENABLE_OPENCL) ${MAKE} -C qrack/build
 
 clean: clean-custom
 	${RM} $(OBJ) testall.o $(BIN) bin2hex
-	ENABLE_OPENCL=$(ENABLE_OPENCL) ${MAKE} -C qrack clean
+	ENABLE_OPENCL=$(ENABLE_OPENCL) ${MAKE} -C qrack/build clean
 
 $(BIN): ${QRACKLIBS} ${OBJ}
 	$(CPP) $(LINKOBJ) $(QRACKLIBS) -o $(BIN) $(LDFLAGS) $(LIBS) $(SDLLIBS)
