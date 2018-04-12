@@ -6,4 +6,5 @@ install:
 before_script:
   - git clone https://github.com/vm6502q/qrack.git qrack
 script:
+  - cd qrack && mkdir build && cd build && cmake -DUSE_OPENCL=OFF .. && make -j 8 all
   - ENABLE_OPENCL=0 make
