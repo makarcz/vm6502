@@ -984,6 +984,7 @@ bool MKCpu::CheckFlag(unsigned char flag)
 
 void MKCpu::SetFlag(bool set, unsigned char flag)
 {
+        if (flag & FLAGS_CARRY) CollapseCarryQ();
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
 			if ((flag & FLAGS_ZERO) && (mReg.Flags & FLAGS_ZERO)) qReg->PhaseFlip();
@@ -993,10 +994,8 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 	}
 	else { //classical mode
 		if (set) {
-			if (flag & FLAGS_CARRY) CollapseCarryQ();
 			mReg.Flags |= flag;
 		} else {
-			if (flag & FLAGS_CARRY) CollapseCarryQ();
 			mReg.Flags &= ~flag;
 		}
 	}
