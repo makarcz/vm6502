@@ -38,9 +38,9 @@
 #include "MKGenException.h"
 
 #if ENABLE_OPENCL
-Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL;
+Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL_SEPARATED;
 #else
-Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_SOFTWARE;
+Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_SOFTWARE_SEPARATED;
 #endif
 
 Qrack::CoherentUnit *qReg = NULL;
@@ -822,7 +822,6 @@ void MKCpu::CompareOpAcc(unsigned char val)
 		PrepareAccQ();
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
 		qReg->CPhaseFlipIfLess(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
-		qReg->Z(FLAGS_CARRY_Q);
 		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(REGS_ACC_Q, REG_LEN);
 		if (mReg.Flags & FLAGS_SIGN) qReg->Z(REGS_ACC_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
