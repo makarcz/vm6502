@@ -36,8 +36,6 @@
 #include <string.h>
 #include "MKCpu.h"
 #include "MKGenException.h"
-#include <iostream>
-#include <iomanip>
 
 #if ENABLE_OPENCL
 Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL;
