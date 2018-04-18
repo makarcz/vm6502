@@ -154,7 +154,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ORA_IZY,	{OPCODE_ORA_IZY,	ADDRMODE_IZY,		5,		"ORA",	&MKCpu::OpCodeOraIzy 		/*11*/	}},
 		{OPCODE_PAX_A,		{OPCODE_PAX_A,		ADDRMODE_IMP,		3,		"PXA",	&MKCpu::OpCodeXA 		/*12*/	}},
 		{OPCODE_PAX_X,		{OPCODE_PAX_X,		ADDRMODE_IMP,		3,		"PXX",	&MKCpu::OpCodeXX 		/*13*/	}},
-		{OPCODE_PAX_C,		{OPCODE_PAX_C,		ADDRMODE_IMP,		2,		"PXC",	&MKCpu::OpCodeXC 		/*14*/	}},
+		{OPCODE_PAX_C,		{OPCODE_PAX_C,		ADDRMODE_IMP,		2,		"PXC",	&MKCpu::OpCodeXC		/*14*/	}},
 		{OPCODE_ORA_ZPX,	{OPCODE_ORA_ZPX,	ADDRMODE_ZPX,		4,		"ORA",	&MKCpu::OpCodeOraZpx 		/*15*/	}},
 		{OPCODE_ASL_ZPX,	{OPCODE_ASL_ZPX,	ADDRMODE_ZPX,		6,		"ASL",	&MKCpu::OpCodeAslZpx 		/*16*/	}},
 		{OPCODE_HAD_C,		{OPCODE_HAD_C,		ADDRMODE_IMP,		4,		"HAC",	&MKCpu::OpCodeHac 		/*17*/	}},
@@ -983,7 +983,7 @@ bool MKCpu::CheckFlag(unsigned char flag)
 
 void MKCpu::SetFlag(bool set, unsigned char flag)
 {
-        if (flag & FLAGS_CARRY) CollapseCarryQ();
+	if (flag & FLAGS_CARRY) CollapseCarryQ();
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
 			if ((flag & FLAGS_ZERO) && (mReg.Flags & FLAGS_ZERO)) qReg->PhaseFlip();

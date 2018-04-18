@@ -38,7 +38,6 @@
 #include <queue>
 #include "system.h"
 #include "Memory.h"
-#include "qengine_cpu.hpp"
 #include "qfactory.hpp"
 
 using namespace std;
@@ -169,7 +168,7 @@ enum eOpCodes {
 	OPCODE_ORA_IZY	= 0x11,	// bitwise OR with Accumulator, Indirect Indexed ($11 arg : ORA (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	OPCODE_PAX_A		= 0x12,	// 6502Q: Pauli X on Accumulator
 	OPCODE_PAX_X		= 0x13,	// 6502Q: Pauli X on Immediate
-	OPCODE_PAX_C		= 0x14,	// illegal opcode
+	OPCODE_PAX_C		= 0x14,	// 6502Q: Pauli X on Carry
 	OPCODE_ORA_ZPX	= 0x15,	// bitwise OR with Accumulator, Zero Page Indexed, X ($15 arg : ORA arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ASL_ZPX	= 0x16,	// Arithmetic Shift Left, Zero Page Indexed, X ($16 arg : ASL arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_HAD_C		= 0x17,	// 6502Q: Hadamard on Carry Flag
@@ -718,7 +717,7 @@ class MKCpu
 		void OpCodeHadX();
 		void OpCodeXA();
 		void OpCodeXX();
-                void OpCodeXC();
+		void OpCodeXC();
 		void OpCodeYA();
 		void OpCodeYX();
 		void OpCodeZA();
