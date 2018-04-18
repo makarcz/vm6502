@@ -38,12 +38,12 @@
 #include "MKGenException.h"
 
 #if ENABLE_OPENCL
-Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL_SEPARATED;
+Qrack::QInterfaceEngine qUnitEngine = Qrack::QENGINE_OPENCL;
 #else
-Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_SOFTWARE_SEPARATED;
+Qrack::QInterfaceEngine qUnitEngine = Qrack::QENGINE_CPU;
 #endif
 
-Qrack::CoherentUnit *qReg = NULL;
+Qrack::QInterfacePtr qReg = NULL;
 
 namespace MKBasic {
 
@@ -427,10 +427,10 @@ void MKCpu::InitCpu()
 	// Set BRK code at the RESET procedure address.
 	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 
-	// Initialize the quantum coherent register
-	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 17, 0);
+	// Initialize the QCPU
+	qReg = Qrack::CreateQuantumInterface(qUnitEngine, 17, 0);
 	if (NULL == qReg) {
-		throw MKGenException("Unable to acquire CoherentUnit");
+		throw MKGenException("Unable to acquire QUnit");
 	}
 }
 
