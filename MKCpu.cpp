@@ -38,12 +38,12 @@
 #include "MKGenException.h"
 
 #if ENABLE_OPENCL
-Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_OPENCL;
+Qrack::QInterfaceEngine qUnitEngine = Qrack::QENGINE_OPENCL;
 #else
-Qrack::CoherentUnitEngine coherentUnitEngine = Qrack::COHERENT_UNIT_ENGINE_SOFTWARE;
+Qrack::QInterfaceEngine qUnitEngine = Qrack::QENGINE_CPU;
 #endif
 
-Qrack::CoherentUnit *qReg = NULL;
+Qrack::QInterfacePtr qReg = NULL;
 
 namespace MKBasic {
 
@@ -154,7 +154,7 @@ void MKCpu::InitCpu()
 		{OPCODE_ORA_IZY,	{OPCODE_ORA_IZY,	ADDRMODE_IZY,		5,		"ORA",	&MKCpu::OpCodeOraIzy 		/*11*/	}},
 		{OPCODE_PAX_A,		{OPCODE_PAX_A,		ADDRMODE_IMP,		3,		"PXA",	&MKCpu::OpCodeXA 		/*12*/	}},
 		{OPCODE_PAX_X,		{OPCODE_PAX_X,		ADDRMODE_IMP,		3,		"PXX",	&MKCpu::OpCodeXX 		/*13*/	}},
-		{OPCODE_ILL_14,		{OPCODE_ILL_14,		ADDRMODE_ZPX,		4,		"NOP",	&MKCpu::OpCodeDud 		/*14*/	}},
+		{OPCODE_PAX_C,		{OPCODE_PAX_C,		ADDRMODE_IMP,		2,		"PXC",	&MKCpu::OpCodeXC		/*14*/	}},
 		{OPCODE_ORA_ZPX,	{OPCODE_ORA_ZPX,	ADDRMODE_ZPX,		4,		"ORA",	&MKCpu::OpCodeOraZpx 		/*15*/	}},
 		{OPCODE_ASL_ZPX,	{OPCODE_ASL_ZPX,	ADDRMODE_ZPX,		6,		"ASL",	&MKCpu::OpCodeAslZpx 		/*16*/	}},
 		{OPCODE_HAD_C,		{OPCODE_HAD_C,		ADDRMODE_IMP,		4,		"HAC",	&MKCpu::OpCodeHac 		/*17*/	}},
@@ -389,7 +389,6 @@ void MKCpu::InitCpu()
 		{OPCODE_ILL_FC,		{OPCODE_ILL_FC,		ADDRMODE_IMP,		2,		"QZO",	&MKCpu::OpCodeQzOver 		/*fc*/	}},
 		{OPCODE_SBC_ABX,	{OPCODE_SBC_ABX,	ADDRMODE_ABX,		4,		"SBC",	&MKCpu::OpCodeSbcAbx 		/*fd*/	}},
 		{OPCODE_INC_ABX,	{OPCODE_INC_ABX,	ADDRMODE_ABX,		7,		"INC",	&MKCpu::OpCodeIncAbx 		/*fe*/	}},
-		{OPCODE_ILL_FF,		{OPCODE_ILL_FF,		ADDRMODE_ABX,		7,		"ISC",	&MKCpu::OpCodeDud 		/*ff*/	}}
 	};
 	mOpCodesMap = myOpCodesMap;
 	mReg.isAccQ = false;
@@ -428,10 +427,10 @@ void MKCpu::InitCpu()
 	// Set BRK code at the RESET procedure address.
 	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 
-	// Initialize the quantum coherent register
-	qReg = Qrack::CreateCoherentUnit(coherentUnitEngine, 17, 0);
+	// Initialize the QCPU
+	qReg = Qrack::CreateQuantumInterface(qUnitEngine, 17, 0);
 	if (NULL == qReg) {
-		throw MKGenException("Unable to acquire CoherentUnit");
+		throw MKGenException("Unable to acquire QUnit");
 	}
 }
 
@@ -523,7 +522,7 @@ void MKCpu::PrepareXQ() {
  */
 void MKCpu::PrepareCarryQ() {
 	if (!(mReg.isCarryQ)) {
-		qReg->SetBit(FLAGS_CARRY_Q, (mReg.Flags & FLAGS_CARRY));
+		qReg->SetBit(FLAGS_CARRY_Q, (mReg.Flags & FLAGS_CARRY) > 0);
 	}
 	mReg.isCarryQ = true;
 }
@@ -823,7 +822,6 @@ void MKCpu::CompareOpAcc(unsigned char val)
 		PrepareAccQ();
 		qReg->DEC(val, REGS_ACC_Q, REG_LEN);
 		qReg->CPhaseFlipIfLess(val, REGS_ACC_Q, REG_LEN, FLAGS_CARRY_Q);
-		qReg->Z(FLAGS_CARRY_Q);
 		if (mReg.Flags & FLAGS_ZERO) qReg->ZeroPhaseFlip(REGS_ACC_Q, REG_LEN);
 		if (mReg.Flags & FLAGS_SIGN) qReg->Z(REGS_ACC_Q + REG_LEN - 1);
 		qReg->INC(val, REGS_ACC_Q, REG_LEN);
@@ -985,16 +983,9 @@ bool MKCpu::CheckFlag(unsigned char flag)
 
 void MKCpu::SetFlag(bool set, unsigned char flag)
 {
+	if (flag & FLAGS_CARRY) CollapseCarryQ();
 	if (mReg.Flags & FLAGS_QUANTUM) { //quantum mode
 		if (set) {
-			if (flag & FLAGS_CARRY) {
-				if (mReg.isCarryQ) {
-					qReg->Z(FLAGS_CARRY_Q);
-				}
-				else if (mReg.Flags & FLAGS_CARRY) {
-					qReg->PhaseFlip();
-				}
-			}
 			if ((flag & FLAGS_ZERO) && (mReg.Flags & FLAGS_ZERO)) qReg->PhaseFlip();
 			if ((flag & FLAGS_OVERFLOW) && (mReg.Flags & FLAGS_OVERFLOW)) qReg->PhaseFlip();
 			if ((flag & FLAGS_SIGN) && (mReg.Flags & FLAGS_SIGN)) qReg->PhaseFlip();
@@ -1002,10 +993,8 @@ void MKCpu::SetFlag(bool set, unsigned char flag)
 	}
 	else { //classical mode
 		if (set) {
-			if (flag & FLAGS_CARRY) CollapseCarryQ();
 			mReg.Flags |= flag;
 		} else {
-			if (flag & FLAGS_CARRY) CollapseCarryQ();
 			mReg.Flags &= ~flag;
 		}
 	}
@@ -3970,13 +3959,14 @@ void MKCpu::OpCodeAdcAbx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->AdcSuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
 		else {
 			mReg.Flags &= ~FLAGS_CARRY;
 		}
+		SetFlags(REGS_ACC_Q);
 	}
 	else {
 		arg16 += mReg.IndX;
@@ -4602,17 +4592,18 @@ void MKCpu::OpCodeSbcAbx()
 	if (CheckFlag(FLAGS_QUANTUM) && mReg.isXQ) {
 		unsigned char toLoad[256];
 		for (int i = 0; i < 256; i++) {
-			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
+			toLoad[i] = mpMem->Peek8bit(arg16 + i);
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->SbcSuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
 		else {
 			mReg.Flags &= ~FLAGS_CARRY;
 		}
+		SetFlagsReg(REGS_ACC_Q);
 	}
 	else {
 		CollapseXQ();
@@ -4725,6 +4716,23 @@ void MKCpu::OpCodeXX()
 	}
 	else {
 		SetFlags(mReg.IndX);
+	}
+}
+
+/*
+ *--------------------------------------------------------------------
+ * Method:		OpCodeXC()
+ * Purpose:		Apply Pauli X to Carry flag
+ * Arguments:		n/a
+ * Returns:		n/a
+ *--------------------------------------------------------------------
+ */
+void MKCpu::OpCodeXC()
+{
+	mReg.LastAddrMode = ADDRMODE_IMP;
+	mReg.Flags ^= FLAGS_CARRY;
+	if (mReg.isCarryQ) {
+		qReg->X(FLAGS_CARRY_Q);
 	}
 }
 
