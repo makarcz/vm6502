@@ -38,7 +38,8 @@
 #include <queue>
 #include "system.h"
 #include "Memory.h"
-#include "qregister.hpp"
+#include "qengine_cpu.hpp"
+#include "qfactory.hpp"
 
 using namespace std;
 
