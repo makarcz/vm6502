@@ -37,10 +37,11 @@
 #include "MKCpu.h"
 #include "MKGenException.h"
 
+Qrack::QInterfaceEngine qUnitEngine = Qrack::QINTERFACE_QUNIT;
 #if ENABLE_OPENCL
-Qrack::QInterfaceEngine qUnitEngine = Qrack::QENGINE_OPENCL;
+Qrack::QInterfaceEngine qUnitSubEngine = Qrack::QINTERFACE_OPENCL;
 #else
-Qrack::QInterfaceEngine qUnitEngine = Qrack::QENGINE_CPU;
+Qrack::QInterfaceEngine qUnitSubEngine = Qrack::QINTERFACE_CPU;
 #endif
 
 Qrack::QInterfacePtr qReg = NULL;
@@ -428,7 +429,7 @@ void MKCpu::InitCpu()
 	mpMem->Poke8bitImg(0x0200,OPCODE_BRK);
 
 	// Initialize the QCPU
-	qReg = Qrack::CreateQuantumInterface(qUnitEngine, 17, 0);
+	qReg = Qrack::CreateQuantumInterface(qUnitEngine, qUnitSubEngine, 17, 0);
 	if (NULL == qReg) {
 		throw MKGenException("Unable to acquire QUnit");
 	}
@@ -444,7 +445,7 @@ void MKCpu::InitCpu()
  */
 void MKCpu::CollapseAccQ() {
 	if (mReg.isAccQ) {
-		mReg.Acc = qReg->MReg8(REGS_ACC_Q);
+		mReg.Acc = qReg->MReg(REGS_ACC_Q, 8);
 	}
 	mReg.isAccQ = false;
 }
@@ -459,7 +460,7 @@ void MKCpu::CollapseAccQ() {
  */
 void MKCpu::CollapseXQ() {
 	if (mReg.isXQ) {
-		mReg.IndX = qReg->MReg8(REGS_INDX_Q);
+		mReg.IndX = qReg->MReg(REGS_INDX_Q, 8);
 	}
 	mReg.isXQ = false;
 }
@@ -1210,7 +1211,7 @@ unsigned short MKCpu::GetAddrWithMode(int mode)
 	
 		case ADDRMODE_ABX:
 			mReg.LastArg = tmp = GetArg16(0);
-			//mReg.IndX = qReg->MReg8(8);
+			//mReg.IndX = qReg->MReg(8, 8);
 			//arg16 = tmp + mReg.IndX;
 			arg16 = tmp;
 			mReg.PageBoundary = PageBoundary(tmp, arg16 + 255);
@@ -1218,26 +1219,26 @@ unsigned short MKCpu::GetAddrWithMode(int mode)
 			
 		case ADDRMODE_ABY:
 			mReg.LastArg = tmp = GetArg16(0);
-			//mReg.IndY = qReg->MReg8(16);
+			//mReg.IndY = qReg->MReg(16, 8);
 			arg16 = tmp + mReg.IndY;
 			mReg.PageBoundary = PageBoundary(tmp, arg16);
 			break;
 			
 		case ADDRMODE_ZPX:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
-			//mReg.IndX = qReg->MReg8(8);
+			//mReg.IndX = qReg->MReg(8, 8);
 			//arg16 = (arg16 + mReg.IndX) & 0xFF;
 			break;
 			
 		case ADDRMODE_ZPY:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
-			//mReg.IndY = qReg->MReg8(16);
+			//mReg.IndY = qReg->MReg(16, 8);
 			arg16 = (arg16 + mReg.IndY) & 0xFF;
 			break;
 			
 		case ADDRMODE_IZX:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
-			//mReg.IndX = qReg->MReg8(8);
+			//mReg.IndX = qReg->MReg(8, 8);
 			//arg16 = (arg16 + mReg.IndX) & 0xFF;
 			arg16 = arg16 & 0xFF;
 			arg16 = mpMem->Peek16bit(arg16);			
@@ -1246,7 +1247,7 @@ unsigned short MKCpu::GetAddrWithMode(int mode)
 		case ADDRMODE_IZY:
 			mReg.LastArg = arg16 = mpMem->Peek8bit(mReg.PtrAddr++);
 			tmp = mpMem->Peek16bit(arg16);
-			//mReg.IndY = qReg->MReg8(16);
+			//mReg.IndY = qReg->MReg(16, 8);
 			arg16 = tmp + mReg.IndY;
 			mReg.PageBoundary = PageBoundary(tmp, arg16);
 			break;
@@ -1515,7 +1516,7 @@ void MKCpu::OpCodeLdaIzx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
-		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
+		mReg.Acc = qReg->IndexedLDA(REGS_INDX_Q, 8, REGS_ACC_Q, 8, toLoad);
 	}
 	else {
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
@@ -1624,7 +1625,7 @@ void MKCpu::OpCodeLdaZpx()
 			toLoad[i] = mpMem->Peek8bit((arg16 + i) & 0xFF);
 		}
 		PrepareAccQ();
-		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
+		mReg.Acc = qReg->IndexedLDA(REGS_INDX_Q, 8, REGS_ACC_Q, 8, toLoad);
 	}
 	else {
 		arg16 = (arg16 + mReg.IndX) & 0xFF;
@@ -1679,7 +1680,7 @@ void MKCpu::OpCodeLdaAbx()
 			toLoad[i] = mpMem->Peek8bit(arg16 + i);
 		}
 		PrepareAccQ();
-		mReg.Acc = qReg->SuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, toLoad);
+		mReg.Acc = qReg->IndexedLDA(REGS_INDX_Q, 8, REGS_ACC_Q, 8, toLoad);
 	}
 	else {
 		arg16 = arg16 + mReg.IndX;
@@ -3797,7 +3798,7 @@ void MKCpu::OpCodeAdcIzx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->IndexedADC(REG_LEN, 8, REGS_ACC_Q, 8, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3904,7 +3905,7 @@ void MKCpu::OpCodeAdcZpx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->AdcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->IndexedADC(REG_LEN, 8, REGS_ACC_Q, 8, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -3959,7 +3960,7 @@ void MKCpu::OpCodeAdcAbx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->AdcSuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->IndexedADC(REGS_INDX_Q, 8, REGS_ACC_Q, 8, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4486,7 +4487,7 @@ void MKCpu::OpCodeSbcIzx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->IndexedSBC(REG_LEN, 8, REGS_ACC_Q, 8, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4541,7 +4542,7 @@ void MKCpu::OpCodeSbcZpx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->SbcSuperposeReg8(REG_LEN, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->IndexedSBC(REG_LEN, 8, REGS_ACC_Q, 8, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
@@ -4596,7 +4597,7 @@ void MKCpu::OpCodeSbcAbx()
 		}
 		PrepareAccQ();
 		PrepareCarryQ();
-		mReg.Acc = qReg->SbcSuperposeReg8(REGS_INDX_Q, REGS_ACC_Q, FLAGS_CARRY_Q, toLoad);
+		mReg.Acc = qReg->IndexedSBC(REGS_INDX_Q, 8, REGS_ACC_Q, 8, FLAGS_CARRY_Q, toLoad);
 		if (qReg->Prob(FLAGS_CARRY_Q) >= 0.5) {
 			mReg.Flags |= FLAGS_CARRY;
 		}
