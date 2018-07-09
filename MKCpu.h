@@ -38,34 +38,51 @@
 #include <queue>
 #include "system.h"
 #include "Memory.h"
+#include "qfactory.hpp"
 
 using namespace std;
 
 namespace MKBasic {
 	
 #define DISS_BUF_SIZE 60	// disassembled instruction buffer size	
-#define OPCO_HIS_SIZE 20	// size of op-code execute history queue	
+#define OPCO_HIS_SIZE 20	// size of op-code execute history queue
 
 struct Regs {
-	unsigned char 	Acc;					// 8-bit accumulator
-	unsigned short 	Acc16;				// 16-bit accumulator
-	unsigned char 	IndX;					// 8-bit index register X
-	unsigned char 	IndY;					// 8-bit index register Y
-	unsigned short 	Ptr16;				// general purpose 16-bit register
-	unsigned short 	PtrAddr;			// cpu code counter (PC) - current read/write address
-	unsigned char 	PtrStack;			// 8-bit stack pointer (0-255).
-	unsigned char 	Flags;				// CPU flags
-	bool						SoftIrq;			// true when interrupted with BRK or trapped opcode
-	bool            LastRTS;			// true if RTS encountered and stack empty.
-	unsigned short	LastAddr;			// PC at the time of previous op-code
-	//string					LastInstr;		// instruction and argument executed in previous step
-	int							LastOpCode;		// op-code of last instruction
-	unsigned short	LastArg;			// argument to the last instruction
-	int							LastAddrMode;	// addressing mode of last instruction
-	bool						IrqPending;		// pending Interrupt ReQuest (IRQ)
-	int  						CyclesLeft;		// # of cycles left to complete current opcode
-	bool						PageBoundary;	// true if page boundary was crossed
+	//qubit index 0: accumulator
+	//qubit index 8: x register
+	//qubit index 16: carry flag
+	//qubit index 17: zero flag
+	//qubit index 18: overflow flag
+	//qubit index 19: negative flag
+	unsigned char 	Acc;		// 8-bit accumulator
+	unsigned short 	Acc16;		// 16-bit accumulator
+	unsigned char 	IndX;		// 8-bit index register X
+	unsigned char 	IndY;		// 8-bit index register Y
+	unsigned short 	Ptr16;		// general purpose 16-bit register
+	unsigned short 	PtrAddr;	// cpu code counter (PC) - current read/write address
+	unsigned char 	PtrStack;	// 8-bit stack pointer (0-255).
+	unsigned char 	Flags;		// CPU flags
+	bool		SoftIrq;	// true when interrupted with BRK or trapped opcode
+	bool            LastRTS;	// true if RTS encountered and stack empty.
+	unsigned short	LastAddr;	// PC at the time of previous op-code
+	//string	LastInstr;	// instruction and argument executed in previous step
+	int		LastOpCode;	// op-code of last instruction
+	unsigned short	LastArg;	// argument to the last instruction
+	int		LastAddrMode;	// addressing mode of last instruction
+	bool		IrqPending;	// pending Interrupt ReQuest (IRQ)
+	int		CyclesLeft;	// # of cycles left to complete current opcode
+	bool		PageBoundary;	// true if page boundary was crossed
+
+	//Quantum metastatus flags:
+	bool 		isAccQ;		// Is accumulator (and potentially carry flag) superposed in permutation basis?
+	bool 		isXQ;		// Is X register superposed in permutation basis?
+	bool 		isCarryQ;	// Is the accumulator entangled with the X register?
 };
+
+#define REGS_ACC_Q		0
+#define REGS_INDX_Q		8
+#define REG_LEN			8
+#define FLAGS_CARRY_Q		16
 
 /*
  * Virtual CPU, 6502 addressing modes:
@@ -111,6 +128,7 @@ enum eAddrModes {
 	ADDRMODE_ZP,
 	ADDRMODE_IMP,
 	ADDRMODE_IND,
+	//ADDRMODE_ABA,
 	ADDRMODE_ABX,
 	ADDRMODE_ABY,
 	ADDRMODE_ZPX,
@@ -120,6 +138,7 @@ enum eAddrModes {
 	ADDRMODE_REL,
 	ADDRMODE_ACC,
 	ADDRMODE_UND,		// undetermined (for some illegal codes)
+	ADDRMODE_NON,
 	ADDRMODE_LENGTH	// should be always last
 }; 
 // assumed little-endian order of bytes (start with least significant)
@@ -131,8 +150,8 @@ enum eOpCodes {
 	
 	/* full compatibility with 65C02 (illegal opcodes not supported, will be used for extended functions */
 	OPCODE_ORA_IZX 	= 0x01,	// bitwise OR with Accumulator, Indexed Indirect ($01 arg : ORA (arg,X) ;arg=0..$FF), MEM=&(arg+X)
-	OPCODE_ILL_02		= 0x02,	// illegal opcode
-	OPCODE_ILL_03		= 0x03,	// illegal opcode
+	OPCODE_HAD_A		= 0x02,	// 6502Q: Hadamard Accumulator
+	OPCODE_HAD_X		= 0x03,	// 6502Q: Hadamard IndX
 	OPCODE_ILL_04		= 0x04,	// illegal opcode
 	OPCODE_ORA_ZP		= 0x05,	// bitwise OR with Accumulator, Zero Page ($05 arg : ORA arg ;arg=0..$FF), MEM=arg
 	OPCODE_ASL_ZP		= 0x06,	// Arithmetic Shift Left, Zero Page ($06 arg : ASL arg ;arg=0..$FF), MEM=arg
@@ -140,27 +159,27 @@ enum eOpCodes {
 	OPCODE_PHP			= 0x08,	// PusH Processor status on Stack, Implied ($08 : PHP)
 	OPCODE_ORA_IMM	= 0x09,	// bitwise OR with Accumulator, Immediate ($09 arg : ORA #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_ASL			= 0x0A,	// Arithmetic Shift Left, Accumulator ($0A : ASL)
-	OPCODE_ILL_0B		= 0x0B,	// illegal opcode
-	OPCODE_ILL_0C		= 0x0C,	// illegal opcode
+	OPCODE_ILL_0B			= 0x0B,	// illegal opcode
+	OPCODE_ILL_0C			= 0x0C,	// illegal opcode
 	OPCODE_ORA_ABS	= 0x0D,	// bitwise OR with Accumulator, Absolute ($0D addrlo addrhi : ORA addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_ASL_ABS	= 0x0E,	// Arithmetic Shift Left, Absolute ($0E addrlo addrhi : ASL addr ;addr=0..$FFFF), MEM=addr
-	OPCODE_ILL_0F		= 0x0F,	// illegal opcode
+	OPCODE_SEN			= 0x0F,	// 6502Q: SEt Negative
 	OPCODE_BPL_REL	= 0x10,	// Branch on PLus, Relative ($10 signoffs : BPL signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_ORA_IZY	= 0x11,	// bitwise OR with Accumulator, Indirect Indexed ($11 arg : ORA (arg),Y ;arg=0..$FF), MEM=&arg+Y
-	OPCODE_ILL_12		= 0x12,	// illegal opcode
-	OPCODE_ILL_13		= 0x13,	// illegal opcode
-	OPCODE_ILL_14		= 0x14,	// illegal opcode
+	OPCODE_PAX_A		= 0x12,	// 6502Q: Pauli X on Accumulator
+	OPCODE_PAX_X		= 0x13,	// 6502Q: Pauli X on Immediate
+	OPCODE_PAX_C		= 0x14,	// 6502Q: Pauli X on Carry
 	OPCODE_ORA_ZPX	= 0x15,	// bitwise OR with Accumulator, Zero Page Indexed, X ($15 arg : ORA arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ASL_ZPX	= 0x16,	// Arithmetic Shift Left, Zero Page Indexed, X ($16 arg : ASL arg,X ;arg=0..$FF), MEM=arg+X
-	OPCODE_ILL_17		= 0x17,	// illegal opcode
+	OPCODE_HAD_C		= 0x17,	// 6502Q: Hadamard on Carry Flag
 	OPCODE_CLC			= 0x18,	// CLear Carry, Implied ($18 : CLC)
 	OPCODE_ORA_ABY	= 0x19,	// bitwise OR with Accumulator, Absolute Indexed, Y ($19 addrlo addrhi : ORA addr,Y ;addr=0..$FFFF), MEM=addr+Y
-	OPCODE_ILL_1A		= 0x1A,	// illegal opcode
-	OPCODE_ILL_1B		= 0x1B,	// illegal opcode
+	OPCODE_PAY_A		= 0x1A,	// 6502Q: Pauli Y on Accumulator
+	OPCODE_PAY_X		= 0x1B,	// 6502Q: Pauli Y on Immediate
 	OPCODE_ILL_1C		= 0x1C,	// illegal opcode
 	OPCODE_ORA_ABX	= 0x1D,	// bitwise OR with Accumulator, Absolute Indexed, X ($1D addrlo addrhi : ORA addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ASL_ABX	= 0x1E,	// Arithmetic Shift Left, Absolute Indexed, X ($1E addrlo addrhi : ASL addr,X ;addr=0..$FFFF), MEM=addr+X
-	OPCODE_ILL_1F		= 0x1F,	// illegal opcode
+	OPCODE_CLQ			= 0x1F,	// 6502Q: Clear Quantum Mode Flag
 	OPCODE_JSR_ABS	= 0x20,	// Jump to SubRoutine, Absolute ($20 addrlo addrhi : JSR addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_AND_IZX	=	0x21,	// bitwise AND with accumulator, Indexed Indirect ($21 arg : AND (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_ILL_22		= 0x22,	// illegal opcode
@@ -168,39 +187,39 @@ enum eOpCodes {
 	OPCODE_BIT_ZP		= 0x24,	// test BITs, Zero Page ($24 arg : BIT arg ;arg=0..$FF), MEM=arg
 	OPCODE_AND_ZP		=	0x25,	// bitwise AND with accumulator, Zero Page ($25 arg : AND arg ;arg=0..$FF), MEM=arg
 	OPCODE_ROL_ZP		= 0x26,	// ROtate Left, Zero Page ($26 arg : ROL arg ;arg=0..$FF), MEM=arg
-	OPCODE_ILL_27		= 0x27,	// illegal opcode
+	OPCODE_SEV			= 0x27,	// 6502Q: SEt oVerflow
 	OPCODE_PLP			= 0x28,	// PuLl Processor status, Implied ($28 : PLP)
 	OPCODE_AND_IMM	= 0x29,	// bitwise AND with accumulator, Immediate ($29 arg : AND #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_ROL			= 0x2A,	// ROtate Left, Accumulator ($2A : ROL)
-	OPCODE_ILL_2B		= 0x2B,	// illegal opcode
+	OPCODE_SEZ			= 0x2B,	// 6502Q: SEt Zero
 	OPCODE_BIT_ABS	= 0x2C,	// test BITs, Absolute ($2C addrlo addrhi : BIT addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_AND_ABS	= 0x2D,	// bitwise AND with accumulator, Absolute ($2D addrlo addrhi : AND addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_ROL_ABS	= 0x2E,	// ROtate Left, Absolute ($2E addrlo addrhi : ROL addr ;addr=0..$FFFF), MEM=addr
-	OPCODE_ILL_2F		= 0x2F,	// illegal opcode
+	OPCODE_CLN			= 0x2F,	// 6502Q: CLear Negative
 	OPCODE_BMI_REL	= 0x30,	// Branch on MInus, Relative ($30 signoffs : BMI signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_AND_IZY	= 0x31,	// bitwise AND with accumulator, Indirect Indexed ($31 arg : AND (arg),Y ;arg=0..$FF), MEM=&arg+Y
-	OPCODE_ILL_32		= 0x32,	// illegal opcode
-	OPCODE_ILL_33		= 0x33,	// illegal opcode
+	OPCODE_PAZ_A		= 0x32,	// 6502Q: Pauli Z on Accumulator
+	OPCODE_PAZ_X		= 0x33,	// 6502Q: Pauli Z on Immediate
 	OPCODE_ILL_34		= 0x34,	// illegal opcode
 	OPCODE_AND_ZPX	= 0x35,	// bitwise AND with accumulator, Zero Page Indexed, X ($35 arg : AND arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ROL_ZPX	= 0x36,	// ROtate Left, Zero Page Indexed, X ($36 arg : ROL arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ILL_37		= 0x37,	// illegal opcode
 	OPCODE_SEC			= 0x38,	// SEt Carry, Implied ($38 : SEC)
 	OPCODE_AND_ABY	= 0x39,	// bitwise AND with accumulator, Absolute Indexed, Y ($39 addrlo addrhi : AND addr,Y ;addr=0..$FFFF), MEM=addr+Y
-	OPCODE_ILL_3A		= 0x3A,	// illegal opcode
-	OPCODE_ILL_3B		= 0x3B,	// illegal opcode
+	OPCODE_ROT_A		= 0x3A,	// 6502Q: Quarter rotation on |1> axis for Accumulator
+	OPCODE_ROT_X		= 0x3B,	// 6502Q: Quarter rotation on |1> axis for X register
 	OPCODE_ILL_3C		= 0x3C,	// illegal opcode	
 	OPCODE_AND_ABX	=	0x3D,	// bitwise AND with accumulator, Absolute Indexed, X ($3D addrlo addrhi : AND addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ROL_ABX	= 0x3E,	// ROtate Left, Absolute Indexed, X ($3E addrlo addrhi : ROL addr,X ;addr=0..$FFFF), MEM=addr+X
-	OPCODE_ILL_3F		= 0x3F,	// illegal opcode
+	OPCODE_SEQ			= 0x3F,	// 6502Q: Set Quantum Mode Flag
 	OPCODE_RTI			= 0x40,	// ReTurn from Interrupt, Implied ($40 : RTI)
 	OPCODE_EOR_IZX	= 0x41,	// bitwise Exclusive OR, Indexed Indirect ($41 arg : EOR (arg,X) ;arg=0..$FF), MEM=&(arg+X)
-	OPCODE_ILL_42		= 0x42,	// illegal opcode
-	OPCODE_ILL_43		= 0x43,	// illegal opcode
+	OPCODE_ROTX_A		= 0x42,	// 6502Q: Quarter rotation on X axis for Accumulator
+	OPCODE_ROTX_X		= 0x43,	// 6502Q: Quarter rotation on X axis for X register
 	OPCODE_ILL_44		= 0x44,	// illegal opcode
 	OPCODE_EOR_ZP		= 0x45,	// bitwise Exclusive OR, Zero Page ($45 arg : EOR arg ;arg=0..$FF), MEM=arg
 	OPCODE_LSR_ZP		= 0x46,	// Logical Shift Right, Zero Page ($46 arg : LSR arg ;arg=0..$FF), MEM=arg
-	OPCODE_ILL_47		= 0x47,	// illegal opcode
+	OPCODE_CLZ			= 0x47,	// 6502Q: CLear Zero
 	OPCODE_PHA			= 0x48,	// PusH Accumulator, Implied ($48 : PHA)
 	OPCODE_EOR_IMM	= 0x49,	// bitwise Exclusive OR, Immediate ($49 arg : EOR #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_LSR			= 0x4A,	// Logical Shift Right, Accumulator ($4A : LSR)
@@ -211,24 +230,24 @@ enum eOpCodes {
 	OPCODE_ILL_4F		= 0x4F,	// illegal opcode
 	OPCODE_BVC_REL	= 0x50,	// Branch on oVerflow Clear, Relative ($50 signoffs : BVC signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_EOR_IZY	= 0x51,	// bitwise Exclusive OR, Indirect Indexed ($51 arg : EOR (arg),Y ;arg=0..$FF), MEM=&arg+Y
-	OPCODE_ILL_52		= 0x52,	// illegal opcode
-	OPCODE_ILL_53		= 0x53,	// illegal opcode
+	OPCODE_ROTY_A		= 0x52,	// 6502Q: Quarter rotation on Y axis for Accumulator
+	OPCODE_ROTY_X		= 0x53,	// 6502Q: Quarter rotation on Y axis for X register
 	OPCODE_ILL_54		= 0x54,	// illegal opcode	
 	OPCODE_EOR_ZPX	= 0x55,	// bitwise Exclusive OR, Zero Page Indexed, X ($55 arg : EOR arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_LSR_ZPX	= 0x56,	// Logical Shift Right, Zero Page Indexed, X ($56 arg : LSR arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ILL_57		= 0x57,	// illegal opcode
 	OPCODE_CLI			= 0x58,	// CLear Interrupt, Implied ($58 : CLI)
 	OPCODE_EOR_ABY	= 0x59,	// bitwise Exclusive OR, Absolute Indexed, Y ($59 addrlo addrhi : EOR addr,Y ;addr=0..$FFFF), MEM=addr+Y
-	OPCODE_ILL_5A		= 0x5A,	// illegal opcode
-	OPCODE_ILL_5B		= 0x5B,	// illegal opcode
+	OPCODE_ROTZ_A		= 0x5A,	// 6502Q: Quarter rotation on Z axis for Accumulator
+	OPCODE_ROTZ_X		= 0x5B,	// 6502Q: Quarter rotation on Z axis for Immediate
 	OPCODE_ILL_5C		= 0x5C,	// illegal opcode
 	OPCODE_EOR_ABX	= 0x5D,	// bitwise Exclusive OR, Absolute Indexed, X ($5D addrlo addrhi : EOR addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_LSR_ABX	= 0x5E,	// Logical Shift Right, Absolute Indexed, X ($5E addrlo addrhi : LSR addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ILL_5F		= 0x5F,	// illegal opcode
 	OPCODE_RTS			= 0x60,	// ReTurn from Subroutine, Implied ($60 : RTS)
 	OPCODE_ADC_IZX	= 0x61,	// ADd with Carry, Indexed Indirect ($61 arg : ADC (arg,X) ;arg=0..$FF), MEM=&(arg+X)
-	OPCODE_ILL_62		= 0x62,	// illegal opcode
-	OPCODE_ILL_63		= 0x63,	// illegal opcode
+	OPCODE_QFT_A		= 0x62,	// 6502Q: Quantum Fourier Transform on Accumulator
+	OPCODE_QFT_X		= 0x63,	// 6502Q: Quantum Fourier Transform on Immediate
 	OPCODE_ILL_64		= 0x64,	// illegal opcode
 	OPCODE_ADC_ZP		= 0x65,	// ADd with Carry, Zero Page ($65 arg : ADC arg ;arg=0..$FF), MEM=arg
 	OPCODE_ROR_ZP		= 0x66,	// ROtate Right, Zero Page ($66 arg : ROR arg ;arg=0..$FF), MEM=arg
@@ -376,12 +395,12 @@ enum eOpCodes {
 	OPCODE_ILL_F4		= 0xF4,	// illegal opcode
 	OPCODE_SBC_ZPX	= 0xF5,	// SuBtract with Carry, Zero Page Indexed, X ($F5 arg : SBC arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_INC_ZPX	= 0xF6,	// INCrement memory, Zero Page Indexed, X ($F6 arg : INC arg,X ;arg=0..$FF), MEM=arg+X
-	OPCODE_ILL_F7		= 0xF7,	// illegal opcode
+	OPCODE_QZN_Z		= 0xF7,	// 6502Q: Apply Z operator to zero flag
 	OPCODE_SED			= 0xF8,	// SEt Decimal, Implied ($F8 : SED)
 	OPCODE_SBC_ABY	= 0xF9,	// SuBtract with Carry, Absolute Indexed, Y ($F9 addrlo addrhi : SBC addr,Y ;addr=0..$FFFF), MEM=addr+Y
-	OPCODE_ILL_FA		= 0xFA,	// illegal opcode
-	OPCODE_ILL_FB		= 0xFB,	// illegal opcode
-	OPCODE_ILL_FC		= 0xFC,	// illegal opcode	
+	OPCODE_QZN_S		= 0xFA,	// 6502Q: Apply Z operator to negative flag
+	OPCODE_QZN_C		= 0xFB,	// 6502Q: Apply Z operator to carry flag
+	OPCODE_ILL_FC		= 0xFC,	// illegal opcode
 	OPCODE_SBC_ABX	= 0xFD,	// SuBtract with Carry, Absolute Indexed, X ($FD addrlo addrhi : SBC addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_INC_ABX	= 0xFE,	// INCrement memory, Absolute Indexed, X ($FE addrlo addrhi : INC addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ILL_FF		= 0xFF	// illegal opcode
@@ -435,7 +454,7 @@ enum eCpuFlagMasks {
 	FLAGS_IRQ				= 0x04,		// 2: I
 	FLAGS_DEC				= 0x08,		// 3: D
 	FLAGS_BRK				= 0x10,		// 4: B (Clear if interrupt vectoring, set if BRK or PHP)
-	FLAGS_UNUSED		= 0x20,		// 5: Unused flag (always set).
+	FLAGS_QUANTUM		= 0x20,		// 5: 6502Q: Quantum mode flag
 	FLAGS_OVERFLOW 	= 0x40,		// 6: V
 	FLAGS_SIGN 			= 0x80		// 7: N
 };
@@ -495,14 +514,23 @@ class MKCpu
 		bool				mEnableHistory;	// enable/disable execute history
 		
 		
-		void	InitCpu();
-		void	SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on Acc, X or Y
+		void InitCpu();
+		unsigned char RotateClassical(unsigned char reg);								//Perform classical equivalent of quantum rotation
+		void SetFlags(unsigned char reg);									// set CPU flags ZERO and SIGN based on reg
+		void SetFlagsReg(unsigned char regStart);								// set CPU flags ZERO and SIGN based on Acc, X or Y
+		void MeasureFlagsQ();										//Measure quantum flags
+		void ShiftLeftQ();
 		unsigned char ShiftLeft(unsigned char arg8);				// Arithmetic Shift Left, set Carry flag
+		void ShiftRightQ();
 		unsigned char ShiftRight(unsigned char arg8);				// Logical Shift Right, update flags NZC.
+		void RotateLeftQ();
 		unsigned char RotateLeft(unsigned char arg8);				// Rotate left, Carry to bit 0, bit 7 to Carry, update flags N and Z.
+		void RotateRightQ();
 		unsigned char RotateRight(unsigned char arg8);			// Rotate left, Carry to bit 7, bit 0 to Carry, update flags N and Z.
 		unsigned short GetArg16(unsigned char offs);				// Get 2-byte argument, add offset, increase PC.
-		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory location and Acc.
+		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory at address and Acc.
+		void CompareOpAcc(unsigned char val);				// Perform arithmetic compare between val and Acc
+		void CompareOpIndX(unsigned char val);				// Perform arithmetic compare between val and IndX
 																												// Result in Acc. Set flags.
 		unsigned short ComputeRelJump(unsigned char offs);	// Compute new PC based on relative offset.
 		unsigned short ComputeRelJump(unsigned short addr,
@@ -510,9 +538,12 @@ class MKCpu
 		unsigned char Conv2Bcd(unsigned short v);						// Convert number to BCD representation.
 		unsigned short Bcd2Num(unsigned char v);						// Convert BCD code to number.
 		bool CheckFlag(unsigned char flag);									// Return true if given CPU status flag is set, false otherwise.
+		bool CheckFlagQ(unsigned char flag);									// Return true if given quantum CPU status flag is set, false otherwise.
 		void SetFlag(bool set, unsigned char flag);					// Set or unset processor status flag.
 		unsigned char AddWithCarry(unsigned char mem8);			// Add With Carry, update flags and Acc.
+		void AddWithCarryQ(unsigned char mem8);
 		unsigned char SubWithCarry(unsigned char mem8);			// Subtract With Carry, update flags and Acc.
+		void SubWithCarryQ(unsigned char mem8);	
 		unsigned short GetAddrWithMode(int mode);						// Get address of the byte argument with specified addr. mode
 		unsigned short GetArgWithMode(unsigned short opcaddr,
 																	int mode);						// Get argument from address with specified addr. mode
@@ -521,6 +552,12 @@ class MKCpu
 		void Add2History(OpCodeHistItem histitem);					// add entry to op-codes execute history
 		bool PageBoundary(unsigned short startaddr,
 											unsigned short endaddr);					// detect if page boundary was crossed
+		void CollapseAccQ();	//Collapse Acc register state if it is in superposition
+		void CollapseXQ();	//Collapse X register state if it is in superposition
+		void CollapseCarryQ();	//Collapse carry flag state if it is in superposition
+		void PrepareAccQ();	//Prepare Acc register qubit state for quantum operations
+		void PrepareXQ();	//Prepare X register qubit state for quantum operations
+		void PrepareCarryQ();	//Prepare carry flag qubit state for quantum operations
 
 		// opcode execute methods
 		void OpCodeBrk();
@@ -675,7 +712,39 @@ class MKCpu
 		void OpCodeSbcAbx();
 		void OpCodeSbcImm();
 		void OpCodeDud();
-
+//Quantum Opcodes
+		void OpCodeHadA();
+		void OpCodeHadX();
+		void OpCodeXA();
+		void OpCodeXX();
+		void OpCodeXC();
+		void OpCodeYA();
+		void OpCodeYX();
+		void OpCodeZA();
+		void OpCodeZX();
+		void OpCodeRTA();
+		void OpCodeRTX();
+		void OpCodeRXA();
+		void OpCodeRXX();
+		void OpCodeRYA();
+		void OpCodeRYX();
+		void OpCodeRZA();
+		void OpCodeRZX();
+		void OpCodeFTA();
+		void OpCodeFTX();
+		void OpCodeLdaAba();
+		void OpCodeHac();
+		void OpCodeClq();
+		void OpCodeSeq();
+		void OpCodeQzZero();
+		void OpCodeQzSign();
+		void OpCodeQzCarry();
+		void OpCodeQzOver();
+		void OpCodeSen();
+		void OpCodeCln();
+		void OpCodeSev();
+		void OpCodeSez();
+		void OpCodeClz();
 };
 
 } // namespace MKBasic

@@ -1,46 +1,66 @@
 # Project: MKBasic
 
 SDLBASE  = $(SDLDIR)
-SDLINCS   = -I"$(SDLBASE)/include"
+SDLINCS   = -I"/usr/include/SDL2"
 CPP      = g++ -D__DEBUG__ -DLINUX
 CC       = gcc -D__DEBUG__
 OBJ      = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o
 LINKOBJ  = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o
 BIN      = vm65
-SDLLIBS  = -L/usr/local/lib -lSDL2main -lSDL2
-LIBS     = -static-libgcc -m32 -g3 -ltermcap -lncurses
-CLIBS    = -static-libgcc -m32 -g3
+SDLLIBS  = -L/usr/lib -lSDL2main -lSDL2
+LIBS     = -static-libgcc -m64 -g3 -ltermcap -lncurses -lpthread -lm
+CLIBS    = -static-libgcc -m64 -g3
 INCS     =
-CXXINCS  = 
-CXXFLAGS = $(CXXINCS) -m32 -std=c++0x -Wall -pedantic -g3 -fpermissive
+
+QRACKLIBS= -Lqrack/build -lqrack
+QRACKINCS= -Iqrack/include -Iqrack/include/common -Iqrack/build/include 
+
+CXXINCS  = $(SDLINCS) $(QRACKINCS)
+CXXFLAGS = $(CXXINCS) -m64 -std=c++11 -Wall -pedantic -g3 -fpermissive
 #CFLAGS   = $(INCS) -m32 -std=c++0x -Wall -pedantic -g3
-CFLAGS   = $(INCS) -m32 -Wall -pedantic -g3
+CFLAGS   = $(INCS) -m64 -Wall -pedantic -g3
 RM       = rm -f
 
-.PHONY: all all-before all-after clean clean-custom
+ENABLE_OPENCL ?= 1
+ENABLE_COMPLEX_X2 ?= 1
+ENABLE_COMPLEX8 ?= 0
+OPENCL_AMDSDK = /opt/AMDAPPSDK-3.0
+
+ifeq (${ENABLE_OPENCL},1)
+  LIBS += -lOpenCL
+  CXXFLAGS += -I$(OPENCL_AMDSDK)/include
+  # Support the AMD SDK OpenCL stack
+  ifneq ($(wildcard $(OPENCL_AMDSDK)/.),)
+    LDFLAGS += -L$(OPENCL_AMDSDK)/lib/x86_64
+  endif
+endif
+
+
+.PHONY: all all-before all-after clean clean-custom qrack
 
 all: all-before $(BIN) bin2hex all-after
 
 clean: clean-custom
-	${RM} $(OBJ) $(BIN) bin2hex
+	${RM} $(OBJ) testall.o $(BIN) bin2hex
+	${MAKE} -C qrack/build clean
 
-$(BIN): $(OBJ)
-	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(SDLLIBS)
+$(BIN): ${OBJ}
+	$(CPP) $(LINKOBJ) -o $(BIN) $(LDFLAGS) $(LIBS) $(SDLLIBS) $(QRACKLIBS)
 
 main.o: main.cpp
-	$(CPP) -c main.cpp -o main.o $(CXXFLAGS) $(SDLINCS)
+	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
 
 VMachine.o: VMachine.cpp
-	$(CPP) -c VMachine.cpp -o VMachine.o $(CXXFLAGS) $(SDLINCS)
+	$(CPP) -c VMachine.cpp -o VMachine.o $(CXXFLAGS)
 
 MKBasic.o: MKBasic.cpp
 	$(CPP) -c MKBasic.cpp -o MKBasic.o $(CXXFLAGS)
 
 MKCpu.o: MKCpu.cpp
-	$(CPP) -c MKCpu.cpp -o MKCpu.o $(CXXFLAGS) $(SDLINCS)
+	$(CPP) -c MKCpu.cpp -o MKCpu.o $(CXXFLAGS)
 
 Memory.o: Memory.cpp
-	$(CPP) -c Memory.cpp -o Memory.o $(CXXFLAGS) $(SDLINCS)
+	$(CPP) -c Memory.cpp -o Memory.o $(CXXFLAGS)
 
 Display.o: Display.cpp
 	$(CPP) -c Display.cpp -o Display.o $(CXXFLAGS)
@@ -52,10 +72,10 @@ MKGenException.o: MKGenException.cpp
 	$(CPP) -c MKGenException.cpp -o MKGenException.o $(CXXFLAGS)
 
 GraphDisp.o: GraphDisp.cpp GraphDisp.h
-	$(CPP) -c GraphDisp.cpp -o GraphDisp.o $(CXXFLAGS) $(SDLINCS)
+	$(CPP) -c GraphDisp.cpp -o GraphDisp.o $(CXXFLAGS)
 
 MemMapDev.o: MemMapDev.cpp MemMapDev.h
-	$(CPP) -c MemMapDev.cpp -o MemMapDev.o $(CXXFLAGS) $(SDLINCS)
+	$(CPP) -c MemMapDev.cpp -o MemMapDev.o $(CXXFLAGS)
 
 ConsoleIO.o: ConsoleIO.cpp ConsoleIO.h
 	$(CPP) -c ConsoleIO.cpp -o ConsoleIO.o $(CXXFLAGS)	
