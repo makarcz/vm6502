@@ -13,7 +13,7 @@ CLIBS    = -static-libgcc -m64 -g3
 INCS     =
 
 QRACKLIBS= qrack/build/libqrack.a
-QRACKINCS= -Iqrack/include
+QRACKINCS= -Iqrack/include -Iqrack/build/include 
 
 CXXINCS  = $(SDLINCS) $(QRACKINCS)
 CXXFLAGS = $(CXXINCS) -m64 -std=c++11 -Wall -pedantic -g3 -fpermissive
@@ -26,13 +26,11 @@ OPENCL_AMDSDK = /opt/AMDAPPSDK-3.0
 
 ifeq (${ENABLE_OPENCL},1)
   LIBS += -lOpenCL
-  CXXFLAGS += -DENABLE_OPENCL=1 -I$(OPENCL_AMDSDK)/include
+  CXXFLAGS += -I$(OPENCL_AMDSDK)/include
   # Support the AMD SDK OpenCL stack
   ifneq ($(wildcard $(OPENCL_AMDSDK)/.),)
     LDFLAGS += -L$(OPENCL_AMDSDK)/lib/x86_64
   endif
-else
-  CXXFLAGS += -DENABLE_OPENCL=0
 endif
 
 
@@ -45,7 +43,7 @@ $(QRACKLIBS):
 
 clean: clean-custom
 	${RM} $(OBJ) testall.o $(BIN) bin2hex
-	ENABLE_OPENCL=$(ENABLE_OPENCL) ${MAKE} -C qrack/build clean
+	${MAKE} -C qrack/build clean
 
 $(BIN): ${QRACKLIBS} ${OBJ}
 	$(CPP) $(LINKOBJ) $(QRACKLIBS) -o $(BIN) $(LDFLAGS) $(LIBS) $(SDLLIBS)
