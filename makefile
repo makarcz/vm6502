@@ -12,8 +12,8 @@ LIBS     = -static-libgcc -m64 -g3 -ltermcap -lncurses -lpthread -lm
 CLIBS    = -static-libgcc -m64 -g3
 INCS     =
 
-QRACKLIBS= -Lqrack/build -lqrack
-QRACKINCS= -Iqrack/include -Iqrack/include/common -Iqrack/build/include 
+QRACKLIBS= qrack/build/libqrack.a
+QRACKINCS= -Iqrack/include -Iqrack/build/include 
 
 CXXINCS  = $(SDLINCS) $(QRACKINCS)
 CXXFLAGS = $(CXXINCS) -m64 -std=c++11 -Wall -pedantic -g3 -fpermissive
@@ -22,8 +22,6 @@ CFLAGS   = $(INCS) -m64 -Wall -pedantic -g3
 RM       = rm -f
 
 ENABLE_OPENCL ?= 1
-ENABLE_COMPLEX_X2 ?= 1
-ENABLE_COMPLEX8 ?= 0
 OPENCL_AMDSDK = /opt/AMDAPPSDK-3.0
 
 ifeq (${ENABLE_OPENCL},1)
@@ -40,12 +38,15 @@ endif
 
 all: all-before $(BIN) bin2hex all-after
 
+$(QRACKLIBS):
+	ENABLE_OPENCL=$(ENABLE_OPENCL) ${MAKE} -C qrack/build
+
 clean: clean-custom
 	${RM} $(OBJ) testall.o $(BIN) bin2hex
 	${MAKE} -C qrack/build clean
 
-$(BIN): ${OBJ}
-	$(CPP) $(LINKOBJ) -o $(BIN) $(LDFLAGS) $(LIBS) $(SDLLIBS) $(QRACKLIBS)
+$(BIN): ${QRACKLIBS} ${OBJ}
+	$(CPP) $(LINKOBJ) $(QRACKLIBS) -o $(BIN) $(LDFLAGS) $(LIBS) $(SDLLIBS)
 
 main.o: main.cpp
 	$(CPP) -c main.cpp -o main.o $(CXXFLAGS)
