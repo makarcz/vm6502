@@ -26,7 +26,7 @@ OPENCL_AMDSDK = /opt/AMDAPPSDK-3.0
 
 ifeq (${ENABLE_OPENCL},1)
   LIBS += -lOpenCL
-  CXXFLAGS += -DENABLE_OPENCL=1
+  CXXFLAGS += -DENABLE_OPENCL=1 -I$(OPENCL_AMDSDK)/include
   # Support the AMD SDK OpenCL stack
   ifneq ($(wildcard $(OPENCL_AMDSDK)/.),)
     LDFLAGS += -L$(OPENCL_AMDSDK)/lib/x86_64
