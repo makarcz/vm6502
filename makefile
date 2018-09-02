@@ -4,8 +4,8 @@ SDLBASE  = $(SDLDIR)
 SDLINCS   = -I"$(SDLBASE)/include"
 CPP      = g++ -D__DEBUG__ -DLINUX
 CC       = gcc -D__DEBUG__
-OBJ      = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o
-LINKOBJ  = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o
+OBJ      = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o MassStorage.o
+LINKOBJ  = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o MKGenException.o ConsoleIO.o MassStorage.o
 BIN      = vm65
 SDLLIBS  = -L/usr/local/lib -lSDL2main -lSDL2
 LIBS     = -static-libgcc -m32 -g3 -ltermcap -lncurses
@@ -59,3 +59,6 @@ MemMapDev.o: MemMapDev.cpp MemMapDev.h
 
 ConsoleIO.o: ConsoleIO.cpp ConsoleIO.h
 	$(CPP) -c ConsoleIO.cpp -o ConsoleIO.o $(CXXFLAGS)	
+
+MassStorage.o: MassStorage.cpp MassStorage.h
+	$(CPP) -c MassStorage.cpp -o MassStorage.o $(CXXFLAGS)		
