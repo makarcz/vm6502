@@ -65,7 +65,7 @@ Emulator recognizes 4 formats of memory image:
 
 Please see detailed description of each format below:
 
-Program can load raw binary image of MOS 6502 opcodes.
+Program can load raw binary image of data and MOS 6502 opcodes.
 Binary image is always loaded from address $0000 and can be up to 64 kB long, 
 so the code must be properly located inside that image. Image can be shorter
 than 64 kB, user will receive warning in such case, but it will be loaded.
@@ -121,7 +121,7 @@ Where:
    pc_value - the address currently showing in CPU's PC register.
 If the reset vector is set right, execute the 6502 code right from command
 line:
-   mkbasic -r image_name
+   vm65 -r image_name
 Above will execute the code set in reset vector without having to start it
 from debug console. If 6502 code requires character I/O and/or ROM facilities
 then image should include header with proper setup.
