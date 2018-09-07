@@ -294,7 +294,7 @@ Op-code execute history: disabled.
     							BEQ readchar ; A = NULL, keep reading char I/O
     							RTS ; A = char code
 
-			- a 'waiting' character inpute implemented using blocking char I/O
+			- a 'waiting' character input implemented using blocking char I/O
 
 				readchar: LDA $E000
 									RTS ; A = char code    							
@@ -422,8 +422,9 @@ Op-code execute history: disabled.
 
 	 Programmer should use this class to implement all the pieces of the
 	 emulated virtual computer system on the highest abstraction level.
-	 In current version the VMachine class initializes the basic system with CPU
-	 and memory at its core and character and raster graphics display devices.
+	 In current version the VMachine class initializes the basic system, which
+	 contains following core components: CPU and memory
+	 and devices: character I/O and raster graphics display.
 
 	 Going one step down the abstraction layer are MKCPu and Memory classes.
 
