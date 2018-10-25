@@ -76,13 +76,15 @@ struct Regs {
 	//Quantum metastatus flags:
 	bool 		isAccQ;		// Is accumulator (and potentially carry flag) superposed in permutation basis?
 	bool 		isXQ;		// Is X register superposed in permutation basis?
+	bool 		isYQ;		// Is X register superposed in permutation basis?
 	bool 		isCarryQ;	// Is the accumulator entangled with the X register?
 };
 
 #define REGS_ACC_Q		0
 #define REGS_INDX_Q		8
+#define REGS_INDY_Q		16
 #define REG_LEN			8
-#define FLAGS_CARRY_Q		16
+#define FLAGS_CARRY_Q		24
 
 /*
  * Virtual CPU, 6502 addressing modes:
@@ -152,7 +154,7 @@ enum eOpCodes {
 	OPCODE_ORA_IZX 	= 0x01,	// bitwise OR with Accumulator, Indexed Indirect ($01 arg : ORA (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_HAD_A		= 0x02,	// 6502Q: Hadamard Accumulator
 	OPCODE_HAD_X		= 0x03,	// 6502Q: Hadamard IndX
-	OPCODE_ILL_04		= 0x04,	// illegal opcode
+	OPCODE_HAD_Y		= 0x04,	// 6502Q: Hadamard IndY
 	OPCODE_ORA_ZP		= 0x05,	// bitwise OR with Accumulator, Zero Page ($05 arg : ORA arg ;arg=0..$FF), MEM=arg
 	OPCODE_ASL_ZP		= 0x06,	// Arithmetic Shift Left, Zero Page ($06 arg : ASL arg ;arg=0..$FF), MEM=arg
 	OPCODE_ILL_07		= 0x07,	// illegal opcode
@@ -160,14 +162,14 @@ enum eOpCodes {
 	OPCODE_ORA_IMM	= 0x09,	// bitwise OR with Accumulator, Immediate ($09 arg : ORA #arg ;arg=0..$FF), MEM=PC+1
 	OPCODE_ASL			= 0x0A,	// Arithmetic Shift Left, Accumulator ($0A : ASL)
 	OPCODE_ILL_0B			= 0x0B,	// illegal opcode
-	OPCODE_ILL_0C			= 0x0C,	// illegal opcode
+	OPCODE_PAX_Y			= 0x0C,	// 6502Q: Pauli X on IndY
 	OPCODE_ORA_ABS	= 0x0D,	// bitwise OR with Accumulator, Absolute ($0D addrlo addrhi : ORA addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_ASL_ABS	= 0x0E,	// Arithmetic Shift Left, Absolute ($0E addrlo addrhi : ASL addr ;addr=0..$FFFF), MEM=addr
 	OPCODE_SEN			= 0x0F,	// 6502Q: SEt Negative
 	OPCODE_BPL_REL	= 0x10,	// Branch on PLus, Relative ($10 signoffs : BPL signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_ORA_IZY	= 0x11,	// bitwise OR with Accumulator, Indirect Indexed ($11 arg : ORA (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	OPCODE_PAX_A		= 0x12,	// 6502Q: Pauli X on Accumulator
-	OPCODE_PAX_X		= 0x13,	// 6502Q: Pauli X on Immediate
+	OPCODE_PAX_X		= 0x13,	// 6502Q: Pauli X on IndX
 	OPCODE_PAX_C		= 0x14,	// 6502Q: Pauli X on Carry
 	OPCODE_ORA_ZPX	= 0x15,	// bitwise OR with Accumulator, Zero Page Indexed, X ($15 arg : ORA arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ASL_ZPX	= 0x16,	// Arithmetic Shift Left, Zero Page Indexed, X ($16 arg : ASL arg,X ;arg=0..$FF), MEM=arg+X
@@ -175,8 +177,8 @@ enum eOpCodes {
 	OPCODE_CLC			= 0x18,	// CLear Carry, Implied ($18 : CLC)
 	OPCODE_ORA_ABY	= 0x19,	// bitwise OR with Accumulator, Absolute Indexed, Y ($19 addrlo addrhi : ORA addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	OPCODE_PAY_A		= 0x1A,	// 6502Q: Pauli Y on Accumulator
-	OPCODE_PAY_X		= 0x1B,	// 6502Q: Pauli Y on Immediate
-	OPCODE_ILL_1C		= 0x1C,	// illegal opcode
+	OPCODE_PAY_X		= 0x1B,	// 6502Q: Pauli Y on IndX
+	OPCODE_PAY_Y		= 0x1C,	// 6502Q: Pauli Y on IndY
 	OPCODE_ORA_ABX	= 0x1D,	// bitwise OR with Accumulator, Absolute Indexed, X ($1D addrlo addrhi : ORA addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ASL_ABX	= 0x1E,	// Arithmetic Shift Left, Absolute Indexed, X ($1E addrlo addrhi : ASL addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_CLQ			= 0x1F,	// 6502Q: Clear Quantum Mode Flag
@@ -199,8 +201,8 @@ enum eOpCodes {
 	OPCODE_BMI_REL	= 0x30,	// Branch on MInus, Relative ($30 signoffs : BMI signoffs ;signoffs=0..$FF [-128 ($80)..127 ($7F)])
 	OPCODE_AND_IZY	= 0x31,	// bitwise AND with accumulator, Indirect Indexed ($31 arg : AND (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	OPCODE_PAZ_A		= 0x32,	// 6502Q: Pauli Z on Accumulator
-	OPCODE_PAZ_X		= 0x33,	// 6502Q: Pauli Z on Immediate
-	OPCODE_ILL_34		= 0x34,	// illegal opcode
+	OPCODE_PAZ_X		= 0x33,	// 6502Q: Pauli Z on IndX
+	OPCODE_PAZ_Y		= 0x34,	// 6502Q: Pauli Z on IndY
 	OPCODE_AND_ZPX	= 0x35,	// bitwise AND with accumulator, Zero Page Indexed, X ($35 arg : AND arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ROL_ZPX	= 0x36,	// ROtate Left, Zero Page Indexed, X ($36 arg : ROL arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ILL_37		= 0x37,	// illegal opcode
@@ -208,7 +210,7 @@ enum eOpCodes {
 	OPCODE_AND_ABY	= 0x39,	// bitwise AND with accumulator, Absolute Indexed, Y ($39 addrlo addrhi : AND addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	OPCODE_ROT_A		= 0x3A,	// 6502Q: Quarter rotation on |1> axis for Accumulator
 	OPCODE_ROT_X		= 0x3B,	// 6502Q: Quarter rotation on |1> axis for X register
-	OPCODE_ILL_3C		= 0x3C,	// illegal opcode	
+	OPCODE_ROT_Y		= 0x3C,	// 6502Q: Quarter rotation on |1> axis for Y register	
 	OPCODE_AND_ABX	=	0x3D,	// bitwise AND with accumulator, Absolute Indexed, X ($3D addrlo addrhi : AND addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ROL_ABX	= 0x3E,	// ROtate Left, Absolute Indexed, X ($3E addrlo addrhi : ROL addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_SEQ			= 0x3F,	// 6502Q: Set Quantum Mode Flag
@@ -216,7 +218,7 @@ enum eOpCodes {
 	OPCODE_EOR_IZX	= 0x41,	// bitwise Exclusive OR, Indexed Indirect ($41 arg : EOR (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_ROTX_A		= 0x42,	// 6502Q: Quarter rotation on X axis for Accumulator
 	OPCODE_ROTX_X		= 0x43,	// 6502Q: Quarter rotation on X axis for X register
-	OPCODE_ILL_44		= 0x44,	// illegal opcode
+	OPCODE_ROTX_Y		= 0x44,	// 6502Q: Quarter rotation on X axis for Y register
 	OPCODE_EOR_ZP		= 0x45,	// bitwise Exclusive OR, Zero Page ($45 arg : EOR arg ;arg=0..$FF), MEM=arg
 	OPCODE_LSR_ZP		= 0x46,	// Logical Shift Right, Zero Page ($46 arg : LSR arg ;arg=0..$FF), MEM=arg
 	OPCODE_CLZ			= 0x47,	// 6502Q: CLear Zero
@@ -232,23 +234,23 @@ enum eOpCodes {
 	OPCODE_EOR_IZY	= 0x51,	// bitwise Exclusive OR, Indirect Indexed ($51 arg : EOR (arg),Y ;arg=0..$FF), MEM=&arg+Y
 	OPCODE_ROTY_A		= 0x52,	// 6502Q: Quarter rotation on Y axis for Accumulator
 	OPCODE_ROTY_X		= 0x53,	// 6502Q: Quarter rotation on Y axis for X register
-	OPCODE_ILL_54		= 0x54,	// illegal opcode	
+	OPCODE_ROTY_Y		= 0x54,	// 6502Q: Quarter rotation on Y axis for Y register	
 	OPCODE_EOR_ZPX	= 0x55,	// bitwise Exclusive OR, Zero Page Indexed, X ($55 arg : EOR arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_LSR_ZPX	= 0x56,	// Logical Shift Right, Zero Page Indexed, X ($56 arg : LSR arg,X ;arg=0..$FF), MEM=arg+X
 	OPCODE_ILL_57		= 0x57,	// illegal opcode
 	OPCODE_CLI			= 0x58,	// CLear Interrupt, Implied ($58 : CLI)
 	OPCODE_EOR_ABY	= 0x59,	// bitwise Exclusive OR, Absolute Indexed, Y ($59 addrlo addrhi : EOR addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	OPCODE_ROTZ_A		= 0x5A,	// 6502Q: Quarter rotation on Z axis for Accumulator
-	OPCODE_ROTZ_X		= 0x5B,	// 6502Q: Quarter rotation on Z axis for Immediate
-	OPCODE_ILL_5C		= 0x5C,	// illegal opcode
+	OPCODE_ROTZ_X		= 0x5B,	// 6502Q: Quarter rotation on Z axis for X register
+	OPCODE_ROTZ_Y		= 0x5C,	// 6502Q: Quarter rotation on Z axis for Y register
 	OPCODE_EOR_ABX	= 0x5D,	// bitwise Exclusive OR, Absolute Indexed, X ($5D addrlo addrhi : EOR addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_LSR_ABX	= 0x5E,	// Logical Shift Right, Absolute Indexed, X ($5E addrlo addrhi : LSR addr,X ;addr=0..$FFFF), MEM=addr+X
 	OPCODE_ILL_5F		= 0x5F,	// illegal opcode
 	OPCODE_RTS			= 0x60,	// ReTurn from Subroutine, Implied ($60 : RTS)
 	OPCODE_ADC_IZX	= 0x61,	// ADd with Carry, Indexed Indirect ($61 arg : ADC (arg,X) ;arg=0..$FF), MEM=&(arg+X)
 	OPCODE_QFT_A		= 0x62,	// 6502Q: Quantum Fourier Transform on Accumulator
-	OPCODE_QFT_X		= 0x63,	// 6502Q: Quantum Fourier Transform on Immediate
-	OPCODE_ILL_64		= 0x64,	// illegal opcode
+	OPCODE_QFT_X		= 0x63,	// 6502Q: Quantum Fourier Transform on X register
+	OPCODE_QFT_Y		= 0x64,	// 6502Q: Quantum Fourier Transform on Y register
 	OPCODE_ADC_ZP		= 0x65,	// ADd with Carry, Zero Page ($65 arg : ADC arg ;arg=0..$FF), MEM=arg
 	OPCODE_ROR_ZP		= 0x66,	// ROtate Right, Zero Page ($66 arg : ROR arg ;arg=0..$FF), MEM=arg
 	OPCODE_ILL_67		= 0x67,	// illegal opcode
@@ -531,6 +533,7 @@ class MKCpu
 		void LogicOpAcc(unsigned short addr, int logop);		// Perform logical bitwise operation between memory at address and Acc.
 		void CompareOpAcc(unsigned char val);				// Perform arithmetic compare between val and Acc
 		void CompareOpIndX(unsigned char val);				// Perform arithmetic compare between val and IndX
+		void CompareOpIndY(unsigned char val);				// Perform arithmetic compare between val and IndY
 																												// Result in Acc. Set flags.
 		unsigned short ComputeRelJump(unsigned char offs);	// Compute new PC based on relative offset.
 		unsigned short ComputeRelJump(unsigned short addr,
@@ -554,9 +557,11 @@ class MKCpu
 											unsigned short endaddr);					// detect if page boundary was crossed
 		void CollapseAccQ();	//Collapse Acc register state if it is in superposition
 		void CollapseXQ();	//Collapse X register state if it is in superposition
+		void CollapseYQ();	//Collapse Y register state if it is in superposition
 		void CollapseCarryQ();	//Collapse carry flag state if it is in superposition
 		void PrepareAccQ();	//Prepare Acc register qubit state for quantum operations
 		void PrepareXQ();	//Prepare X register qubit state for quantum operations
+		void PrepareYQ();	//Prepare Y register qubit state for quantum operations
 		void PrepareCarryQ();	//Prepare carry flag qubit state for quantum operations
 
 		// opcode execute methods
@@ -715,23 +720,32 @@ class MKCpu
 //Quantum Opcodes
 		void OpCodeHadA();
 		void OpCodeHadX();
+		void OpCodeHadY();
 		void OpCodeXA();
 		void OpCodeXX();
+		void OpCodeXY();
 		void OpCodeXC();
 		void OpCodeYA();
 		void OpCodeYX();
+		void OpCodeYY();
 		void OpCodeZA();
 		void OpCodeZX();
+		void OpCodeZY();
 		void OpCodeRTA();
 		void OpCodeRTX();
+		void OpCodeRTY();
 		void OpCodeRXA();
 		void OpCodeRXX();
+		void OpCodeRXY();
 		void OpCodeRYA();
 		void OpCodeRYX();
+		void OpCodeRYY();
 		void OpCodeRZA();
 		void OpCodeRZX();
+		void OpCodeRZY();
 		void OpCodeFTA();
 		void OpCodeFTX();
+		void OpCodeFTY();
 		void OpCodeLdaAba();
 		void OpCodeHac();
 		void OpCodeClq();
