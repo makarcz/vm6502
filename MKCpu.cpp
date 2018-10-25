@@ -1716,10 +1716,26 @@ void MKCpu::OpCodeLdaAby()
 	// LoaD Accumulator, Absolute Indexed, Y
 	// ($B9 addrlo addrhi : LDA addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
+	if (CheckFlag(FLAGS_QUANTUM) && mReg.isYQ) {
+		unsigned char toLoad[256];
+		for (int i = 0; i < 256; i++) {
+			toLoad[i] = mpMem->Peek8bit(arg16 + i);
+		}
+		PrepareAccQ();
+		mReg.Acc = qReg->IndexedLDA(REGS_INDY_Q, 8, REGS_ACC_Q, 8, toLoad);
+	}
+	else {
+		arg16 = arg16 + mReg.IndY;
+		CollapseAccQ();
+		mReg.Acc = mpMem->Peek8bit(arg16);
+	}
 	if (mReg.PageBoundary) mReg.CyclesLeft++;
-	CollapseAccQ();
-	mReg.Acc = mpMem->Peek8bit(arg16);
-	SetFlags(mReg.Acc);
+	if (mReg.isAccQ) {
+		SetFlagsReg(REGS_ACC_Q);
+	}
+	else {
+		SetFlags(mReg.Acc);
+	}
 }
 
 /*
@@ -1826,8 +1842,8 @@ void MKCpu::OpCodeLdxAbs()
 void MKCpu::OpCodeLdxZpy()
 {
 	unsigned short arg16 = 0;
-	// LoaD Accumulator, Zero Page Indexed, X ($B5 arg : LDA arg,X
-	// ;arg=0..$FF), MEM=arg+X
+	// LoaD X register, Zero Page Indexed, Y
+	// ($B6 arg : LDX arg,Y ;arg=0..$FF), MEM=arg+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ZPY);
 	if (CheckFlag(FLAGS_QUANTUM) && mReg.isYQ) {
 		unsigned char toLoad[256];
@@ -1861,8 +1877,8 @@ void MKCpu::OpCodeLdxZpy()
 void MKCpu::OpCodeLdxAby()
 {
 	unsigned short arg16 = 0;
-	// LoaD Accumulator, Absolute Indexed, X
-	// ($BD addrlo addrhi : LDA addr,X ;addr=0..$FFFF), MEM=addr+X
+	// LoaD X register, Absolute Indexed, Y
+	// ($BE addrlo addrhi : LDX addr,Y ;addr=0..$FFFF), MEM=addr+Y
 	arg16 = GetAddrWithMode(ADDRMODE_ABY);
 	if (CheckFlag(FLAGS_QUANTUM) && mReg.isYQ) {
 		unsigned char toLoad[256];
@@ -1934,8 +1950,8 @@ void MKCpu::OpCodeLdyZp()
 void MKCpu::OpCodeLdyAbs()
 {
 	unsigned short arg16 = 0;
-	// LoaD X register, Absolute
-	// ($AE addrlo addrhi : LDX addr ;addr=0..$FFFF), MEM=addr
+	// LoaD Y register, Absolute
+	// ($AC addrlo addrhi : LDY addr ;addr=0..$FFFF), MEM=addr
 	arg16 = GetAddrWithMode(ADDRMODE_ABS);
 	unsigned char toY = mpMem->Peek8bit(arg16);
 	CollapseYQ();
@@ -1954,8 +1970,8 @@ void MKCpu::OpCodeLdyAbs()
 void MKCpu::OpCodeLdyZpx()
 {
 	unsigned short arg16 = 0;
-	// LoaD Accumulator, Zero Page Indexed, X ($B5 arg : LDA arg,X
-	// ;arg=0..$FF), MEM=arg+X
+	// LoaD Y register, Zero Page Indexed, X
+	// ($B4 arg : LDY arg,X ;arg=0..$FF), MEM=arg+X
 	arg16 = GetAddrWithMode(ADDRMODE_ZPX);
 	if (CheckFlag(FLAGS_QUANTUM) && mReg.isXQ) {
 		unsigned char toLoad[256];
@@ -1990,7 +2006,7 @@ void MKCpu::OpCodeLdyAbx()
 {
 	unsigned short arg16 = 0;
 	// LoaD Y register, Absolute Indexed, X
-	// ($BD addrlo addrhi : LDY addr,X ;addr=0..$FFFF), MEM=addr+X
+	// ($BC addrlo addrhi : LDY addr,X ;addr=0..$FFFF), MEM=addr+X
 	arg16 = GetAddrWithMode(ADDRMODE_ABX);
 	if (CheckFlag(FLAGS_QUANTUM) && mReg.isXQ) {
 		unsigned char toLoad[256];
