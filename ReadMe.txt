@@ -18,8 +18,9 @@ MOS-6502-compatible virtual computer featuring BASIC interpreter, machine code
 monitor, input/output device emulation etc.
 Main UI of the program works in DOS/shell console.
 Graphics display emulation requires SDL2.
-Makefile are included to build under Windows 32/64 (mingw compiler required)
-and under Linux Ubuntu or Ubuntu based distro.
+The best way is to download source code of SDL2 and build it.
+Makefile-s are included to build under Windows 32/64 (mingw compiler required)
+and under Linux Ubuntu or Ubuntu based distro (GNU make).
 SDL2 library must be on your execution path in order to run program.
 E.g.:
 set PATH=C:\src\SDL\lib\x64;%PATH%
@@ -28,6 +29,7 @@ To build under Windows 32/64:
 
 * Install MINGW64 under C:\mingw-w64\x86_64-5.3.0 folder.
 * Run mingw terminal.
+* Build SDL2 library.
 * Change current directory to that of this project.
 * Set environment variable SDLDIR. (E.g.: set SDLDIR=C:\src\SDL)
 * Run: makeming.bat
@@ -35,9 +37,20 @@ To build under Windows 32/64:
 To build under Linux:
 
 * Make sure C++11 compliant version of GCC compiler is installed.
+  NOTE: Under older distros, e.g.: Ubuntu Server 12.04, the newest c++
+        compiler installed may not be modern enough. Follow instructions
+        for your distro to install compatible c++ compiler.
+        E.g.: 
+  https://gist.github.com/application2000/73fd6f4bf1be6600a2cf9f56315a2d91 
+* Build SDL2 library (make, make install) or download C/C++ headers and
+  install SDL2 from binary installation package.
 * Change current directory to that of this project.
-* Set environment variable SDLDIR.
+* Set environment variable SDLDIR. Your C/C++ headers for SDL2 should exist
+  in $SDLDIR/include folder.
 * Run: make clean all
+NOTE: To run the emulator under Linux, it may be necessary to set env.
+      variable LD_LIBRARY_PATH, e.g.:
+      export LD_LIBRARY_PATH=/usr/local/lib
 
 Program passed following tests:
 
