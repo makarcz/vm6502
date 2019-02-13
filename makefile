@@ -13,7 +13,12 @@ CXXINCS  =
 ifeq ($(SDLBASE),)
    $(error ***** SDLDIR not set)
 endif
-$(eval $(export HOSTTYPE = $(arch)))
+ifneq "$(HOSTTYPE)" ""
+   $(info ***** HOSTTYPE already set)
+else
+   $(info ***** HOSTTYPE not set. Setting...)
+   HOSTTYPE = $(shell arch)
+endif
 $(info ***** SDLDIR = $(SDLDIR))
 $(info ***** HOSTTYPE = $(HOSTTYPE))
 ifeq ($(HOSTTYPE),x86_64)
@@ -23,7 +28,7 @@ ifeq ($(HOSTTYPE),x86_64)
    CXXFLAGS = $(CXXINCS) -std=c++11 -pthread -Wall -pedantic -g3 -fpermissive
 else
    $(info ***** 32-bit)
-   LIBS     = -static-libgcc -m32 -g3 -ltermcap -lncurses
+   LIBS     = -static-libgcc -m32 -g3 -ltermcap -lncurses -lpthread
    CLIBS    = -static-libgcc -m32 -g3
    CXXFLAGS = $(CXXINCS) -m32 -std=c++11 -pthread -Wall -pedantic -g3 -fpermissive
 endif
