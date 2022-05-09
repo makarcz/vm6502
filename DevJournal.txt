@@ -959,3 +959,7 @@ A small refactoring in main.cpp (replaced big if/else branch statement with swit
 
 7/28/2017
 Update github repository.
+
+5/9/2022
+I have upgraded to MINGW 8.1.0
+
