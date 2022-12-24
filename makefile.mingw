@@ -18,8 +18,8 @@ LINKOBJ  = main.o VMachine.o MKCpu.o Memory.o Display.o GraphDisp.o MemMapDev.o 
 LINKOBJ2 = bin2hex.o
 LIBS     = -L"$(MINGWDIR)\mingw64\x86_64-w64-mingw32/lib" -L"$(MINGWDIR)\mingw64\x86_64-w64-mingw32/lib" -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32
 SDLLIBS  = -L"$(SDLBASE)\x86_64-w64-mingw32/lib" -lSDL2main -lSDL2
-INCS     = -I"$(MINGWDIR)\mingw64/include" -I"$(MINGWDIR)\mingw64\x86_64-w64-mingw32/include" -I"$(MINGWDIR)\mingw64\lib\gcc\x86_64-w64-mingw32\5.3.0/include"
-CXXINCS  = -I"$(MINGWDIR)\mingw64/include" -I"$(MINGWDIR)\mingw64\x86_64-w64-mingw32/include" -I"$(MINGWDIR)\mingw64\lib\gcc\x86_64-w64-mingw32\5.3.0/include"
+INCS     = -I"$(MINGWDIR)\mingw64/include" -I"$(MINGWDIR)\mingw64\x86_64-w64-mingw32/include" -I"$(MINGWDIR)\mingw64\lib\gcc\x86_64-w64-mingw32\$(GCCVER)/include"
+CXXINCS  = -I"$(MINGWDIR)\mingw64/include" -I"$(MINGWDIR)\mingw64\x86_64-w64-mingw32/include" -I"$(MINGWDIR)\mingw64\lib\gcc\x86_64-w64-mingw32\$(GCCVER)/include"
 BIN       = vm65.exe
 BIN2      = bin2hex.exe
 CXXFLAGS  = $(CXXINCS) -std=c++11 -Wall -Wextra -pedantic -g3

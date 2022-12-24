@@ -1,5 +1,6 @@
 echo off
-set MINGWDIR=C:\mingw-w64\x86_64-8.1.0
+set GCCVER=8.1.0
+set MINGWDIR=C:\mingw-w64\x86_64-%GCCVER%
 set SDLDIR=D:\src\SDL
 set PATH=%MINGWDIR%\mingw64\bin;%SDLDIR%\lib\x64;%PATH%
 rem echo %PATH%
